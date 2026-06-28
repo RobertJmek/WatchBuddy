@@ -22,10 +22,10 @@ function formatDuration(minutes: number) {
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="title" style={{ color: Accent }}>
-        {value}
+      <ThemedText style={styles.cardValue}>{value}</ThemedText>
+      <ThemedText type="small" style={styles.cardLabel}>
+        {label}
       </ThemedText>
-      <ThemedText type="small">{label}</ThemedText>
     </ThemedView>
   );
 }
@@ -96,10 +96,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <View style={styles.section}>
-      <ThemedText type="subtitle">{title}</ThemedText>
+    <ThemedView type="backgroundElement" style={styles.section}>
+      <ThemedText type="smallBold" style={styles.sectionTitle}>
+        {title.toUpperCase()}
+      </ThemedText>
       {children}
-    </View>
+    </ThemedView>
   );
 }
 
@@ -143,12 +145,20 @@ export default function StatsScreen() {
           Statistics
         </ThemedText>
         <ScrollView contentContainerStyle={styles.content}>
+          <ThemedView type="backgroundElement" style={styles.hero}>
+            <ThemedText style={styles.heroValue}>
+              {formatDuration(stats.totalMinutes)}
+            </ThemedText>
+            <ThemedText type="small" style={styles.heroLabel}>
+              total watched
+            </ThemedText>
+          </ThemedView>
+
           <View style={styles.cards}>
-          <StatCard label="Total time" value={formatDuration(stats.totalMinutes)} />
-          <StatCard label="Titles" value={String(stats.distinctTitles)} />
-          <StatCard label="Movie watches" value={String(stats.totalMovieWatches)} />
-          <StatCard label="Episodes" value={String(stats.totalEpisodeWatches)} />
-        </View>
+            <StatCard label="Titles" value={String(stats.distinctTitles)} />
+            <StatCard label="Movie watches" value={String(stats.totalMovieWatches)} />
+            <StatCard label="Episodes" value={String(stats.totalEpisodeWatches)} />
+          </View>
 
         <Section title={`${new Date().getFullYear()} so far`}>
           <ThemedText>
@@ -248,6 +258,80 @@ export default function StatsScreen() {
           </Section>
         )}
 
+        {((stats.ratingByGenre?.length ?? 0) > 0 ||
+          (stats.topRated?.length ?? 0) > 0 ||
+          stats.mostRewatched) && (
+          <Section title="Taste insights">
+            {stats.mostRewatched && (
+              <FactRow
+                label="Most rewatched"
+                value={`${stats.mostRewatched.name} ·×${stats.mostRewatched.times}`}
+              />
+            )}
+            {(stats.ratingByGenre?.length ?? 0) > 0 && (
+              <>
+                <ThemedText type="smallBold" style={styles.subhead}>
+                  Average rating by genre
+                </ThemedText>
+                {stats.ratingByGenre.map((g) => (
+                  <FactRow key={g.name} label={g.name} value={g.avg.toFixed(1)} />
+                ))}
+              </>
+            )}
+            {(stats.topRated?.length ?? 0) > 0 && (
+              <>
+                <ThemedText type="smallBold" style={styles.subhead}>
+                  Highest rated
+                </ThemedText>
+                {stats.topRated.map((t, i) => (
+                  <PersonRow key={`${t.name}-${i}`} rank={i + 1} name={t.name} count={t.value} />
+                ))}
+              </>
+            )}
+          </Section>
+        )}
+
+        {(() => {
+          const ms = stats.mediaSplit;
+          const total = ms ? ms.movies + ms.tv : 0;
+          const hasLib = (stats.libraryStatus?.length ?? 0) > 0;
+          const hasNet = (stats.topNetworks?.length ?? 0) > 0;
+          if (total === 0 && !hasLib && !hasNet) return null;
+          const netMax = Math.max(1, ...(stats.topNetworks ?? []).map((n) => n.count));
+          return (
+            <Section title="Library & networks">
+              {total > 0 && (
+                <FactRow
+                  label="Movies vs TV"
+                  value={`${Math.round((ms.movies / total) * 100)}% · ${Math.round(
+                    (ms.tv / total) * 100,
+                  )}%`}
+                />
+              )}
+              {hasLib && (
+                <>
+                  <ThemedText type="smallBold" style={styles.subhead}>
+                    By status
+                  </ThemedText>
+                  {stats.libraryStatus.map((s) => (
+                    <FactRow key={s.label} label={s.label} value={String(s.count)} />
+                  ))}
+                </>
+              )}
+              {hasNet && (
+                <>
+                  <ThemedText type="smallBold" style={styles.subhead}>
+                    Top networks
+                  </ThemedText>
+                  {stats.topNetworks.map((n) => (
+                    <BarRow key={n.name} label={n.name} value={n.count} max={netMax} />
+                  ))}
+                </>
+              )}
+            </Section>
+          );
+        })()}
+
         {stats.decades.length > 0 && (
           <Section title="By decade">
             {stats.decades.map((d) => (
@@ -273,33 +357,59 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   heading: { marginTop: Spacing.three, paddingHorizontal: Spacing.three },
-  content: { padding: Spacing.three, gap: Spacing.four },
-  cards: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
+  content: { padding: Spacing.three, gap: Spacing.three },
+  hero: {
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.four,
+    alignItems: 'center',
+    gap: Spacing.half,
+  },
+  heroValue: { fontSize: 44, fontWeight: '800', color: ACTIVE, lineHeight: 50 },
+  heroLabel: { textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.6 },
+  cards: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   card: {
     flexGrow: 1,
-    flexBasis: '45%',
+    flexBasis: '30%',
     padding: Spacing.three,
     borderRadius: Spacing.three,
     gap: Spacing.half,
+    alignItems: 'center',
   },
-  section: { gap: Spacing.two },
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  cardValue: { fontSize: 22, fontWeight: '800', color: ACTIVE },
+  cardLabel: { textAlign: 'center', opacity: 0.7 },
+  section: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  sectionTitle: {
+    letterSpacing: 0.5,
+    opacity: 0.5,
+    marginBottom: Spacing.half,
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
   barLabel: { width: 70 },
   barTrack: {
     flex: 1,
-    height: 14,
+    height: 10,
     flexDirection: 'row',
-    backgroundColor: '#8882',
-    borderRadius: 7,
+    backgroundColor: '#8883',
+    borderRadius: 5,
     overflow: 'hidden',
   },
-  barFill: { backgroundColor: ACTIVE },
+  barFill: { backgroundColor: ACTIVE, borderRadius: 5 },
   barValue: { width: 28, textAlign: 'right' },
   personRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
+    paddingVertical: Spacing.half,
   },
   personName: { flex: 1 },
   personCount: { color: ACTIVE, fontWeight: '700' },
@@ -308,8 +418,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
+    paddingVertical: Spacing.half,
   },
   factValue: { color: ACTIVE },
+  subhead: {
+    marginTop: Spacing.two,
+    marginBottom: Spacing.half,
+    opacity: 0.5,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   monthChart: {
     flexDirection: 'row',
     alignItems: 'flex-end',

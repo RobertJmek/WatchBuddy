@@ -2,12 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { Button, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, Danger, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getMyProfile } from '@/lib/profile';
@@ -92,7 +92,13 @@ export default function ProfileScreen() {
           </ThemedView>
         </Pressable>
 
-        <Button title="Sign out" onPress={signOut} />
+        <Pressable
+          style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
+          onPress={signOut}>
+          <ThemedText type="smallBold" style={styles.signOutText}>
+            Sign out
+          </ThemedText>
+        </Pressable>
       </SafeAreaView>
     </ThemedView>
   );
@@ -137,4 +143,14 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     backgroundColor: 'transparent',
   },
+  signOutBtn: {
+    marginTop: Spacing.two,
+    borderWidth: 1,
+    borderColor: Danger,
+    borderRadius: 999,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  signOutText: { color: Danger },
+  pressed: { opacity: 0.6 },
 });
