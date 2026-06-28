@@ -25,6 +25,7 @@ export type LibraryItem = {
 export type LibraryEntry = {
   id: string;
   status: LibraryStatus;
+  is_favorite: boolean;
   created_at: string;
   title: {
     id: string;
@@ -41,7 +42,7 @@ export async function getLibrary(): Promise<LibraryEntry[]> {
   const { data, error } = await supabase
     .from('library_items')
     .select(
-      'id, status, created_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date)',
+      'id, status, is_favorite, created_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date)',
     )
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -83,4 +84,46 @@ export async function removeFromLibrary(titleId: string) {
     .delete()
     .eq('title_id', titleId);
   if (error) throw error;
+}
+
+/** Whether the title is currently favorited (false if not in the library). */
+export async function getFavorite(titleId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('library_items')
+    .select('is_favorite')
+    .eq('title_id', titleId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.is_favorite ?? false;
+}
+
+/**
+ * Toggle the heart. Updates the existing library row; if there is none and the
+ * user is favoriting, creates one with status 'watchlist'. RLS scopes the
+ * update/insert to the current user.
+ */
+export async function setFavorite(titleId: string, favorite: boolean) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+
+  const { data: updated, error: updateError } = await supabase
+    .from('library_items')
+    .update({ is_favorite: favorite })
+    .eq('title_id', titleId)
+    .select('id');
+  if (updateError) throw updateError;
+  if ((updated?.length ?? 0) > 0) return;
+
+  // No library row yet — only meaningful when turning the heart on.
+  if (favorite) {
+    const { error: insertError } = await supabase.from('library_items').insert({
+      user_id: user.id,
+      title_id: titleId,
+      status: 'watchlist',
+      is_favorite: true,
+    });
+    if (insertError) throw insertError;
+  }
 }
