@@ -1,24 +1,36 @@
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { ActivityIndicator, Pressable, SectionList, StyleSheet } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import {
-  getLibrary,
-  LIBRARY_STATUSES,
-  type LibraryStatus,
-} from '@/lib/library';
-import { imageUrl } from '@/lib/tmdb';
+import { getLibrary, LIBRARY_STATUSES, type LibraryEntry } from '@/lib/library';
 
-const STATUS_LABEL = Object.fromEntries(
-  LIBRARY_STATUSES.map((s) => [s.value, s.label]),
-) as Record<LibraryStatus, string>;
+function toPosterItem(e: LibraryEntry): PosterItem | null {
+  if (!e.title) return null;
+  return {
+    key: e.id,
+    tmdb_id: e.title.tmdb_id,
+    media_type: e.title.media_type,
+    title: e.title.title,
+    poster_path: e.title.poster_path,
+  };
+}
+
+function shelfItems(
+  entries: LibraryEntry[],
+  predicate: (e: LibraryEntry) => boolean,
+) {
+  return entries
+    .filter(predicate)
+    .map(toPosterItem)
+    .filter((i): i is PosterItem => i !== null);
+}
 
 export default function LibraryScreen() {
   const router = useRouter();
@@ -36,27 +48,41 @@ export default function LibraryScreen() {
     }, [refetch]),
   );
 
-  // Group into sections following the canonical status order.
-  const statusSections = LIBRARY_STATUSES.map(({ value }) => ({
-    title: STATUS_LABEL[value],
-    data: entries.filter((e) => e.status === value),
-  })).filter((s) => s.data.length > 0);
+  // One shelf per status (canonical order), then favorites split by media type.
+  const statusShelves = LIBRARY_STATUSES.map(({ value, label }) => ({
+    key: `status-${value}`,
+    label,
+    params: { status: value, label },
+    items: shelfItems(entries, (e) => e.status === value),
+  }));
 
-  // Favorites at the bottom, split by media type. A favorited title also shows
-  // under its status above, so prefix the id to keep SectionList keys unique.
-  const favoriteSections = [
-    { title: 'Favorite Movies', type: 'movie' as const },
-    { title: 'Favorite TV', type: 'tv' as const },
-  ]
-    .map(({ title, type }) => ({
-      title,
-      data: entries
-        .filter((e) => e.is_favorite && e.title?.media_type === type)
-        .map((e) => ({ ...e, id: `fav-${e.id}` })),
-    }))
-    .filter((s) => s.data.length > 0);
+  const favoriteShelves = [
+    { key: 'fav-movie', label: 'Favorite Movies', type: 'movie' as const },
+    { key: 'fav-tv', label: 'Favorite TV', type: 'tv' as const },
+  ].map(({ key, label, type }) => ({
+    key,
+    label,
+    params: { favorite: type, label },
+    items: shelfItems(
+      entries,
+      (e) => e.is_favorite && e.title?.media_type === type,
+    ),
+  }));
 
-  const sections = [...statusSections, ...favoriteSections];
+  const shelves = [...statusShelves, ...favoriteShelves].filter(
+    (s) => s.items.length > 0,
+  );
+
+  function openTitle(item: PosterItem) {
+    router.push({
+      pathname: '/title/[id]',
+      params: {
+        id: String(item.tmdb_id),
+        type: item.media_type,
+        name: item.title,
+      },
+    });
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -67,59 +93,24 @@ export default function LibraryScreen() {
 
         {loading ? (
           <ActivityIndicator style={{ marginTop: Spacing.four }} />
+        ) : shelves.length === 0 ? (
+          <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
+            Nothing yet. Find something in Search and set a status.
+          </ThemedText>
         ) : (
-          <SectionList
-            sections={sections}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
-            stickySectionHeadersEnabled={false}
-            ListEmptyComponent={
-              <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
-                Nothing yet. Find something in Search and set a status.
-              </ThemedText>
-            }
-            renderSectionHeader={({ section }) => (
-              <ThemedText type="subtitle" style={styles.sectionHeader}>
-                {section.title}
-              </ThemedText>
-            )}
-            renderItem={({ item }) =>
-              item.title ? (
-                <Pressable
-                  style={[styles.row, { backgroundColor: c.backgroundElement }]}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/title/[id]',
-                      params: {
-                        id: String(item.title!.tmdb_id),
-                        type: item.title!.media_type,
-                        name: item.title!.title,
-                      },
-                    })
-                  }>
-                  <Image
-                    style={styles.poster}
-                    source={{
-                      uri: imageUrl(item.title.poster_path, 'w185') ?? undefined,
-                    }}
-                    contentFit="cover"
-                    transition={150}
-                  />
-                  <ThemedView style={styles.rowText}>
-                    <ThemedText type="smallBold" numberOfLines={2}>
-                      {item.title.title}
-                    </ThemedText>
-                    <ThemedText type="small">
-                      {item.title.media_type === 'tv' ? 'TV' : 'Movie'}
-                      {item.title.release_date
-                        ? ` · ${item.title.release_date.slice(0, 4)}`
-                        : ''}
-                    </ThemedText>
-                  </ThemedView>
-                </Pressable>
-              ) : null
-            }
-          />
+          <ScrollView contentContainerStyle={styles.list}>
+            {shelves.map((s) => (
+              <PosterShelf
+                key={s.key}
+                title={s.label}
+                items={s.items}
+                onPressItem={openTitle}
+                onPressHeader={() =>
+                  router.push({ pathname: '/library-section', params: s.params })
+                }
+              />
+            ))}
+          </ScrollView>
         )}
       </SafeAreaView>
     </ThemedView>
@@ -129,22 +120,7 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, paddingHorizontal: Spacing.three },
-  heading: { marginTop: Spacing.three },
-  list: { paddingVertical: Spacing.two, gap: Spacing.two },
-  sectionHeader: { marginTop: Spacing.three, marginBottom: Spacing.two },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-    alignItems: 'center',
-    padding: Spacing.two,
-    borderRadius: Spacing.three,
-  },
-  poster: {
-    width: 48,
-    height: 72,
-    borderRadius: Spacing.one,
-    backgroundColor: '#0002',
-  },
-  rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
+  heading: { marginTop: Spacing.three, marginBottom: Spacing.two },
+  list: { gap: Spacing.four, paddingVertical: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });
