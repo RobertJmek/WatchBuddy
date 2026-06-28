@@ -1,3 +1,4 @@
+import { LIBRARY_STATUSES } from '@/lib/library';
 import { supabase } from '@/lib/supabase';
 
 export type Stats = {
@@ -12,15 +13,47 @@ export type Stats = {
     distribution: number[]; // length 11; index 1..10 used
   };
   topGenres: { name: string; count: number }[];
+  topDirectors: { name: string; count: number }[];
+  topActors: { name: string; count: number }[];
+  ratingByGenre: { name: string; avg: number }[];
+  topRated: { name: string; value: number }[];
+  mostRewatched: { name: string; times: number } | null;
+  mediaSplit: { movies: number; tv: number };
+  libraryStatus: { label: string; count: number }[];
+  topNetworks: { name: string; count: number }[];
   decades: { label: string; count: number }[];
   languages: { label: string; count: number }[];
   monthly: { label: string; count: number }[]; // last 12 months, oldest→newest
+  patterns: {
+    busiestWeekday: string | null;
+    biggestDay: { label: string; count: number } | null;
+    currentStreak: number;
+    longestStreak: number;
+    busiestMonth: { label: string; count: number } | null;
+  };
 };
+
+const WEEKDAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
+function dayKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+}
 
 type TitleMeta = {
   runtime: number | null;
   original_language: string | null;
   release_date: string | null;
+  media_type: 'movie' | 'tv' | null;
 };
 
 type WatchRow = {
@@ -28,6 +61,8 @@ type WatchRow = {
   title_id: string;
   minutes: number;
   meta: TitleMeta | null;
+  titleName: string | null;
+  episodeId: string | null;
 };
 
 function yearOf(iso: string) {
@@ -39,14 +74,14 @@ export async function getStats(): Promise<Stats> {
     supabase
       .from('episode_watches')
       .select(
-        'watched_at, title_id, episode:episodes(runtime), title:titles(runtime, original_language, release_date)',
+        'watched_at, title_id, episode_id, episode:episodes(runtime), title:titles(title, runtime, original_language, release_date, media_type)',
       ),
     supabase
       .from('movie_watches')
       .select(
-        'watched_at, title_id, title:titles(runtime, original_language, release_date)',
+        'watched_at, title_id, title:titles(title, runtime, original_language, release_date, media_type)',
       ),
-    supabase.from('ratings').select('value'),
+    supabase.from('ratings').select('value, entity_type, entity_id'),
   ]);
   if (episodesRes.error) throw episodesRes.error;
   if (moviesRes.error) throw moviesRes.error;
@@ -57,12 +92,16 @@ export async function getStats(): Promise<Stats> {
     title_id: r.title_id,
     minutes: r.episode?.runtime ?? r.title?.runtime ?? 0,
     meta: r.title ?? null,
+    titleName: r.title?.title ?? null,
+    episodeId: r.episode_id ?? null,
   }));
   const movieWatches: WatchRow[] = (moviesRes.data ?? []).map((r: any) => ({
     watched_at: r.watched_at,
     title_id: r.title_id,
     minutes: r.title?.runtime ?? 0,
     meta: r.title ?? null,
+    titleName: r.title?.title ?? null,
+    episodeId: null,
   }));
   const all = [...episodeWatches, ...movieWatches];
 
@@ -98,19 +137,152 @@ export async function getStats(): Promise<Stats> {
   for (const w of all) if (w.meta && !titleMeta.has(w.title_id)) titleMeta.set(w.title_id, w.meta);
   const distinctIds = [...titleMeta.keys()];
 
-  // Genres for the distinct watched titles.
-  const genreCounts = new Map<string, number>();
-  if (distinctIds.length > 0) {
+  // Rated movie/show titles (for taste insights).
+  const ratingRows = (ratingsRes.data ?? []) as any[];
+  const titleRatings = ratingRows.filter(
+    (r) => r.entity_type === 'movie' || r.entity_type === 'show',
+  );
+  const ratedIds = [...new Set(titleRatings.map((r) => r.entity_id as string))];
+
+  // Genres for watched + rated titles, keyed by title for reuse below.
+  const genresByTitle = new Map<string, string[]>();
+  const genreIds = [...new Set([...distinctIds, ...ratedIds])];
+  if (genreIds.length > 0) {
     const { data, error } = await supabase
       .from('title_genres')
       .select('title_id, genres(name)')
-      .in('title_id', distinctIds);
+      .in('title_id', genreIds);
     if (error) throw error;
     for (const row of data ?? []) {
       const name = (row as any).genres?.name as string | undefined;
-      if (name) genreCounts.set(name, (genreCounts.get(name) ?? 0) + 1);
+      const tid = (row as any).title_id as string;
+      if (name) {
+        const arr = genresByTitle.get(tid);
+        if (arr) arr.push(name);
+        else genresByTitle.set(tid, [name]);
+      }
     }
   }
+
+  // Genre frequency over distinct watched titles.
+  const genreCounts = new Map<string, number>();
+  for (const id of distinctIds) {
+    for (const name of genresByTitle.get(id) ?? []) {
+      genreCounts.set(name, (genreCounts.get(name) ?? 0) + 1);
+    }
+  }
+
+  // Average rating by genre.
+  const genreRating = new Map<string, { sum: number; count: number }>();
+  for (const r of titleRatings) {
+    for (const name of genresByTitle.get(r.entity_id) ?? []) {
+      const e = genreRating.get(name) ?? { sum: 0, count: 0 };
+      e.sum += r.value;
+      e.count += 1;
+      genreRating.set(name, e);
+    }
+  }
+
+  // Title names for rated / rewatched titles (from watches, plus a lookup for
+  // any rated title that isn't in the watch history).
+  const nameById = new Map<string, string>();
+  for (const w of all) if (w.titleName) nameById.set(w.title_id, w.titleName);
+  const missingNames = ratedIds.filter((id) => !nameById.has(id));
+  if (missingNames.length > 0) {
+    const { data } = await supabase
+      .from('titles')
+      .select('id, title')
+      .in('id', missingNames);
+    for (const row of data ?? []) nameById.set((row as any).id, (row as any).title);
+  }
+
+  // Highest-rated titles.
+  const topRated = [...titleRatings]
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+    .map((r) => ({ name: nameById.get(r.entity_id) ?? 'Unknown', value: r.value }));
+
+  // Most rewatched: a movie's watch count, or a show's max single-episode count.
+  const movieCountByTitle = new Map<string, number>();
+  for (const w of movieWatches) {
+    movieCountByTitle.set(w.title_id, (movieCountByTitle.get(w.title_id) ?? 0) + 1);
+  }
+  const episodeCount = new Map<string, number>(); // episodeId -> count
+  const titleByEpisode = new Map<string, string>();
+  for (const w of episodeWatches) {
+    if (!w.episodeId) continue;
+    episodeCount.set(w.episodeId, (episodeCount.get(w.episodeId) ?? 0) + 1);
+    titleByEpisode.set(w.episodeId, w.title_id);
+  }
+  const timesByTitle = new Map<string, number>(movieCountByTitle);
+  for (const [epId, count] of episodeCount) {
+    const tid = titleByEpisode.get(epId)!;
+    timesByTitle.set(tid, Math.max(timesByTitle.get(tid) ?? 0, count));
+  }
+  let mostRewatched: { name: string; times: number } | null = null;
+  for (const [tid, times] of timesByTitle) {
+    if (times >= 2 && (!mostRewatched || times > mostRewatched.times)) {
+      mostRewatched = { name: nameById.get(tid) ?? 'Unknown', times };
+    }
+  }
+
+  // Top people: count distinct watched titles per director / actor.
+  const directorCounts = new Map<string, number>();
+  const actorCounts = new Map<string, number>();
+  if (distinctIds.length > 0) {
+    const { data, error } = await supabase
+      .from('credits')
+      .select('job, person:people(name)')
+      .in('title_id', distinctIds);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const name = (row as any).person?.name as string | undefined;
+      if (!name) continue;
+      const target = (row as any).job === 'Director' ? directorCounts : actorCounts;
+      target.set(name, (target.get(name) ?? 0) + 1);
+    }
+  }
+
+  // Media split (distinct watched titles) + top networks (distinct watched TV).
+  let movieTitles = 0;
+  let tvTitles = 0;
+  const tvDistinctIds: string[] = [];
+  for (const [id, meta] of titleMeta) {
+    if (meta.media_type === 'tv') {
+      tvTitles++;
+      tvDistinctIds.push(id);
+    } else if (meta.media_type === 'movie') {
+      movieTitles++;
+    }
+  }
+
+  const networkCounts = new Map<string, number>();
+  if (tvDistinctIds.length > 0) {
+    const { data, error } = await supabase
+      .from('title_networks')
+      .select('network:networks(name)')
+      .in('title_id', tvDistinctIds);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const name = (row as any).network?.name as string | undefined;
+      if (name) networkCounts.set(name, (networkCounts.get(name) ?? 0) + 1);
+    }
+  }
+
+  // Library status breakdown.
+  const statusCounts = new Map<string, number>();
+  {
+    const { data, error } = await supabase.from('library_items').select('status');
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const s = (row as any).status as string;
+      statusCounts.set(s, (statusCounts.get(s) ?? 0) + 1);
+    }
+  }
+  const libraryStatus = LIBRARY_STATUSES.map(({ value, label }) => ({
+    label,
+    count: statusCounts.get(value) ?? 0,
+  })).filter((s) => s.count > 0);
 
   // Decades + languages (per distinct title).
   const decadeCounts = new Map<number, number>();
@@ -150,6 +322,71 @@ export async function getStats(): Promise<Stats> {
     });
   }
 
+  // Watch patterns (all from watched_at).
+  const weekdayCounts = new Array(7).fill(0);
+  const dayCounts = new Map<string, number>();
+  for (const w of all) {
+    const d = new Date(w.watched_at);
+    weekdayCounts[d.getDay()]++;
+    const local = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const k = dayKey(local);
+    dayCounts.set(k, (dayCounts.get(k) ?? 0) + 1);
+  }
+
+  const busiestWeekday =
+    all.length > 0 ? WEEKDAYS[weekdayCounts.indexOf(Math.max(...weekdayCounts))] : null;
+
+  let biggestDayRaw: { key: string; count: number } | null = null;
+  for (const [k, v] of dayCounts) {
+    if (!biggestDayRaw || v > biggestDayRaw.count) biggestDayRaw = { key: k, count: v };
+  }
+  const biggestDay = biggestDayRaw
+    ? {
+        label: new Date(biggestDayRaw.key).toLocaleDateString(undefined, {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }),
+        count: biggestDayRaw.count,
+      }
+    : null;
+
+  // Streaks over distinct watch days (consecutive calendar days).
+  const sortedDays = [...dayCounts.keys()].sort();
+  const daySet = new Set(sortedDays);
+  let longestStreak = 0;
+  let run = 0;
+  let prev: Date | null = null;
+  for (const k of sortedDays) {
+    const d = new Date(k);
+    if (prev && Math.round((d.getTime() - prev.getTime()) / 86400000) === 1) run++;
+    else run = 1;
+    if (run > longestStreak) longestStreak = run;
+    prev = d;
+  }
+  let currentStreak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!daySet.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1); // allow "yesterday"
+  while (daySet.has(dayKey(cursor))) {
+    currentStreak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  let busiestMonthRaw: { key: string; count: number } | null = null;
+  for (const [k, v] of monthCounts) {
+    if (!busiestMonthRaw || v > busiestMonthRaw.count) busiestMonthRaw = { key: k, count: v };
+  }
+  const busiestMonth = busiestMonthRaw
+    ? {
+        label: new Date(`${busiestMonthRaw.key}-01`).toLocaleDateString(undefined, {
+          month: 'short',
+          year: 'numeric',
+        }),
+        count: busiestMonthRaw.count,
+      }
+    : null;
+
   const sortDesc = <T,>(m: Map<T, number>) =>
     [...m.entries()].sort((a, b) => b[1] - a[1]);
 
@@ -163,6 +400,23 @@ export async function getStats(): Promise<Stats> {
     topGenres: sortDesc(genreCounts)
       .slice(0, 8)
       .map(([name, count]) => ({ name, count })),
+    topDirectors: sortDesc(directorCounts)
+      .slice(0, 6)
+      .map(([name, count]) => ({ name, count })),
+    topActors: sortDesc(actorCounts)
+      .slice(0, 6)
+      .map(([name, count]) => ({ name, count })),
+    ratingByGenre: [...genreRating.entries()]
+      .map(([name, { sum, count }]) => ({ name, avg: sum / count }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 6),
+    topRated,
+    mostRewatched,
+    mediaSplit: { movies: movieTitles, tv: tvTitles },
+    libraryStatus,
+    topNetworks: sortDesc(networkCounts)
+      .slice(0, 6)
+      .map(([name, count]) => ({ name, count })),
     decades: [...decadeCounts.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([dec, count]) => ({ label: `${dec}s`, count })),
@@ -170,5 +424,12 @@ export async function getStats(): Promise<Stats> {
       .slice(0, 6)
       .map(([label, count]) => ({ label: label.toUpperCase(), count })),
     monthly,
+    patterns: {
+      busiestWeekday,
+      biggestDay,
+      currentStreak,
+      longestStreak,
+      busiestMonth,
+    },
   };
 }
