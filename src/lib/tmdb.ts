@@ -48,7 +48,21 @@ export type SeasonRow = {
 
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('tmdb-proxy', { body });
-  if (error) throw error;
+  if (error) {
+    // supabase-js reports only the HTTP status; the function's JSON `{ error }`
+    // body (the useful part) is on error.context — read it when present.
+    let message = error.message;
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const parsed = await ctx.json();
+        if (parsed?.error) message = parsed.error;
+      } catch {
+        // non-JSON body — keep the original message
+      }
+    }
+    throw new Error(message);
+  }
   if (data?.error) throw new Error(data.error);
   return data as T;
 }
@@ -57,6 +71,12 @@ export function searchTitles(q: string) {
   return invoke<{ results: SearchResult[] }>({ action: 'search', q }).then(
     (d) => d.results,
   );
+}
+
+export type TrendingFeed = { movies: SearchResult[]; tv: SearchResult[] };
+
+export function getTrending() {
+  return invoke<TrendingFeed>({ action: 'trending' });
 }
 
 export function fetchTitle(tmdbId: number, mediaType: MediaType) {

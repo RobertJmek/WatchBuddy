@@ -2,7 +2,15 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,36 +18,137 @@ import { ThemedView } from '@/components/themed-view';
 import { Danger, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
-import { imageUrl, searchTitles, type SearchResult } from '@/lib/tmdb';
+import { getTrending, imageUrl, searchTitles, type SearchResult } from '@/lib/tmdb';
 
 const MIN_CHARS = 3;
 const DEBOUNCE_MS = 500;
+
+function year(r: SearchResult) {
+  return r.release_date ? r.release_date.slice(0, 4) : '—';
+}
+
+function ResultRow({
+  item,
+  bg,
+  router,
+}: {
+  item: SearchResult;
+  bg: string;
+  router: ReturnType<typeof useRouter>;
+}) {
+  return (
+    <Pressable
+      style={[styles.row, { backgroundColor: bg }]}
+      onPress={() =>
+        router.push({
+          pathname: '/title/[id]',
+          params: {
+            id: String(item.tmdb_id),
+            type: item.media_type,
+            name: item.title,
+          },
+        })
+      }>
+      <Image
+        style={styles.poster}
+        source={{ uri: imageUrl(item.poster_path, 'w185') ?? undefined }}
+        contentFit="cover"
+        transition={150}
+      />
+      <ThemedView style={styles.rowText}>
+        <ThemedText type="smallBold" numberOfLines={2}>
+          {item.title}
+        </ThemedText>
+        <ThemedText type="small">
+          {item.media_type === 'tv' ? 'TV' : 'Movie'} · {year(item)}
+        </ThemedText>
+      </ThemedView>
+    </Pressable>
+  );
+}
+
+function PosterCard({
+  item,
+  router,
+}: {
+  item: SearchResult;
+  router: ReturnType<typeof useRouter>;
+}) {
+  return (
+    <Pressable
+      style={styles.card}
+      onPress={() =>
+        router.push({
+          pathname: '/title/[id]',
+          params: {
+            id: String(item.tmdb_id),
+            type: item.media_type,
+            name: item.title,
+          },
+        })
+      }>
+      <Image
+        style={styles.cardPoster}
+        source={{ uri: imageUrl(item.poster_path, 'w342') ?? undefined }}
+        contentFit="cover"
+        transition={150}
+      />
+    </Pressable>
+  );
+}
+
+function Shelf({
+  title,
+  data,
+  router,
+}: {
+  title: string;
+  data: SearchResult[];
+  router: ReturnType<typeof useRouter>;
+}) {
+  if (data.length === 0) return null;
+  return (
+    <View style={styles.shelf}>
+      <ThemedText type="subtitle" style={styles.sectionHeader}>
+        {title}
+      </ThemedText>
+      <FlatList
+        data={data}
+        horizontal
+        keyExtractor={(r) => `${r.media_type}-${r.tmdb_id}`}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.shelfRow}
+        renderItem={({ item }) => <PosterCard item={item} router={router} />}
+      />
+    </View>
+  );
+}
 
 export default function SearchScreen() {
   const router = useRouter();
   const c = useTheme();
 
   const [query, setQuery] = useState('');
-  const term = useDebouncedValue(query.trim(), DEBOUNCE_MS);
-  const enabled = term.length >= MIN_CHARS;
+  const trimmed = query.trim();
+  const term = useDebouncedValue(trimmed, DEBOUNCE_MS);
+  const searching = term.length >= MIN_CHARS;
 
-  const {
-    data: results = [],
-    isFetching,
-    error,
-  } = useQuery({
+  // empty -> trending feed; 1-2 chars -> hint; 3+ -> live search results.
+  const mode: 'trending' | 'hint' | 'search' =
+    trimmed.length === 0 ? 'trending' : trimmed.length < MIN_CHARS ? 'hint' : 'search';
+
+  const search = useQuery({
     queryKey: ['search', term],
     queryFn: () => searchTitles(term),
-    enabled,
+    enabled: searching,
     placeholderData: keepPreviousData,
   });
 
-  function year(r: SearchResult) {
-    return r.release_date ? r.release_date.slice(0, 4) : '—';
-  }
-
-  // Below the threshold we never show stale results — just a hint.
-  const showHint = !enabled;
+  const trending = useQuery({
+    queryKey: ['trending'],
+    queryFn: getTrending,
+    staleTime: 1000 * 60 * 60 * 6, // 6h — the weekly feed barely moves.
+  });
 
   return (
     <ThemedView style={styles.container}>
@@ -58,63 +167,62 @@ export default function SearchScreen() {
             value={query}
             onChangeText={setQuery}
           />
-          {enabled && isFetching && (
+          {mode === 'search' && search.isFetching && (
             <ActivityIndicator style={styles.inputSpinner} />
           )}
         </View>
 
-        {error && <ThemedText style={styles.error}>{String(error)}</ThemedText>}
+        {mode === 'search' && search.error && (
+          <ThemedText style={styles.error}>{String(search.error)}</ThemedText>
+        )}
 
-        {showHint ? (
+        {mode === 'hint' && (
           <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
             Type at least {MIN_CHARS} characters to search.
           </ThemedText>
-        ) : (
+        )}
+
+        {mode === 'search' && (
           <FlatList
-            data={results}
+            data={search.data ?? []}
             keyExtractor={(r) => `${r.media_type}-${r.tmdb_id}`}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
-            // Dim (don't blank) while a newer query is loading.
-            style={isFetching ? styles.dimmed : undefined}
+            style={search.isFetching ? styles.dimmed : undefined}
             ListEmptyComponent={
-              !isFetching ? (
+              !search.isFetching ? (
                 <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
                   No results.
                 </ThemedText>
               ) : null
             }
             renderItem={({ item }) => (
-              <Pressable
-                style={[styles.row, { backgroundColor: c.backgroundElement }]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/title/[id]',
-                    params: {
-                      id: String(item.tmdb_id),
-                      type: item.media_type,
-                      name: item.title,
-                    },
-                  })
-                }>
-                <Image
-                  style={styles.poster}
-                  source={{ uri: imageUrl(item.poster_path, 'w185') ?? undefined }}
-                  contentFit="cover"
-                  transition={150}
-                />
-                <ThemedView style={styles.rowText}>
-                  <ThemedText type="smallBold" numberOfLines={2}>
-                    {item.title}
-                  </ThemedText>
-                  <ThemedText type="small">
-                    {item.media_type === 'tv' ? 'TV' : 'Movie'} · {year(item)}
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
+              <ResultRow item={item} bg={c.backgroundElement} router={router} />
             )}
           />
         )}
+
+        {mode === 'trending' &&
+          (trending.isLoading ? (
+            <ActivityIndicator style={{ marginTop: Spacing.five }} />
+          ) : trending.error ? (
+            <ThemedText style={styles.error}>{String(trending.error)}</ThemedText>
+          ) : (
+            <ScrollView
+              contentContainerStyle={styles.list}
+              keyboardShouldPersistTaps="handled">
+              <Shelf
+                title="Trending Movies"
+                data={trending.data?.movies ?? []}
+                router={router}
+              />
+              <Shelf
+                title="Trending TV"
+                data={trending.data?.tv ?? []}
+                router={router}
+              />
+            </ScrollView>
+          ))}
       </SafeAreaView>
     </ThemedView>
   );
@@ -134,6 +242,7 @@ const styles = StyleSheet.create({
   inputSpinner: { position: 'absolute', right: Spacing.three },
   dimmed: { opacity: 0.4 },
   list: { gap: Spacing.two, paddingVertical: Spacing.three },
+  sectionHeader: { marginTop: Spacing.two, marginBottom: Spacing.two },
   row: {
     flexDirection: 'row',
     gap: Spacing.three,
@@ -150,4 +259,13 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   error: { color: Danger, marginTop: Spacing.three },
+  shelf: { gap: Spacing.two },
+  shelfRow: { gap: Spacing.two, paddingRight: Spacing.three },
+  card: { width: 110 },
+  cardPoster: {
+    width: 110,
+    height: 165,
+    borderRadius: Spacing.one,
+    backgroundColor: '#0002',
+  },
 });

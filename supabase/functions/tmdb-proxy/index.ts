@@ -84,6 +84,31 @@ async function handleSearch(q: string) {
   return json({ results });
 }
 
+// --- trending (default discovery feed) ---------------------------------
+function mapResults(results: any[], mediaType: 'movie' | 'tv') {
+  return (results ?? []).map((r: any) => ({
+    tmdb_id: r.id,
+    media_type: mediaType,
+    title: r.title ?? r.name,
+    overview: r.overview ?? '',
+    poster_path: r.poster_path ?? null,
+    release_date: r.release_date ?? r.first_air_date ?? null,
+    vote_average: r.vote_average ?? null,
+  }));
+}
+
+async function handleTrending() {
+  // Per-type endpoints don't include a media_type field, so we stamp it.
+  const [movies, tv] = await Promise.all([
+    tmdb('/trending/movie/week'),
+    tmdb('/trending/tv/week'),
+  ]);
+  return json({
+    movies: mapResults(movies.results, 'movie'),
+    tv: mapResults(tv.results, 'tv'),
+  });
+}
+
 // --- title (detail + cache) --------------------------------------------
 async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
   const detail = await tmdb(`/${mediaType}/${tmdbId}`, {
@@ -271,6 +296,8 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'search':
         return await handleSearch(q);
+      case 'trending':
+        return await handleTrending();
       case 'title':
         return await handleTitle(tmdb_id, media_type);
       case 'season':
