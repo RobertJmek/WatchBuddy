@@ -6,8 +6,10 @@ foundation, with a future path to importing your history from TV Time.
 
 ## Features (v1)
 
-- **Search & catalog** — search movies and TV via TMDB, with full detail (poster,
-  ratings, seasons/episodes), backed by a server-side cache.
+- **Search & discovery** — live search-as-you-type across movies and TV via TMDB,
+  a **Trending this week** feed (horizontal poster shelves) shown by default on the
+  Search tab, and full title detail (poster, ratings, seasons/episodes), backed by
+  a server-side cache.
 - **Tracking**
   - Library statuses: watchlist / watching / completed / on-hold / dropped.
   - Episode-level check-off, with **rewatch logging per episode, per season, and
@@ -20,6 +22,8 @@ foundation, with a future path to importing your history from TV Time.
 - **Auth** — passwordless email one-time code, plus Google sign-in (OAuth).
 - **Offline** — read data (Library / Diary / Stats) is cached and persisted, so
   the app cold-opens and browses offline.
+- **Appearance** — light / dark / system theme toggle on the Profile screen,
+  persisted across launches, with a teal accent throughout.
 
 ## Tech stack
 
@@ -98,5 +102,6 @@ npx expo run:ios       # or: npx expo run:android
 
 ## Status
 
-v1 core is implemented (tracking, stats, offline read cache, email + Google auth).
-Planned next: Apple sign-in, the TV Time CSV importer, and a visual design pass.
+v1 core is implemented (tracking, stats, offline read cache, email + Google auth),
+with a teal light/dark design pass, live search, and a trending discovery feed.
+Planned next: Apple sign-in and the TV Time CSV importer.
