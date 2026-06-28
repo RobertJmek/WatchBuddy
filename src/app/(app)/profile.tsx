@@ -6,9 +6,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
+import { useThemePreference } from '@/lib/theme-preference';
+
+const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
+  const { pref, cycle } = useThemePreference();
   const router = useRouter();
 
   return (
@@ -26,6 +30,13 @@ export default function ProfileScreen() {
         <Pressable style={styles.link} onPress={() => router.push('/stats')}>
           <ThemedText type="subtitle">Statistics</ThemedText>
           <ThemedText style={styles.chevron}>›</ThemedText>
+        </Pressable>
+        <Pressable style={styles.link} onPress={cycle}>
+          <ThemedText type="subtitle">Theme</ThemedText>
+          <ThemedView style={styles.value}>
+            <ThemedText type="small">{THEME_LABEL[pref]}</ThemedText>
+            <ThemedText style={styles.chevron}>›</ThemedText>
+          </ThemedView>
         </Pressable>
 
         <Button title="Sign out" onPress={signOut} />
@@ -51,4 +62,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#8884',
   },
   chevron: { opacity: 0.4, fontSize: 20 },
+  value: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: 'transparent',
+  },
 });
