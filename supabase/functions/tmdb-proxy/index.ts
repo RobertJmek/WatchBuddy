@@ -1,0 +1,284 @@
+// tmdb-proxy: server-side proxy + cache for TMDB (with OMDb IMDb-rating fallback).
+//
+// Keeps the TMDB/OMDb keys off the client, and upserts fetched metadata into
+// Postgres (using the service-role key) so statistics can run as SQL over the
+// user's library. Requires a valid Supabase JWT (verify_jwt stays on), so only
+// authenticated app users can call it.
+//
+// POST body: { action: 'search' | 'title' | 'season', ...params }
+//   search: { q: string }
+//   title:  { tmdb_id: number, media_type: 'movie' | 'tv' }
+//   season: { tmdb_id: number, season_number: number }
+
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+
+const TMDB_API_KEY = Deno.env.get('TMDB_API_KEY');
+const OMDB_API_KEY = Deno.env.get('OMDB_API_KEY'); // optional
+const TMDB = 'https://api.themoviedb.org/3';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+const admin = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+);
+
+async function tmdb(path: string, params: Record<string, string> = {}) {
+  const url = new URL(`${TMDB}${path}`);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  // TMDB v4 read-access token (JWT) is sent as a Bearer header; it works
+  // against the same v3 endpoints.
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${TMDB_API_KEY}`,
+      accept: 'application/json',
+    },
+  });
+  if (!res.ok) throw new Error(`TMDB ${path} -> ${res.status}`);
+  return res.json();
+}
+
+async function imdbRating(imdbId: string | null): Promise<number | null> {
+  if (!imdbId || !OMDB_API_KEY) return null;
+  try {
+    const res = await fetch(
+      `https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${imdbId}`,
+    );
+    const data = await res.json();
+    const r = parseFloat(data?.imdbRating);
+    return Number.isFinite(r) ? r : null;
+  } catch {
+    return null;
+  }
+}
+
+// --- search -------------------------------------------------------------
+async function handleSearch(q: string) {
+  if (!q?.trim()) return json({ results: [] });
+  const data = await tmdb('/search/multi', {
+    query: q,
+    include_adult: 'false',
+  });
+  const results = (data.results ?? [])
+    .filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
+    .map((r: any) => ({
+      tmdb_id: r.id,
+      media_type: r.media_type,
+      title: r.title ?? r.name,
+      overview: r.overview ?? '',
+      poster_path: r.poster_path ?? null,
+      release_date: r.release_date ?? r.first_air_date ?? null,
+      vote_average: r.vote_average ?? null,
+    }));
+  return json({ results });
+}
+
+// --- title (detail + cache) --------------------------------------------
+async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
+  const detail = await tmdb(`/${mediaType}/${tmdbId}`, {
+    append_to_response: 'credits,external_ids',
+  });
+
+  const imdbId = detail.imdb_id ?? detail.external_ids?.imdb_id ?? null;
+  const isTv = mediaType === 'tv';
+
+  const titleRow = {
+    tmdb_id: tmdbId,
+    media_type: mediaType,
+    imdb_id: imdbId,
+    title: isTv ? detail.name : detail.title,
+    original_title: isTv ? detail.original_name : detail.original_title,
+    overview: detail.overview ?? null,
+    original_language: detail.original_language ?? null,
+    release_date: (isTv ? detail.first_air_date : detail.release_date) || null,
+    runtime: isTv ? (detail.episode_run_time?.[0] ?? null) : detail.runtime,
+    poster_path: detail.poster_path ?? null,
+    backdrop_path: detail.backdrop_path ?? null,
+    origin_country: isTv
+      ? (detail.origin_country?.[0] ?? null)
+      : (detail.production_countries?.[0]?.iso_3166_1 ?? null),
+    tmdb_rating: detail.vote_average ?? null,
+    imdb_rating: await imdbRating(imdbId),
+    popularity: detail.popularity ?? null,
+    status: detail.status ?? null,
+    number_of_seasons: detail.number_of_seasons ?? null,
+    number_of_episodes: detail.number_of_episodes ?? null,
+    cached_at: new Date().toISOString(),
+  };
+
+  const { data: title, error } = await admin
+    .from('titles')
+    .upsert(titleRow, { onConflict: 'tmdb_id,media_type' })
+    .select()
+    .single();
+  if (error) throw new Error(`upsert title: ${error.message}`);
+
+  // genres
+  const genres = detail.genres ?? [];
+  if (genres.length) {
+    await admin.from('genres').upsert(genres, { onConflict: 'id' });
+    await admin.from('title_genres').upsert(
+      genres.map((g: any) => ({ title_id: title.id, genre_id: g.id })),
+      { onConflict: 'title_id,genre_id' },
+    );
+  }
+
+  // credits: top cast + directors
+  const cast = (detail.credits?.cast ?? []).slice(0, 15);
+  const directors = (detail.credits?.crew ?? []).filter(
+    (c: any) => c.job === 'Director',
+  );
+  const people = [...cast, ...directors];
+  if (people.length) {
+    await admin.from('people').upsert(
+      people.map((p: any) => ({
+        tmdb_id: p.id,
+        name: p.name,
+        profile_path: p.profile_path ?? null,
+      })),
+      { onConflict: 'tmdb_id' },
+    );
+    const { data: peopleRows } = await admin
+      .from('people')
+      .select('id, tmdb_id')
+      .in('tmdb_id', people.map((p: any) => p.id));
+    const idByTmdb = new Map(peopleRows?.map((r) => [r.tmdb_id, r.id]));
+    const credits = [
+      ...cast.map((c: any) => ({
+        title_id: title.id,
+        person_id: idByTmdb.get(c.id),
+        department: 'cast',
+        job: 'Actor',
+        role: c.character ?? null,
+        sort_order: c.order ?? null,
+      })),
+      ...directors.map((c: any) => ({
+        title_id: title.id,
+        person_id: idByTmdb.get(c.id),
+        department: 'crew',
+        job: 'Director',
+        role: null,
+        sort_order: null,
+      })),
+    ].filter((c) => c.person_id);
+    if (credits.length) {
+      await admin
+        .from('credits')
+        .upsert(credits, { onConflict: 'title_id,person_id,job' });
+    }
+  }
+
+  // networks (tv)
+  const networks = detail.networks ?? [];
+  if (networks.length) {
+    await admin.from('networks').upsert(
+      networks.map((n: any) => ({
+        id: n.id,
+        name: n.name,
+        logo_path: n.logo_path ?? null,
+      })),
+      { onConflict: 'id' },
+    );
+    await admin.from('title_networks').upsert(
+      networks.map((n: any) => ({ title_id: title.id, network_id: n.id })),
+      { onConflict: 'title_id,network_id' },
+    );
+  }
+
+  // seasons (tv) — episodes are fetched on demand via action 'season'
+  let seasons: unknown[] = [];
+  if (isTv && detail.seasons?.length) {
+    const seasonRows = detail.seasons.map((s: any) => ({
+      title_id: title.id,
+      tmdb_id: s.id,
+      season_number: s.season_number,
+      name: s.name ?? null,
+      overview: s.overview ?? null,
+      episode_count: s.episode_count ?? null,
+      air_date: s.air_date || null,
+      poster_path: s.poster_path ?? null,
+    }));
+    const { data } = await admin
+      .from('seasons')
+      .upsert(seasonRows, { onConflict: 'title_id,season_number' })
+      .select();
+    seasons = data ?? [];
+  }
+
+  return json({ title, seasons });
+}
+
+// --- season (episodes + cache) -----------------------------------------
+async function handleSeason(tmdbId: number, seasonNumber: number) {
+  const { data: title } = await admin
+    .from('titles')
+    .select('id')
+    .eq('tmdb_id', tmdbId)
+    .eq('media_type', 'tv')
+    .single();
+  if (!title) return json({ error: 'Title not cached yet' }, 409);
+
+  const { data: season } = await admin
+    .from('seasons')
+    .select('id')
+    .eq('title_id', title.id)
+    .eq('season_number', seasonNumber)
+    .single();
+  if (!season) return json({ error: 'Season not cached yet' }, 409);
+
+  const data = await tmdb(`/tv/${tmdbId}/season/${seasonNumber}`);
+  const episodeRows = (data.episodes ?? []).map((e: any) => ({
+    season_id: season.id,
+    title_id: title.id,
+    tmdb_id: e.id,
+    season_number: seasonNumber,
+    episode_number: e.episode_number,
+    name: e.name ?? null,
+    overview: e.overview ?? null,
+    runtime: e.runtime ?? null,
+    air_date: e.air_date || null,
+    still_path: e.still_path ?? null,
+  }));
+  const { data: episodes, error } = await admin
+    .from('episodes')
+    .upsert(episodeRows, { onConflict: 'season_id,episode_number' })
+    .select();
+  if (error) throw new Error(`upsert episodes: ${error.message}`);
+
+  return json({ episodes });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+  if (!TMDB_API_KEY) {
+    return json({ error: 'TMDB_API_KEY not configured' }, 500);
+  }
+  try {
+    const { action, q, tmdb_id, media_type, season_number } = await req.json();
+    switch (action) {
+      case 'search':
+        return await handleSearch(q);
+      case 'title':
+        return await handleTitle(tmdb_id, media_type);
+      case 'season':
+        return await handleSeason(tmdb_id, season_number);
+      default:
+        return json({ error: `Unknown action: ${action}` }, 400);
+    }
+  } catch (err) {
+    return json({ error: String(err) }, 500);
+  }
+});
