@@ -101,7 +101,7 @@ export default function SearchScreen() {
   const trending = useQuery({
     queryKey: ['trending'],
     queryFn: getTrending,
-    staleTime: 1000 * 60 * 60 * 6, // 6h — the weekly feed barely moves.
+    staleTime: 1000 * 60 * 60 * 24, // 24h — the weekly feed barely moves.
   });
 
   function openTitle(item: PosterItem) {
