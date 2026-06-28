@@ -36,6 +36,7 @@ function RootNavigator() {
         <Stack.Screen name="season" />
         <Stack.Screen name="diary" />
         <Stack.Screen name="stats" />
+        <Stack.Screen name="edit-profile" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />

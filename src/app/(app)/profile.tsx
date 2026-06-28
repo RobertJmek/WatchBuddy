@@ -1,11 +1,16 @@
-import { useRouter } from 'expo-router';
-import { Button, Pressable, StyleSheet } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback } from 'react';
+import { Button, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { getMyProfile } from '@/lib/profile';
 import { useThemePreference } from '@/lib/theme-preference';
 
 const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
@@ -13,7 +18,23 @@ const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
   const { pref, cycle } = useThemePreference();
+  const c = useTheme();
   const router = useRouter();
+
+  const { data: profile, refetch } = useQuery({
+    queryKey: ['profile'],
+    queryFn: getMyProfile,
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
+
+  const email = session?.user.email ?? '';
+  const name = profile?.display_name?.trim() || email;
+  const initial = (name || '?').charAt(0).toUpperCase();
 
   return (
     <ThemedView style={styles.container}>
@@ -21,7 +42,43 @@ export default function ProfileScreen() {
         <ThemedText type="title" style={styles.heading}>
           Profile
         </ThemedText>
-        <ThemedText>Signed in as {session?.user.email}</ThemedText>
+
+        <View style={styles.identity}>
+          {profile?.avatar_url ? (
+            <Image
+              style={styles.avatar}
+              source={{ uri: profile.avatar_url }}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback]}>
+              <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
+            </View>
+          )}
+          <View style={styles.identityText}>
+            <ThemedText type="subtitle" numberOfLines={1}>
+              {name}
+            </ThemedText>
+            {profile?.username ? (
+              <ThemedText type="small" style={{ color: c.textSecondary }}>
+                @{profile.username}
+              </ThemedText>
+            ) : null}
+          </View>
+        </View>
+
+        {profile?.bio ? (
+          <ThemedText style={styles.bio}>{profile.bio}</ThemedText>
+        ) : null}
+
+        <Pressable
+          style={[styles.editBtn, { borderColor: c.border }]}
+          onPress={() => router.push('/edit-profile')}>
+          <ThemedText type="smallBold" style={{ color: Accent }}>
+            Edit Profile
+          </ThemedText>
+        </Pressable>
 
         <Pressable style={styles.link} onPress={() => router.push('/diary')}>
           <ThemedText type="subtitle">Diary</ThemedText>
@@ -53,6 +110,22 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   heading: { marginTop: Spacing.three },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#0002' },
+  avatarFallback: {
+    backgroundColor: Accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: { color: '#fff', fontSize: 26, fontWeight: '700' },
+  identityText: { flex: 1, gap: Spacing.half },
+  bio: { lineHeight: 21 },
+  editBtn: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
   link: {
     flexDirection: 'row',
     alignItems: 'center',
