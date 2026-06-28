@@ -1,56 +1,102 @@
-# Welcome to your Expo app 👋
+# WatchBuddy 🎬
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cross-platform mobile app to track the movies and TV series you watch and turn
+that history into rich statistics. Built personal-core-first on a social-ready
+foundation, with a future path to importing your history from TV Time.
 
-## Get started
+## Features (v1)
 
-1. Install dependencies
+- **Search & catalog** — search movies and TV via TMDB, with full detail (poster,
+  ratings, seasons/episodes), backed by a server-side cache.
+- **Tracking**
+  - Library statuses: watchlist / watching / completed / on-hold / dropped.
+  - Episode-level check-off, with **rewatch logging per episode, per season, and
+    per series**.
+  - Movie watch logging (with rewatches).
+  - A dated **diary** of everything you've watched.
+  - **10-point ratings** with optional reviews (movies & shows).
+- **Statistics** — total time watched, this-year totals, last-12-months trend,
+  ratings distribution, and breakdowns by genre, decade, and language.
+- **Auth** — passwordless email one-time code, plus Google sign-in (OAuth).
+- **Offline** — read data (Library / Diary / Stats) is cached and persisted, so
+  the app cold-opens and browses offline.
 
-   ```bash
-   npm install
-   ```
+## Tech stack
 
-2. Start the app
+- **App:** React Native + Expo (Expo Router), TypeScript.
+- **Data/cache:** TanStack Query with AsyncStorage persistence.
+- **Backend:** Supabase — Postgres (with Row-Level Security), Auth, and an Edge
+  Function (`tmdb-proxy`) that proxies TMDB/OMDb and caches metadata into Postgres
+  so statistics run as SQL aggregations.
+- **Metadata:** TMDB (primary) with an optional OMDb fallback for IMDb ratings.
 
-   ```bash
-   npx expo start
-   ```
+## Project structure
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+  app/            Expo Router routes
+    (app)/        Authenticated tabs: Library, Search, Profile
+    title/[id]    Title detail
+    season, diary, stats, sign-in
+  components/      Reusable UI (status bar, watch bars, rating bar, …)
+  lib/            supabase client, query client, data modules, TMDB client
+supabase/
+  migrations/     SQL schema + RLS
+  functions/      Edge Functions (tmdb-proxy)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Getting started
 
-### Other setup steps
+### Prerequisites
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- Node.js + npm
+- Xcode (iOS) / Android Studio (Android) for a development build
+- A Supabase project and a TMDB API token
 
-## Learn more
+### 1. Install
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 2. Configure environment
 
-## Join the community
+Copy the example env file and fill in your Supabase project values
+(Settings → API). These are safe for the client; never put the `service_role`
+or secret API key here.
 
-Join our community of developers creating universal apps.
+```bash
+cp .env.example .env
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```
+EXPO_PUBLIC_SUPABASE_URL=...
+EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+### 3. Set up the backend
+
+- Apply the schema: run `supabase/migrations/0001_init.sql` in the Supabase SQL
+  Editor (or via the Supabase CLI).
+- Set the Edge Function secret and deploy:
+
+  ```bash
+  supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
+  supabase functions deploy tmdb-proxy --project-ref <ref>
+  ```
+
+  (Optional: also set `OMDB_API_KEY` to enable IMDb ratings.)
+
+### 4. Run
+
+A **development build** is required (the OAuth deep link and native modules don't
+work in Expo Go):
+
+```bash
+npx expo run:ios       # or: npx expo run:android
+```
+
+## Status
+
+v1 core is implemented (tracking, stats, offline read cache, email + Google auth).
+Planned next: Apple sign-in, the TV Time CSV importer, and a visual design pass.
