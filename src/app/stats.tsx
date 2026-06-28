@@ -5,10 +5,10 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import { getStats } from '@/lib/stats';
 
-const ACTIVE = '#208AEF';
+const ACTIVE = Accent;
 
 function formatDuration(minutes: number) {
   const days = Math.floor(minutes / 1440);
@@ -21,7 +21,9 @@ function formatDuration(minutes: number) {
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="title">{value}</ThemedText>
+      <ThemedText type="title" style={{ color: Accent }}>
+        {value}
+      </ThemedText>
       <ThemedText type="small">{label}</ThemedText>
     </ThemedView>
   );

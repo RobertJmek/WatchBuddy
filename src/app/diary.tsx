@@ -7,6 +7,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet } from 'react-native
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { imageUrl } from '@/lib/tmdb';
 import { getDiary } from '@/lib/watches';
 
@@ -20,6 +21,7 @@ function formatDate(iso: string) {
 
 export default function DiaryScreen() {
   const router = useRouter();
+  const c = useTheme();
   const {
     data: entries = [],
     isLoading: loading,
@@ -49,7 +51,7 @@ export default function DiaryScreen() {
           }
           renderItem={({ item }) => (
             <Pressable
-              style={styles.row}
+              style={[styles.row, { backgroundColor: c.backgroundElement }]}
               onPress={() =>
                 router.push({
                   pathname: '/title/[id]',
@@ -89,8 +91,14 @@ export default function DiaryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: Spacing.three, gap: Spacing.three },
-  row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'center' },
+  list: { padding: Spacing.three, gap: Spacing.two },
+  row: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    alignItems: 'center',
+    padding: Spacing.two,
+    borderRadius: Spacing.three,
+  },
   poster: {
     width: 44,
     height: 66,

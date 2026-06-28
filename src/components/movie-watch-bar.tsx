@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import {
   getMovieWatches,
   logMovieWatch,
@@ -11,7 +11,7 @@ import {
   type MovieWatch,
 } from '@/lib/watches';
 
-const ACTIVE = '#208AEF';
+const ACTIVE = Accent;
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString();
