@@ -6,20 +6,30 @@ import { AppState, useColorScheme } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { asyncStoragePersister, queryClient } from '@/lib/query';
+import {
+  ThemePreferenceProvider,
+  useThemePreference,
+} from '@/lib/theme-preference';
 
 function RootNavigator() {
   const { session, initialized } = useAuth();
+  const { loaded: themeLoaded } = useThemePreference();
 
   // Clear cached query data when signed out so nothing leaks between accounts.
   useEffect(() => {
     if (!session) queryClient.clear();
   }, [session]);
 
-  // Wait for the initial session check so we don't flash the sign-in screen.
-  if (!initialized) return null;
+  // Wait for the initial session check (avoid flashing sign-in) and for the
+  // saved theme preference to be applied (avoid flashing the wrong scheme).
+  if (!initialized || !themeLoaded) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        headerBackButtonDisplayMode: 'minimal',
+      }}>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
         <Stack.Screen name="title/[id]" />
@@ -49,11 +59,13 @@ export default function RootLayout() {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{ persister: asyncStoragePersister }}>
-      <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <RootNavigator />
-        </ThemeProvider>
-      </AuthProvider>
+      <ThemePreferenceProvider>
+        <AuthProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <RootNavigator />
+          </ThemeProvider>
+        </AuthProvider>
+      </ThemePreferenceProvider>
     </PersistQueryClientProvider>
   );
 }
