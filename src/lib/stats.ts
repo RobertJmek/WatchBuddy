@@ -12,10 +12,35 @@ export type Stats = {
     distribution: number[]; // length 11; index 1..10 used
   };
   topGenres: { name: string; count: number }[];
+  topDirectors: { name: string; count: number }[];
+  topActors: { name: string; count: number }[];
   decades: { label: string; count: number }[];
   languages: { label: string; count: number }[];
   monthly: { label: string; count: number }[]; // last 12 months, oldest→newest
+  patterns: {
+    busiestWeekday: string | null;
+    biggestDay: { label: string; count: number } | null;
+    currentStreak: number;
+    longestStreak: number;
+    busiestMonth: { label: string; count: number } | null;
+  };
 };
+
+const WEEKDAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
+function dayKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+}
 
 type TitleMeta = {
   runtime: number | null;
@@ -112,6 +137,23 @@ export async function getStats(): Promise<Stats> {
     }
   }
 
+  // Top people: count distinct watched titles per director / actor.
+  const directorCounts = new Map<string, number>();
+  const actorCounts = new Map<string, number>();
+  if (distinctIds.length > 0) {
+    const { data, error } = await supabase
+      .from('credits')
+      .select('job, person:people(name)')
+      .in('title_id', distinctIds);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const name = (row as any).person?.name as string | undefined;
+      if (!name) continue;
+      const target = (row as any).job === 'Director' ? directorCounts : actorCounts;
+      target.set(name, (target.get(name) ?? 0) + 1);
+    }
+  }
+
   // Decades + languages (per distinct title).
   const decadeCounts = new Map<number, number>();
   const langCounts = new Map<string, number>();
@@ -150,6 +192,71 @@ export async function getStats(): Promise<Stats> {
     });
   }
 
+  // Watch patterns (all from watched_at).
+  const weekdayCounts = new Array(7).fill(0);
+  const dayCounts = new Map<string, number>();
+  for (const w of all) {
+    const d = new Date(w.watched_at);
+    weekdayCounts[d.getDay()]++;
+    const local = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const k = dayKey(local);
+    dayCounts.set(k, (dayCounts.get(k) ?? 0) + 1);
+  }
+
+  const busiestWeekday =
+    all.length > 0 ? WEEKDAYS[weekdayCounts.indexOf(Math.max(...weekdayCounts))] : null;
+
+  let biggestDayRaw: { key: string; count: number } | null = null;
+  for (const [k, v] of dayCounts) {
+    if (!biggestDayRaw || v > biggestDayRaw.count) biggestDayRaw = { key: k, count: v };
+  }
+  const biggestDay = biggestDayRaw
+    ? {
+        label: new Date(biggestDayRaw.key).toLocaleDateString(undefined, {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }),
+        count: biggestDayRaw.count,
+      }
+    : null;
+
+  // Streaks over distinct watch days (consecutive calendar days).
+  const sortedDays = [...dayCounts.keys()].sort();
+  const daySet = new Set(sortedDays);
+  let longestStreak = 0;
+  let run = 0;
+  let prev: Date | null = null;
+  for (const k of sortedDays) {
+    const d = new Date(k);
+    if (prev && Math.round((d.getTime() - prev.getTime()) / 86400000) === 1) run++;
+    else run = 1;
+    if (run > longestStreak) longestStreak = run;
+    prev = d;
+  }
+  let currentStreak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!daySet.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1); // allow "yesterday"
+  while (daySet.has(dayKey(cursor))) {
+    currentStreak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  let busiestMonthRaw: { key: string; count: number } | null = null;
+  for (const [k, v] of monthCounts) {
+    if (!busiestMonthRaw || v > busiestMonthRaw.count) busiestMonthRaw = { key: k, count: v };
+  }
+  const busiestMonth = busiestMonthRaw
+    ? {
+        label: new Date(`${busiestMonthRaw.key}-01`).toLocaleDateString(undefined, {
+          month: 'short',
+          year: 'numeric',
+        }),
+        count: busiestMonthRaw.count,
+      }
+    : null;
+
   const sortDesc = <T,>(m: Map<T, number>) =>
     [...m.entries()].sort((a, b) => b[1] - a[1]);
 
@@ -163,6 +270,12 @@ export async function getStats(): Promise<Stats> {
     topGenres: sortDesc(genreCounts)
       .slice(0, 8)
       .map(([name, count]) => ({ name, count })),
+    topDirectors: sortDesc(directorCounts)
+      .slice(0, 6)
+      .map(([name, count]) => ({ name, count })),
+    topActors: sortDesc(actorCounts)
+      .slice(0, 6)
+      .map(([name, count]) => ({ name, count })),
     decades: [...decadeCounts.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([dec, count]) => ({ label: `${dec}s`, count })),
@@ -170,5 +283,12 @@ export async function getStats(): Promise<Stats> {
       .slice(0, 6)
       .map(([label, count]) => ({ label: label.toUpperCase(), count })),
     monthly,
+    patterns: {
+      busiestWeekday,
+      biggestDay,
+      currentStreak,
+      longestStreak,
+      busiestMonth,
+    },
   };
 }
