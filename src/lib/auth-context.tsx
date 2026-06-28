@@ -81,7 +81,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   async function signInWithProvider(provider: 'google' | 'apple') {
     const redirectTo = Linking.createURL('auth-callback');
-    console.log('[oauth] redirectTo =', redirectTo);
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo, skipBrowserRedirect: true },
@@ -89,17 +88,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (error) return { error: error.message };
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    console.log('[oauth] browser result =', JSON.stringify(result));
     if (result.type !== 'success') return { error: null }; // user cancelled
 
     const { queryParams } = Linking.parse(result.url);
     const code = queryParams?.code as string | undefined;
-    console.log('[oauth] parsed code =', code ? 'present' : 'MISSING');
     if (!code) return { error: 'No authorization code returned' };
 
     const { error: exchangeError } =
       await supabase.auth.exchangeCodeForSession(code);
-    console.log('[oauth] exchange error =', exchangeError?.message ?? 'none');
     return { error: exchangeError?.message ?? null };
   }
 
