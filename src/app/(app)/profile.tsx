@@ -84,10 +84,6 @@ export default function ProfileScreen() {
           <ThemedText type="subtitle">Diary</ThemedText>
           <ThemedText style={styles.chevron}>›</ThemedText>
         </Pressable>
-        <Pressable style={styles.link} onPress={() => router.push('/stats')}>
-          <ThemedText type="subtitle">Statistics</ThemedText>
-          <ThemedText style={styles.chevron}>›</ThemedText>
-        </Pressable>
         <Pressable style={styles.link} onPress={cycle}>
           <ThemedText type="subtitle">Theme</ThemedText>
           <ThemedView style={styles.value}>

@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Stack, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -55,6 +56,38 @@ function BarRow({
   );
 }
 
+function FactRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.factRow}>
+      <ThemedText type="small">{label}</ThemedText>
+      <ThemedText type="smallBold" style={styles.factValue}>
+        {value}
+      </ThemedText>
+    </View>
+  );
+}
+
+function PersonRow({
+  rank,
+  name,
+  count,
+}: {
+  rank: number;
+  name: string;
+  count: number;
+}) {
+  return (
+    <View style={styles.personRow}>
+      <ThemedText type="small" numberOfLines={1} style={styles.personName}>
+        {rank}. {name}
+      </ThemedText>
+      <ThemedText type="small" style={styles.personCount}>
+        {count}
+      </ThemedText>
+    </View>
+  );
+}
+
 function Section({
   title,
   children,
@@ -86,8 +119,12 @@ export default function StatsScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen options={{ headerShown: true, title: 'Statistics' }} />
-        <ActivityIndicator style={{ marginTop: Spacing.five }} />
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <ThemedText type="title" style={styles.heading}>
+            Statistics
+          </ThemedText>
+          <ActivityIndicator style={{ marginTop: Spacing.five }} />
+        </SafeAreaView>
       </ThemedView>
     );
   }
@@ -101,9 +138,12 @@ export default function StatsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'Statistics' }} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.cards}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ThemedText type="title" style={styles.heading}>
+          Statistics
+        </ThemedText>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.cards}>
           <StatCard label="Total time" value={formatDuration(stats.totalMinutes)} />
           <StatCard label="Titles" value={String(stats.distinctTitles)} />
           <StatCard label="Movie watches" value={String(stats.totalMovieWatches)} />
@@ -116,6 +156,32 @@ export default function StatsScreen() {
             movies · {stats.thisYear.episodes} episodes
           </ThemedText>
         </Section>
+
+        {stats.patterns && (
+          <Section title="Patterns">
+            {stats.patterns.currentStreak > 0 && (
+              <FactRow label="Current streak" value={`${stats.patterns.currentStreak} days`} />
+            )}
+            {stats.patterns.longestStreak > 0 && (
+              <FactRow label="Longest streak" value={`${stats.patterns.longestStreak} days`} />
+            )}
+            {stats.patterns.busiestWeekday && (
+              <FactRow label="Busiest day" value={stats.patterns.busiestWeekday} />
+            )}
+            {stats.patterns.biggestDay && (
+              <FactRow
+                label="Biggest day"
+                value={`${stats.patterns.biggestDay.label} · ${stats.patterns.biggestDay.count}`}
+              />
+            )}
+            {stats.patterns.busiestMonth && (
+              <FactRow
+                label="Busiest month"
+                value={`${stats.patterns.busiestMonth.label} · ${stats.patterns.busiestMonth.count}`}
+              />
+            )}
+          </Section>
+        )}
 
         <Section title="Last 12 months">
           <View style={styles.monthChart}>
@@ -166,6 +232,22 @@ export default function StatsScreen() {
           </Section>
         )}
 
+        {(stats.topDirectors?.length ?? 0) > 0 && (
+          <Section title="Top directors">
+            {stats.topDirectors.map((p, i) => (
+              <PersonRow key={p.name} rank={i + 1} name={p.name} count={p.count} />
+            ))}
+          </Section>
+        )}
+
+        {(stats.topActors?.length ?? 0) > 0 && (
+          <Section title="Top actors">
+            {stats.topActors.map((p, i) => (
+              <PersonRow key={p.name} rank={i + 1} name={p.name} count={p.count} />
+            ))}
+          </Section>
+        )}
+
         {stats.decades.length > 0 && (
           <Section title="By decade">
             {stats.decades.map((d) => (
@@ -181,13 +263,16 @@ export default function StatsScreen() {
             ))}
           </Section>
         )}
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  safeArea: { flex: 1 },
+  heading: { marginTop: Spacing.three, paddingHorizontal: Spacing.three },
   content: { padding: Spacing.three, gap: Spacing.four },
   cards: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
   card: {
@@ -210,6 +295,21 @@ const styles = StyleSheet.create({
   },
   barFill: { backgroundColor: ACTIVE },
   barValue: { width: 28, textAlign: 'right' },
+  personRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  personName: { flex: 1 },
+  personCount: { color: ACTIVE, fontWeight: '700' },
+  factRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  factValue: { color: ACTIVE },
   monthChart: {
     flexDirection: 'row',
     alignItems: 'flex-end',
