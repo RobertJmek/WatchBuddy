@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Danger, Spacing } from '@/constants/theme';
@@ -25,6 +26,16 @@ const DEBOUNCE_MS = 500;
 
 function year(r: SearchResult) {
   return r.release_date ? r.release_date.slice(0, 4) : '—';
+}
+
+function toPosterItem(r: SearchResult): PosterItem {
+  return {
+    key: `${r.media_type}-${r.tmdb_id}`,
+    tmdb_id: r.tmdb_id,
+    media_type: r.media_type,
+    title: r.title,
+    poster_path: r.poster_path,
+  };
 }
 
 function ResultRow({
@@ -67,63 +78,6 @@ function ResultRow({
   );
 }
 
-function PosterCard({
-  item,
-  router,
-}: {
-  item: SearchResult;
-  router: ReturnType<typeof useRouter>;
-}) {
-  return (
-    <Pressable
-      style={styles.card}
-      onPress={() =>
-        router.push({
-          pathname: '/title/[id]',
-          params: {
-            id: String(item.tmdb_id),
-            type: item.media_type,
-            name: item.title,
-          },
-        })
-      }>
-      <Image
-        style={styles.cardPoster}
-        source={{ uri: imageUrl(item.poster_path, 'w342') ?? undefined }}
-        contentFit="cover"
-        transition={150}
-      />
-    </Pressable>
-  );
-}
-
-function Shelf({
-  title,
-  data,
-  router,
-}: {
-  title: string;
-  data: SearchResult[];
-  router: ReturnType<typeof useRouter>;
-}) {
-  if (data.length === 0) return null;
-  return (
-    <View style={styles.shelf}>
-      <ThemedText type="subtitle" style={styles.sectionHeader}>
-        {title}
-      </ThemedText>
-      <FlatList
-        data={data}
-        horizontal
-        keyExtractor={(r) => `${r.media_type}-${r.tmdb_id}`}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.shelfRow}
-        renderItem={({ item }) => <PosterCard item={item} router={router} />}
-      />
-    </View>
-  );
-}
-
 export default function SearchScreen() {
   const router = useRouter();
   const c = useTheme();
@@ -149,6 +103,17 @@ export default function SearchScreen() {
     queryFn: getTrending,
     staleTime: 1000 * 60 * 60 * 6, // 6h — the weekly feed barely moves.
   });
+
+  function openTitle(item: PosterItem) {
+    router.push({
+      pathname: '/title/[id]',
+      params: {
+        id: String(item.tmdb_id),
+        type: item.media_type,
+        name: item.title,
+      },
+    });
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -211,15 +176,15 @@ export default function SearchScreen() {
             <ScrollView
               contentContainerStyle={styles.list}
               keyboardShouldPersistTaps="handled">
-              <Shelf
+              <PosterShelf
                 title="Trending Movies"
-                data={trending.data?.movies ?? []}
-                router={router}
+                items={(trending.data?.movies ?? []).map(toPosterItem)}
+                onPressItem={openTitle}
               />
-              <Shelf
+              <PosterShelf
                 title="Trending TV"
-                data={trending.data?.tv ?? []}
-                router={router}
+                items={(trending.data?.tv ?? []).map(toPosterItem)}
+                onPressItem={openTitle}
               />
             </ScrollView>
           ))}
@@ -242,7 +207,6 @@ const styles = StyleSheet.create({
   inputSpinner: { position: 'absolute', right: Spacing.three },
   dimmed: { opacity: 0.4 },
   list: { gap: Spacing.two, paddingVertical: Spacing.three },
-  sectionHeader: { marginTop: Spacing.two, marginBottom: Spacing.two },
   row: {
     flexDirection: 'row',
     gap: Spacing.three,
@@ -259,13 +223,4 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   error: { color: Danger, marginTop: Spacing.three },
-  shelf: { gap: Spacing.two },
-  shelfRow: { gap: Spacing.two, paddingRight: Spacing.three },
-  card: { width: 110 },
-  cardPoster: {
-    width: 110,
-    height: 165,
-    borderRadius: Spacing.one,
-    backgroundColor: '#0002',
-  },
 });
