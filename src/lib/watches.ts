@@ -114,21 +114,39 @@ export type DiaryEntry = {
   mediaType: 'movie' | 'tv';
 };
 
+export type DiaryRange = {
+  /** Inclusive lower bound (ISO). */
+  from?: string;
+  /** Exclusive upper bound (ISO). */
+  to?: string;
+  /** Row cap; pass null for no cap (used for bounded periods). */
+  limit?: number | null;
+};
+
 /** Combined movie + episode watch history, newest first. */
-export async function getDiary(limit = 100): Promise<DiaryEntry[]> {
+export async function getDiary({ from, to, limit = 100 }: DiaryRange = {}): Promise<
+  DiaryEntry[]
+> {
+  const build = (table: 'movie_watches' | 'episode_watches', select: string) => {
+    let q = supabase
+      .from(table)
+      .select(select)
+      .order('watched_at', { ascending: false });
+    if (from) q = q.gte('watched_at', from);
+    if (to) q = q.lt('watched_at', to);
+    if (limit != null) q = q.limit(limit);
+    return q;
+  };
+
   const [movies, episodes] = await Promise.all([
-    supabase
-      .from('movie_watches')
-      .select('id, watched_at, title:titles(title, poster_path, tmdb_id, media_type)')
-      .order('watched_at', { ascending: false })
-      .limit(limit),
-    supabase
-      .from('episode_watches')
-      .select(
-        'id, watched_at, episode:episodes(name, season_number, episode_number), title:titles(title, poster_path, tmdb_id, media_type)',
-      )
-      .order('watched_at', { ascending: false })
-      .limit(limit),
+    build(
+      'movie_watches',
+      'id, watched_at, title:titles(title, poster_path, tmdb_id, media_type)',
+    ),
+    build(
+      'episode_watches',
+      'id, watched_at, episode:episodes(name, season_number, episode_number), title:titles(title, poster_path, tmdb_id, media_type)',
+    ),
   ]);
   if (movies.error) throw movies.error;
   if (episodes.error) throw episodes.error;
@@ -144,21 +162,46 @@ export async function getDiary(limit = 100): Promise<DiaryEntry[]> {
     mediaType: r.title?.media_type ?? 'movie',
   }));
 
-  const episodeEntries: DiaryEntry[] = (episodes.data ?? []).map((r: any) => ({
-    id: `e_${r.id}`,
-    kind: 'episode',
-    watched_at: r.watched_at,
-    titleName: r.title?.title ?? 'Unknown',
-    posterPath: r.title?.poster_path ?? null,
-    subtitle: r.episode
-      ? `S${r.episode.season_number}E${r.episode.episode_number}` +
-        (r.episode.name ? ` · ${r.episode.name}` : '')
-      : null,
-    tmdbId: r.title?.tmdb_id,
-    mediaType: r.title?.media_type ?? 'tv',
-  }));
+  // Group episode watches by show + season + calendar day, so logging a whole
+  // season collapses to one diary entry ("Season 8 · 6 episodes") instead of a
+  // wall of identical rows.
+  const episodeGroups = new Map<string, any[]>();
+  for (const r of (episodes.data ?? []) as any[]) {
+    const day = (r.watched_at as string).slice(0, 10);
+    const season = r.episode?.season_number ?? 'na';
+    const key = `${r.title?.tmdb_id}_${season}_${day}`;
+    const bucket = episodeGroups.get(key);
+    if (bucket) bucket.push(r);
+    else episodeGroups.set(key, [r]);
+  }
+
+  const episodeEntries: DiaryEntry[] = [...episodeGroups.values()].map((group) => {
+    group.sort((a: any, b: any) => b.watched_at.localeCompare(a.watched_at));
+    const r = group[0]; // most recent in the group
+    const ep = r.episode;
+    const count = group.length;
+    const subtitle =
+      count > 1
+        ? ep
+          ? `Season ${ep.season_number} · ${count} episodes`
+          : `${count} episodes`
+        : ep
+          ? `S${ep.season_number}E${ep.episode_number}` +
+            (ep.name ? ` · ${ep.name}` : '')
+          : null;
+    return {
+      id: `e_${r.id}`,
+      kind: 'episode',
+      watched_at: r.watched_at,
+      titleName: r.title?.title ?? 'Unknown',
+      posterPath: r.title?.poster_path ?? null,
+      subtitle,
+      tmdbId: r.title?.tmdb_id,
+      mediaType: r.title?.media_type ?? 'tv',
+    };
+  });
 
   return [...movieEntries, ...episodeEntries]
     .sort((a, b) => b.watched_at.localeCompare(a.watched_at))
-    .slice(0, limit);
+    .slice(0, limit ?? undefined);
 }
