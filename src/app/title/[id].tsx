@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { FavoriteButton } from '@/components/favorite-button';
 import { LibraryStatusBar } from '@/components/library-status-bar';
 import { MovieWatchBar } from '@/components/movie-watch-bar';
 import { RatingBar } from '@/components/rating-bar';
@@ -69,6 +70,9 @@ export default function TitleDetailScreen() {
           headerTransparent: true,
           headerTitle: '',
           headerTintColor: '#fff',
+          headerRight: title
+            ? () => <FavoriteButton titleId={title.id} />
+            : undefined,
         }}
       />
       <ScrollView contentContainerStyle={styles.scroll}>
