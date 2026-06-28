@@ -37,10 +37,26 @@ export default function LibraryScreen() {
   );
 
   // Group into sections following the canonical status order.
-  const sections = LIBRARY_STATUSES.map(({ value }) => ({
+  const statusSections = LIBRARY_STATUSES.map(({ value }) => ({
     title: STATUS_LABEL[value],
     data: entries.filter((e) => e.status === value),
   })).filter((s) => s.data.length > 0);
+
+  // Favorites at the bottom, split by media type. A favorited title also shows
+  // under its status above, so prefix the id to keep SectionList keys unique.
+  const favoriteSections = [
+    { title: 'Favorite Movies', type: 'movie' as const },
+    { title: 'Favorite TV', type: 'tv' as const },
+  ]
+    .map(({ title, type }) => ({
+      title,
+      data: entries
+        .filter((e) => e.is_favorite && e.title?.media_type === type)
+        .map((e) => ({ ...e, id: `fav-${e.id}` })),
+    }))
+    .filter((s) => s.data.length > 0);
+
+  const sections = [...statusSections, ...favoriteSections];
 
   return (
     <ThemedView style={styles.container}>
