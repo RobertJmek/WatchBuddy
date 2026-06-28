@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import {
   getLibrary,
   LIBRARY_STATUSES,
@@ -21,6 +22,7 @@ const STATUS_LABEL = Object.fromEntries(
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const c = useTheme();
   const {
     data: entries = [],
     isLoading: loading,
@@ -56,7 +58,7 @@ export default function LibraryScreen() {
             contentContainerStyle={styles.list}
             stickySectionHeadersEnabled={false}
             ListEmptyComponent={
-              <ThemedText style={styles.empty}>
+              <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
                 Nothing yet. Find something in Search and set a status.
               </ThemedText>
             }
@@ -68,7 +70,7 @@ export default function LibraryScreen() {
             renderItem={({ item }) =>
               item.title ? (
                 <Pressable
-                  style={styles.row}
+                  style={[styles.row, { backgroundColor: c.backgroundElement }]}
                   onPress={() =>
                     router.push({
                       pathname: '/title/[id]',
@@ -112,9 +114,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, paddingHorizontal: Spacing.three },
   heading: { marginTop: Spacing.three },
-  list: { paddingVertical: Spacing.three, gap: Spacing.three },
+  list: { paddingVertical: Spacing.two, gap: Spacing.two },
   sectionHeader: { marginTop: Spacing.three, marginBottom: Spacing.two },
-  row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'center' },
+  row: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    alignItems: 'center',
+    padding: Spacing.two,
+    borderRadius: Spacing.three,
+  },
   poster: {
     width: 48,
     height: 72,

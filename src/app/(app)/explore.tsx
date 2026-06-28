@@ -1,26 +1,18 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  useColorScheme,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Danger, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { imageUrl, searchTitles, type SearchResult } from '@/lib/tmdb';
 
 export default function SearchScreen() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const textColor = scheme === 'dark' ? '#fff' : '#000';
-  const borderColor = scheme === 'dark' ? '#444' : '#ccc';
+  const c = useTheme();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -49,10 +41,13 @@ export default function SearchScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ThemedText type="title" style={styles.heading}>
+          Search
+        </ThemedText>
         <TextInput
-          style={[styles.input, { color: textColor, borderColor }]}
-          placeholder="Search movies & TV…"
-          placeholderTextColor={borderColor}
+          style={[styles.input, { color: c.text, backgroundColor: c.backgroundElement }]}
+          placeholder="Movies & TV…"
+          placeholderTextColor={c.textSecondary}
           autoCapitalize="none"
           returnKeyType="search"
           value={query}
@@ -69,13 +64,15 @@ export default function SearchScreen() {
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            !loading && searched ? (
-              <ThemedText style={styles.empty}>No results.</ThemedText>
+            !loading ? (
+              <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
+                {searched ? 'No results.' : 'Find a movie or show to track.'}
+              </ThemedText>
             ) : null
           }
           renderItem={({ item }) => (
             <Pressable
-              style={styles.row}
+              style={[styles.row, { backgroundColor: c.backgroundElement }]}
               onPress={() =>
                 router.push({
                   pathname: '/title/[id]',
@@ -111,22 +108,28 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, paddingHorizontal: Spacing.three },
+  heading: { marginTop: Spacing.three, marginBottom: Spacing.two },
   input: {
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
     fontSize: 16,
-    marginTop: Spacing.three,
   },
-  list: { gap: Spacing.three, paddingVertical: Spacing.three },
-  row: { flexDirection: 'row', gap: Spacing.three, alignItems: 'center' },
+  list: { gap: Spacing.two, paddingVertical: Spacing.three },
+  row: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    alignItems: 'center',
+    padding: Spacing.two,
+    borderRadius: Spacing.three,
+  },
   poster: {
-    width: 56,
-    height: 84,
+    width: 52,
+    height: 78,
     borderRadius: Spacing.one,
     backgroundColor: '#0002',
   },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
-  error: { color: '#e44', marginTop: Spacing.three },
+  error: { color: Danger, marginTop: Spacing.three },
 });

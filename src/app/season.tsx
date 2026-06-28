@@ -11,7 +11,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
 import {
   getEpisodeWatchCounts,
@@ -20,7 +20,7 @@ import {
   removeOneEpisodeWatch,
 } from '@/lib/watches';
 
-const ACTIVE = '#208AEF';
+const ACTIVE = Accent;
 
 export default function SeasonScreen() {
   const { tmdbId, seasonNumber, name } = useLocalSearchParams<{

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import {
   entityTypeFor,
   getRating,
@@ -18,7 +18,7 @@ import {
   setRating,
 } from '@/lib/ratings';
 
-const ACTIVE = '#208AEF';
+const ACTIVE = Accent;
 const VALUES = Array.from({ length: 10 }, (_, i) => i + 1);
 
 export function RatingBar({

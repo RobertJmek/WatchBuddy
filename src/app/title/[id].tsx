@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 
@@ -15,7 +16,8 @@ import { RatingBar } from '@/components/rating-bar';
 import { ThemedText } from '@/components/themed-text';
 import { TvWatchBar } from '@/components/tv-watch-bar';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Danger, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import {
   fetchTitle,
   imageUrl,
@@ -26,6 +28,7 @@ import {
 
 export default function TitleDetailScreen() {
   const router = useRouter();
+  const c = useTheme();
   const { id, type, name } = useLocalSearchParams<{
     id: string;
     type: MediaType;
@@ -60,89 +63,135 @@ export default function TitleDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: name ?? '' }} />
-      <ScrollView contentContainerStyle={styles.content}>
-        {loading && <ActivityIndicator style={{ marginTop: Spacing.five }} />}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTransparent: true,
+          headerTitle: '',
+          headerTintColor: '#fff',
+        }}
+      />
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {loading && <ActivityIndicator style={{ marginTop: Spacing.six }} />}
         {error && <ThemedText style={styles.error}>{error}</ThemedText>}
 
         {title && (
           <>
-            <View style={styles.header}>
+            {/* Backdrop header */}
+            <View style={styles.backdropWrap}>
               <Image
-                style={styles.poster}
-                source={{ uri: imageUrl(title.poster_path, 'w342') ?? undefined }}
+                style={StyleSheet.absoluteFill}
+                source={{
+                  uri:
+                    imageUrl(title.backdrop_path, 'w780') ??
+                    imageUrl(title.poster_path, 'w780') ??
+                    undefined,
+                }}
                 contentFit="cover"
-                transition={150}
+                transition={200}
               />
-              <View style={styles.headerText}>
-                <ThemedText type="subtitle">{title.title}</ThemedText>
-                <ThemedText type="small">
-                  {title.media_type === 'tv' ? 'TV Series' : 'Movie'}
-                  {year ? ` · ${year}` : ''}
-                  {title.runtime ? ` · ${title.runtime} min` : ''}
-                </ThemedText>
-                <ThemedText type="small">
-                  {title.tmdb_rating != null
-                    ? `TMDB ${title.tmdb_rating.toFixed(1)}`
-                    : ''}
-                  {title.imdb_rating != null
-                    ? `   IMDb ${title.imdb_rating.toFixed(1)}`
-                    : ''}
-                </ThemedText>
-                {title.media_type === 'tv' && title.number_of_seasons != null && (
-                  <ThemedText type="small">
-                    {title.number_of_seasons} seasons ·{' '}
-                    {title.number_of_episodes} episodes
-                  </ThemedText>
-                )}
+              <View style={styles.scrim} />
+              <View style={styles.headerRow}>
+                <Image
+                  style={styles.poster}
+                  source={{
+                    uri: imageUrl(title.poster_path, 'w342') ?? undefined,
+                  }}
+                  contentFit="cover"
+                  transition={150}
+                />
+                <View style={styles.headerText}>
+                  <Text style={styles.titleText} numberOfLines={3}>
+                    {title.title}
+                  </Text>
+                  <Text style={styles.metaText}>
+                    {title.media_type === 'tv' ? 'TV Series' : 'Movie'}
+                    {year ? ` · ${year}` : ''}
+                    {title.runtime ? ` · ${title.runtime}m` : ''}
+                  </Text>
+                  <View style={styles.pills}>
+                    {title.tmdb_rating != null && (
+                      <View style={styles.pill}>
+                        <Text style={styles.pillText}>
+                          TMDB {title.tmdb_rating.toFixed(1)}
+                        </Text>
+                      </View>
+                    )}
+                    {title.imdb_rating != null && (
+                      <View style={styles.pill}>
+                        <Text style={styles.pillText}>
+                          IMDb {title.imdb_rating.toFixed(1)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  {title.media_type === 'tv' &&
+                    title.number_of_seasons != null && (
+                      <Text style={styles.metaText}>
+                        {title.number_of_seasons} seasons ·{' '}
+                        {title.number_of_episodes} episodes
+                      </Text>
+                    )}
+                </View>
               </View>
             </View>
 
-            <LibraryStatusBar titleId={title.id} />
+            {/* Body */}
+            <View style={styles.body}>
+              <LibraryStatusBar titleId={title.id} />
 
-            {title.media_type === 'movie' && (
-              <MovieWatchBar titleId={title.id} />
-            )}
+              {title.media_type === 'movie' && (
+                <MovieWatchBar titleId={title.id} />
+              )}
+              {title.media_type === 'tv' && seasons.length > 0 && (
+                <TvWatchBar tmdbId={title.tmdb_id} seasons={seasons} />
+              )}
 
-            {title.media_type === 'tv' && seasons.length > 0 && (
-              <TvWatchBar tmdbId={title.tmdb_id} seasons={seasons} />
-            )}
+              <View style={[styles.divider, { backgroundColor: c.border }]} />
 
-            <RatingBar titleId={title.id} mediaType={title.media_type} />
+              <RatingBar titleId={title.id} mediaType={title.media_type} />
 
-            {title.overview ? (
-              <ThemedText style={styles.overview}>{title.overview}</ThemedText>
-            ) : null}
+              {title.overview ? (
+                <ThemedText style={styles.overview}>
+                  {title.overview}
+                </ThemedText>
+              ) : null}
 
-            {seasons.length > 0 && (
-              <View style={styles.seasons}>
-                <ThemedText type="subtitle">Seasons</ThemedText>
-                {seasons
-                  .slice()
-                  .sort((a, b) => a.season_number - b.season_number)
-                  .map((s) => (
-                    <Pressable
-                      key={s.id}
-                      style={styles.seasonRow}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/season',
-                          params: {
-                            tmdbId: String(title.tmdb_id),
-                            seasonNumber: String(s.season_number),
-                            name: s.name ?? `Season ${s.season_number}`,
-                          },
-                        })
-                      }>
-                      <ThemedText>
-                        {s.name ?? `Season ${s.season_number}`}
-                        {s.episode_count ? ` · ${s.episode_count} eps` : ''}
-                      </ThemedText>
-                      <ThemedText style={styles.chevron}>›</ThemedText>
-                    </Pressable>
-                  ))}
-              </View>
-            )}
+              {seasons.length > 0 && (
+                <View style={styles.seasons}>
+                  <ThemedText type="subtitle">Seasons</ThemedText>
+                  {seasons
+                    .slice()
+                    .sort((a, b) => a.season_number - b.season_number)
+                    .map((s) => (
+                      <Pressable
+                        key={s.id}
+                        style={[
+                          styles.seasonRow,
+                          { backgroundColor: c.backgroundElement },
+                        ]}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/season',
+                            params: {
+                              tmdbId: String(title.tmdb_id),
+                              seasonNumber: String(s.season_number),
+                              name: s.name ?? `Season ${s.season_number}`,
+                            },
+                          })
+                        }>
+                        <ThemedText>
+                          {s.name ?? `Season ${s.season_number}`}
+                          {s.episode_count ? ` · ${s.episode_count} eps` : ''}
+                        </ThemedText>
+                        <ThemedText style={[styles.chevron, { color: c.textSecondary }]}>
+                          ›
+                        </ThemedText>
+                      </Pressable>
+                    ))}
+                </View>
+              )}
+            </View>
           </>
         )}
       </ScrollView>
@@ -150,25 +199,59 @@ export default function TitleDetailScreen() {
   );
 }
 
+const POSTER_W = 110;
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.three },
-  header: { flexDirection: 'row', gap: Spacing.three },
-  poster: {
-    width: 120,
-    height: 180,
-    borderRadius: Spacing.two,
-    backgroundColor: '#0002',
+  scroll: { paddingBottom: Spacing.six },
+  backdropWrap: {
+    height: 280,
+    justifyContent: 'flex-end',
+    backgroundColor: '#15181C',
   },
-  headerText: { flex: 1, gap: Spacing.one },
+  scrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    alignItems: 'flex-end',
+  },
+  poster: {
+    width: POSTER_W,
+    height: POSTER_W * 1.5,
+    borderRadius: Spacing.two,
+    backgroundColor: '#0003',
+  },
+  headerText: { flex: 1, gap: Spacing.one, paddingBottom: Spacing.one },
+  titleText: { color: '#fff', fontSize: 24, fontWeight: '700' },
+  metaText: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
+  pills: { flexDirection: 'row', gap: Spacing.one, marginVertical: Spacing.half },
+  pill: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  pillText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  body: { padding: Spacing.three, gap: Spacing.three },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
   overview: { lineHeight: 22 },
   seasons: { gap: Spacing.two, marginTop: Spacing.two },
   seasonRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.two,
   },
-  chevron: { opacity: 0.4, fontSize: 20 },
-  error: { color: '#e44', marginTop: Spacing.three },
+  chevron: { fontSize: 20 },
+  error: { color: Danger, marginTop: Spacing.six, textAlign: 'center' },
 });

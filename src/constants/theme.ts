@@ -7,20 +7,28 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// Brand accent (teal). A single accent reads well on both light and dark
+// surfaces; the surfaces themselves adapt to the color scheme below.
+export const Accent = '#0D9488';
+export const AccentText = '#ffffff';
+export const Danger = '#E5484D';
+
 export const Colors = {
   light: {
-    text: '#000000',
+    text: '#0A0A0B',
     background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
+    backgroundElement: '#F2F3F5',
+    backgroundSelected: '#E6E8EB',
     textSecondary: '#60646C',
+    border: '#E4E6E9',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F2F3F5',
+    background: '#0B0D0E',
+    backgroundElement: '#17191C',
+    backgroundSelected: '#23262A',
+    textSecondary: '#A1A6AD',
+    border: '#26292E',
   },
 } as const;
 

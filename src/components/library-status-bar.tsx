@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import {
   getLibraryStatus,
   LIBRARY_STATUSES,
@@ -12,7 +12,7 @@ import {
   type LibraryStatus,
 } from '@/lib/library';
 
-const ACTIVE = '#208AEF';
+const ACTIVE = Accent;
 
 export function LibraryStatusBar({ titleId }: { titleId: string }) {
   const queryClient = useQueryClient();

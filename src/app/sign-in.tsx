@@ -1,24 +1,16 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Button,
-  StyleSheet,
-  TextInput,
-  useColorScheme,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 
 export default function SignInScreen() {
   const { sendCode, verifyCode, signInWithProvider } = useAuth();
-  const scheme = useColorScheme();
-  const textColor = scheme === 'dark' ? '#fff' : '#000';
-  const borderColor = scheme === 'dark' ? '#444' : '#ccc';
+  const c = useTheme();
 
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -41,7 +33,6 @@ export default function SignInScreen() {
     setBusy(true);
     const { error } = await verifyCode(email, code);
     setBusy(false);
-    // On success, the auth listener flips the session and the router redirects.
     if (error) Alert.alert('Invalid or expired code', error);
   }
 
@@ -52,17 +43,31 @@ export default function SignInScreen() {
     if (error) Alert.alert('Google sign-in failed', error);
   }
 
+  const inputStyle = [
+    styles.input,
+    { color: c.text, backgroundColor: c.backgroundElement },
+  ];
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title">WatchBuddy</ThemedText>
-        <ThemedText type="subtitle">Sign in</ThemedText>
+        <ThemedText type="title" style={styles.brand}>
+          WatchBuddy
+        </ThemedText>
+        <ThemedText type="small" style={[styles.tagline, { color: c.textSecondary }]}>
+          Track everything you watch
+        </ThemedText>
 
         {!codeSent && (
           <>
-            <Button title="Continue with Google" onPress={handleGoogle} disabled={busy} />
-            <ThemedText type="small" style={styles.or}>
-              — or with email —
+            <Pressable
+              style={[styles.secondaryBtn, { borderColor: c.border }]}
+              onPress={handleGoogle}
+              disabled={busy}>
+              <ThemedText type="smallBold">Continue with Google</ThemedText>
+            </Pressable>
+            <ThemedText type="small" style={[styles.or, { color: c.textSecondary }]}>
+              or with email
             </ThemedText>
           </>
         )}
@@ -70,9 +75,9 @@ export default function SignInScreen() {
         {!codeSent ? (
           <>
             <TextInput
-              style={[styles.input, { color: textColor, borderColor }]}
+              style={inputStyle}
               placeholder="you@example.com"
-              placeholderTextColor={borderColor}
+              placeholderTextColor={c.textSecondary}
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
@@ -80,36 +85,42 @@ export default function SignInScreen() {
               editable={!busy}
               onChangeText={setEmail}
             />
-            <Button title="Send code" onPress={handleSend} disabled={busy} />
+            <Pressable style={styles.primaryBtn} onPress={handleSend} disabled={busy}>
+              <ThemedText style={styles.primaryText}>Send code</ThemedText>
+            </Pressable>
           </>
         ) : (
           <>
-            <ThemedText style={styles.hint}>
-              We emailed a 6-digit code to {email}.
+            <ThemedText style={[styles.hint, { color: c.textSecondary }]}>
+              We emailed a sign-in code to {email}.
             </ThemedText>
             <TextInput
-              style={[styles.input, { color: textColor, borderColor }]}
-              placeholder="12345678"
-              placeholderTextColor={borderColor}
+              style={inputStyle}
+              placeholder="Enter code"
+              placeholderTextColor={c.textSecondary}
               keyboardType="number-pad"
               maxLength={8}
               value={code}
               editable={!busy}
               onChangeText={setCode}
             />
-            <Button title="Verify & sign in" onPress={handleVerify} disabled={busy} />
-            <Button
-              title="Use a different email"
+            <Pressable style={styles.primaryBtn} onPress={handleVerify} disabled={busy}>
+              <ThemedText style={styles.primaryText}>Verify & sign in</ThemedText>
+            </Pressable>
+            <Pressable
               onPress={() => {
                 setCodeSent(false);
                 setCode('');
               }}
-              disabled={busy}
-            />
+              disabled={busy}>
+              <ThemedText type="small" style={[styles.link, { color: Accent }]}>
+                Use a different email
+              </ThemedText>
+            </Pressable>
           </>
         )}
 
-        {busy && <ActivityIndicator />}
+        {busy && <ActivityIndicator style={{ marginTop: Spacing.two }} />}
       </SafeAreaView>
     </ThemedView>
   );
@@ -123,12 +134,28 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
   },
+  brand: { textAlign: 'center' },
+  tagline: { textAlign: 'center', marginBottom: Spacing.three },
   input: {
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
     fontSize: 16,
   },
+  primaryBtn: {
+    backgroundColor: Accent,
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  primaryText: { color: AccentText, fontWeight: '700', fontSize: 16 },
+  secondaryBtn: {
+    borderWidth: 1,
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+  },
+  or: { textAlign: 'center' },
   hint: { textAlign: 'center' },
-  or: { textAlign: 'center', opacity: 0.6 },
+  link: { textAlign: 'center' },
 });
