@@ -4,9 +4,14 @@ import { supabase } from '@/lib/supabase';
 export async function getEpisodeWatchCounts(
   titleId: string,
 ): Promise<Map<string, number>> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
     .from('episode_watches')
     .select('episode_id')
+    .eq('user_id', user.id)
     .eq('title_id', titleId);
   if (error) throw error;
   const counts = new Map<string, number>();
@@ -33,9 +38,14 @@ export async function logEpisodeWatch(episodeId: string, titleId: string) {
 
 /** Remove the user's most recent single watch of an episode. */
 export async function removeOneEpisodeWatch(episodeId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
     .from('episode_watches')
     .select('id')
+    .eq('user_id', user.id)
     .eq('episode_id', episodeId)
     .order('watched_at', { ascending: false })
     .limit(1);
@@ -84,9 +94,14 @@ export async function logMovieWatch(titleId: string) {
 }
 
 export async function getMovieWatches(titleId: string): Promise<MovieWatch[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
     .from('movie_watches')
     .select('id, watched_at')
+    .eq('user_id', user.id)
     .eq('title_id', titleId)
     .order('watched_at', { ascending: false });
   if (error) throw error;
@@ -121,16 +136,28 @@ export type DiaryRange = {
   to?: string;
   /** Row cap; pass null for no cap (used for bounded periods). */
   limit?: number | null;
+  /** Whose diary to read; defaults to the signed-in user. */
+  userId?: string;
 };
 
 /** Combined movie + episode watch history, newest first. */
-export async function getDiary({ from, to, limit = 100 }: DiaryRange = {}): Promise<
-  DiaryEntry[]
-> {
+export async function getDiary({
+  from,
+  to,
+  limit = 100,
+  userId,
+}: DiaryRange = {}): Promise<DiaryEntry[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const uid = userId ?? user?.id;
+  if (!uid) throw new Error('Not signed in');
+
   const build = (table: 'movie_watches' | 'episode_watches', select: string) => {
     let q = supabase
       .from(table)
       .select(select)
+      .eq('user_id', uid)
       .order('watched_at', { ascending: false });
     if (from) q = q.gte('watched_at', from);
     if (to) q = q.lt('watched_at', to);

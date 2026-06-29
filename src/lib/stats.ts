@@ -69,19 +69,30 @@ function yearOf(iso: string) {
   return new Date(iso).getFullYear();
 }
 
-export async function getStats(): Promise<Stats> {
+export async function getStats(userId?: string): Promise<Stats> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const uid = userId ?? user?.id;
+  if (!uid) throw new Error('Not signed in');
+
   const [episodesRes, moviesRes, ratingsRes] = await Promise.all([
     supabase
       .from('episode_watches')
       .select(
         'watched_at, title_id, episode_id, episode:episodes(runtime), title:titles(title, runtime, original_language, release_date, media_type)',
-      ),
+      )
+      .eq('user_id', uid),
     supabase
       .from('movie_watches')
       .select(
         'watched_at, title_id, title:titles(title, runtime, original_language, release_date, media_type)',
-      ),
-    supabase.from('ratings').select('value, entity_type, entity_id'),
+      )
+      .eq('user_id', uid),
+    supabase
+      .from('ratings')
+      .select('value, entity_type, entity_id')
+      .eq('user_id', uid),
   ]);
   if (episodesRes.error) throw episodesRes.error;
   if (moviesRes.error) throw moviesRes.error;
@@ -272,7 +283,10 @@ export async function getStats(): Promise<Stats> {
   // Library status breakdown.
   const statusCounts = new Map<string, number>();
   {
-    const { data, error } = await supabase.from('library_items').select('status');
+    const { data, error } = await supabase
+      .from('library_items')
+      .select('status')
+      .eq('user_id', uid);
     if (error) throw error;
     for (const row of data ?? []) {
       const s = (row as any).status as string;

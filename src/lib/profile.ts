@@ -39,6 +39,17 @@ export async function getMyProfile(): Promise<Profile | null> {
   return (data as Profile) ?? null;
 }
 
+/** Any user's public profile by id (profiles are world-readable). */
+export async function getProfileById(id: string): Promise<Profile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_url, bio')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Profile) ?? null;
+}
+
 /**
  * Upload a picked image to the user's avatar folder and return its public URL
  * (cache-busted so the new image shows immediately after an overwrite).
