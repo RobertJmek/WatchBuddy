@@ -1,18 +1,12 @@
 import { supabase } from '@/lib/supabase';
+import { currentViewer, requireViewer, selectMine } from '@/lib/viewer';
 
 /** How many times the user has watched each episode of a title. */
 export async function getEpisodeWatchCounts(
   titleId: string,
 ): Promise<Map<string, number>> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
-  const { data, error } = await supabase
-    .from('episode_watches')
-    .select('episode_id')
-    .eq('user_id', user.id)
-    .eq('title_id', titleId);
+  const q = await selectMine('episode_watches', 'episode_id');
+  const { data, error } = await q.eq('title_id', titleId);
   if (error) throw error;
   const counts = new Map<string, number>();
   for (const r of data ?? []) {
@@ -24,12 +18,9 @@ export async function getEpisodeWatchCounts(
 
 /** Log one watch of an episode (a dated diary entry; repeat for rewatches). */
 export async function logEpisodeWatch(episodeId: string, titleId: string) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
+  const uid = await requireViewer();
   const { error } = await supabase.from('episode_watches').insert({
-    user_id: user.id,
+    user_id: uid,
     episode_id: episodeId,
     title_id: titleId,
   });
@@ -38,14 +29,8 @@ export async function logEpisodeWatch(episodeId: string, titleId: string) {
 
 /** Remove the user's most recent single watch of an episode. */
 export async function removeOneEpisodeWatch(episodeId: string) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
-  const { data, error } = await supabase
-    .from('episode_watches')
-    .select('id')
-    .eq('user_id', user.id)
+  const q = await selectMine('episode_watches', 'id');
+  const { data, error } = await q
     .eq('episode_id', episodeId)
     .order('watched_at', { ascending: false })
     .limit(1);
@@ -64,12 +49,9 @@ export async function logManyEpisodeWatches(
   episodes: { id: string; title_id: string }[],
 ) {
   if (episodes.length === 0) return;
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
+  const uid = await requireViewer();
   const rows = episodes.map((e) => ({
-    user_id: user.id,
+    user_id: uid,
     episode_id: e.id,
     title_id: e.title_id,
   }));
@@ -83,25 +65,16 @@ export type MovieWatch = { id: string; watched_at: string };
 
 /** Log a (re)watch of a movie — a dated diary entry. */
 export async function logMovieWatch(titleId: string) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
+  const uid = await requireViewer();
   const { error } = await supabase
     .from('movie_watches')
-    .insert({ user_id: user.id, title_id: titleId });
+    .insert({ user_id: uid, title_id: titleId });
   if (error) throw error;
 }
 
 export async function getMovieWatches(titleId: string): Promise<MovieWatch[]> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
-  const { data, error } = await supabase
-    .from('movie_watches')
-    .select('id, watched_at')
-    .eq('user_id', user.id)
+  const q = await selectMine('movie_watches', 'id, watched_at');
+  const { data, error } = await q
     .eq('title_id', titleId)
     .order('watched_at', { ascending: false });
   if (error) throw error;
@@ -109,6 +82,7 @@ export async function getMovieWatches(titleId: string): Promise<MovieWatch[]> {
 }
 
 export async function removeMovieWatch(watchId: string) {
+  // Scoped by RLS: the owner-only write policy lets a user delete only their own row.
   const { error } = await supabase
     .from('movie_watches')
     .delete()
@@ -147,10 +121,9 @@ export async function getDiary({
   limit = 100,
   userId,
 }: DiaryRange = {}): Promise<DiaryEntry[]> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const uid = userId ?? user?.id;
+  // May read another user's (public) diary, so scope to the explicit id when
+  // given, otherwise to the viewer.
+  const uid = userId ?? (await currentViewer());
   if (!uid) throw new Error('Not signed in');
 
   const build = (table: 'movie_watches' | 'episode_watches', select: string) => {

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { currentViewer, requireViewer, selectMine } from '@/lib/viewer';
 
 export type RatingEntityType = 'movie' | 'show';
 
@@ -12,14 +13,8 @@ export async function getRating(
   entityType: RatingEntityType,
   entityId: string,
 ): Promise<Rating | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
-  const { data, error } = await supabase
-    .from('ratings')
-    .select('value, review')
-    .eq('user_id', user.id)
+  const q = await selectMine('ratings', 'value, review');
+  const { data, error } = await q
     .eq('entity_type', entityType)
     .eq('entity_id', entityId)
     .maybeSingle();
@@ -33,13 +28,10 @@ export async function setRating(
   value: number,
   review: string | null,
 ) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
+  const uid = await requireViewer();
   const { error } = await supabase.from('ratings').upsert(
     {
-      user_id: user.id,
+      user_id: uid,
       entity_type: entityType,
       entity_id: entityId,
       value,
@@ -80,10 +72,7 @@ export async function getTitleRatings(
   entityType: RatingEntityType,
   entityId: string,
 ): Promise<TitleRatings> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const viewerId = user?.id ?? null;
+  const viewerId = await currentViewer();
 
   const { data, error } = await supabase
     .from('ratings')
