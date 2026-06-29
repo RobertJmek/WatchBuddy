@@ -6,7 +6,7 @@ import { currentViewer, requireViewer, selectMine } from '@/lib/viewer';
 export async function getEpisodeWatchCounts(
   titleId: string,
 ): Promise<Map<string, number>> {
-  const q = await selectMine('episode_watches', 'episode_id');
+  const { q } = await selectMine('episode_watches', 'episode_id');
   const { data, error } = await q.eq('title_id', titleId);
   if (error) throw error;
   const counts = new Map<string, number>();
@@ -30,7 +30,7 @@ export async function logEpisodeWatch(episodeId: string, titleId: string) {
 
 /** Remove the user's most recent single watch of an episode. */
 export async function removeOneEpisodeWatch(episodeId: string) {
-  const q = await selectMine('episode_watches', 'id');
+  const { q } = await selectMine('episode_watches', 'id');
   const { data, error } = await q
     .eq('episode_id', episodeId)
     .order('watched_at', { ascending: false })
@@ -78,7 +78,7 @@ export async function logMovieWatch(titleId: string) {
 }
 
 export async function getMovieWatches(titleId: string): Promise<MovieWatch[]> {
-  const q = await selectMine('movie_watches', 'id, watched_at');
+  const { q } = await selectMine('movie_watches', 'id, watched_at');
   const { data, error } = await q
     .eq('title_id', titleId)
     .order('watched_at', { ascending: false });
