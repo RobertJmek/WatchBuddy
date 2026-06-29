@@ -37,6 +37,9 @@ function RootNavigator() {
         <Stack.Screen name="diary" />
         <Stack.Screen name="edit-profile" />
         <Stack.Screen name="library-section" />
+        <Stack.Screen name="user/[id]" />
+        <Stack.Screen name="user/[id]/followers" />
+        <Stack.Screen name="user/[id]/following" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />

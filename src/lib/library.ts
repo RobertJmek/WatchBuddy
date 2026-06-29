@@ -39,11 +39,16 @@ export type LibraryEntry = {
 
 /** All of the current user's library items, newest first, with their titles. */
 export async function getLibrary(): Promise<LibraryEntry[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
     .from('library_items')
     .select(
       'id, status, is_favorite, created_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date)',
     )
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as LibraryEntry[];
@@ -53,9 +58,14 @@ export async function getLibrary(): Promise<LibraryEntry[]> {
 export async function getLibraryStatus(
   titleId: string,
 ): Promise<LibraryStatus | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
     .from('library_items')
     .select('status')
+    .eq('user_id', user.id)
     .eq('title_id', titleId)
     .maybeSingle();
   if (error) throw error;
@@ -88,9 +98,14 @@ export async function removeFromLibrary(titleId: string) {
 
 /** Whether the title is currently favorited (false if not in the library). */
 export async function getFavorite(titleId: string): Promise<boolean> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
     .from('library_items')
     .select('is_favorite')
+    .eq('user_id', user.id)
     .eq('title_id', titleId)
     .maybeSingle();
   if (error) throw error;
