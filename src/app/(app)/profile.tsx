@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontSize: 26, fontWeight: '700' },
+  avatarInitial: { color: '#fff', fontSize: 26, lineHeight: 32, fontWeight: '700' },
   identityText: { flex: 1, gap: Spacing.half },
   bio: { lineHeight: 21 },
   counts: {

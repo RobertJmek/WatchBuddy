@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.three },
   avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#0002' },
   avatarFallback: { backgroundColor: Accent, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#fff', fontSize: 36, fontWeight: '700' },
+  avatarInitial: { color: '#fff', fontSize: 36, lineHeight: 44, fontWeight: '700' },
   bio: { textAlign: 'center', lineHeight: 21 },
   counts: {
     flexDirection: 'row',

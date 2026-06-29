@@ -63,6 +63,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  avatarInitial: { color: '#fff', fontSize: 18, lineHeight: 22, fontWeight: '700' },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
 });

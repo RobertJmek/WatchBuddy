@@ -77,8 +77,10 @@ export default function LibrarySectionScreen() {
                 style={{
                   width: cardW,
                   height: cardW * 1.5,
-                  borderRadius: Spacing.one,
+                  borderRadius: 4,
                   backgroundColor: '#0002',
+                  borderWidth: 1,
+                  borderColor: 'rgba(0,0,0,0.35)',
                 }}
                 source={{ uri: imageUrl(item.title!.poster_path, 'w342') ?? undefined }}
                 contentFit="cover"
