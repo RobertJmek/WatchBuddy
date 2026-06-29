@@ -15,7 +15,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Danger, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   getMyProfile,
@@ -198,8 +198,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontSize: 38, fontWeight: '700' },
+  avatarInitial: { color: '#fff', fontSize: 38, lineHeight: 46, fontWeight: '700' },
   input: {
+    fontFamily: Type.body,
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,

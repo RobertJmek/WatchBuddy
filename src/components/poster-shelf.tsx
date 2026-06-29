@@ -60,7 +60,7 @@ export function PosterShelf({
           onPress={onPressHeader}>
           <ThemedText type="subtitle">{title}</ThemedText>
           <View style={styles.headerRight}>
-            <ThemedText type="small" style={{ color: c.textSecondary }}>
+            <ThemedText type="meta" style={{ color: c.textSecondary }}>
               {items.length}
             </ThemedText>
             <ThemedText style={styles.chevron}>›</ThemedText>
@@ -104,7 +104,10 @@ const styles = StyleSheet.create({
   cardPoster: {
     width: 110,
     height: 165,
-    borderRadius: Spacing.one,
+    borderRadius: 4,
     backgroundColor: '#0002',
+    // a thin dark frame reads as a film plate on both themes
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.35)',
   },
 });

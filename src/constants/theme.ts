@@ -7,32 +7,57 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-// Brand accent (teal). A single accent reads well on both light and dark
-// surfaces; the surfaces themselves adapt to the color scheme below.
+// "Late Show" palette. Teal is the brand/interactive accent (from the logo);
+// amber is the ambient "projector glow" used sparingly for warmth. Both live in
+// the per-scheme Colors as `tint`/`glow` so they adapt to dark vs. warm-paper.
 export const Accent = '#0D9488';
 export const AccentText = '#ffffff';
 export const Danger = '#E5484D';
 
 export const Colors = {
+  // Daylight matinee — warm paper, not clinical white.
   light: {
-    text: '#0A0A0B',
-    background: '#ffffff',
-    backgroundElement: '#F2F3F5',
-    backgroundSelected: '#E6E8EB',
-    textSecondary: '#60646C',
-    border: '#E4E6E9',
+    text: '#1A1714',
+    background: '#F4F1EA',
+    backgroundElement: '#EBE6DB',
+    backgroundSelected: '#E0DACB',
+    textSecondary: '#6B6258',
+    border: '#DED7C9',
+    tint: '#0B7C72',
+    glow: '#B5811D',
   },
+  // The theater — warm near-black, warm projector-light text (never pure white).
   dark: {
-    text: '#F2F3F5',
-    background: '#0B0D0E',
-    backgroundElement: '#17191C',
-    backgroundSelected: '#23262A',
-    textSecondary: '#A1A6AD',
-    border: '#26292E',
+    text: '#F5F1E8',
+    background: '#0A0A0B',
+    backgroundElement: '#141211',
+    backgroundSelected: '#201D1B',
+    textSecondary: '#9A938A',
+    border: '#262220',
+    tint: '#14B8A6',
+    glow: '#E8B23A',
   },
 } as const;
 
+/** Ambient amber "projector glow" — theme-aware default lives in Colors.glow. */
+export const Glow = '#E8B23A';
+
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+/**
+ * Type voice. Display = Bodoni Moda (high-contrast Didone, the film-poster /
+ * end-credits serif); body & UI = Archivo. Family names are the per-weight keys
+ * loaded by `useFonts` in the root layout — RN bakes the weight into the family,
+ * so set `fontFamily` (not `fontWeight`) when using these.
+ */
+export const Type = {
+  display: 'BodoniModa_700Bold',
+  displaySemi: 'BodoniModa_600SemiBold',
+  body: 'Archivo_400Regular',
+  medium: 'Archivo_500Medium',
+  semibold: 'Archivo_600SemiBold',
+  bold: 'Archivo_700Bold',
+} as const;
 
 export const Fonts = Platform.select({
   ios: {

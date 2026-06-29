@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 
@@ -60,7 +60,7 @@ export default function SignInScreen() {
         <ThemedText type="title" style={styles.brand}>
           WatchBuddy
         </ThemedText>
-        <ThemedText type="small" style={[styles.tagline, { color: c.textSecondary }]}>
+        <ThemedText type="meta" style={[styles.tagline, { color: c.textSecondary }]}>
           Track everything you watch
         </ThemedText>
 
@@ -77,7 +77,7 @@ export default function SignInScreen() {
               />
               <ThemedText type="smallBold">Continue with Google</ThemedText>
             </Pressable>
-            <ThemedText type="small" style={[styles.or, { color: c.textSecondary }]}>
+            <ThemedText type="meta" style={[styles.or, { color: c.textSecondary }]}>
               or with email
             </ThemedText>
           </>
@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
   brand: { textAlign: 'center' },
   tagline: { textAlign: 'center', marginBottom: Spacing.three },
   input: {
+    fontFamily: Type.body,
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
