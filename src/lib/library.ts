@@ -40,7 +40,7 @@ export type LibraryEntry = {
 
 /** All of the current user's library items, newest first, with their titles. */
 export async function getLibrary(): Promise<LibraryEntry[]> {
-  const q = await selectMine(
+  const { q } = await selectMine(
     'library_items',
     'id, status, is_favorite, created_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date)',
   );
@@ -53,7 +53,7 @@ export async function getLibrary(): Promise<LibraryEntry[]> {
 export async function getLibraryStatus(
   titleId: string,
 ): Promise<LibraryStatus | null> {
-  const q = await selectMine('library_items', 'status');
+  const { q } = await selectMine('library_items', 'status');
   const { data, error } = await q.eq('title_id', titleId).maybeSingle();
   if (error) throw error;
   return (data?.status as LibraryStatus) ?? null;
@@ -81,7 +81,7 @@ export async function removeFromLibrary(titleId: string) {
 
 /** Whether the title is currently favorited (false if not in the library). */
 export async function getFavorite(titleId: string): Promise<boolean> {
-  const q = await selectMine('library_items', 'is_favorite');
+  const { q } = await selectMine('library_items', 'is_favorite');
   const { data, error } = await q.eq('title_id', titleId).maybeSingle();
   if (error) throw error;
   return data?.is_favorite ?? false;
