@@ -16,6 +16,12 @@ const TMDB_API_KEY = Deno.env.get('TMDB_API_KEY');
 const OMDB_API_KEY = Deno.env.get('OMDB_API_KEY'); // optional
 const TMDB = 'https://api.themoviedb.org/3';
 
+// How long a cached title row is served without re-hitting TMDB + OMDb. Title
+// metadata (ratings, runtime, poster) drifts slowly, so a week keeps us well
+// under OMDb's free-tier 1,000 req/day while staying current. Tunable via env.
+const TITLE_CACHE_TTL_MS =
+  Number(Deno.env.get('TITLE_CACHE_TTL_HOURS') ?? '168') * 3600_000;
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -111,6 +117,37 @@ async function handleTrending() {
 
 // --- title (detail + cache) --------------------------------------------
 async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
+  // Cache gate: serve a recent copy without re-hitting TMDB + OMDb. We still
+  // force a refetch for a row that *could* carry an IMDb rating but doesn't yet
+  // (OMDb key now set, imdb_id known, imdb_rating still null) so enabling the
+  // key backfills on next view instead of after the TTL window expires.
+  const { data: cached } = await admin
+    .from('titles')
+    .select('*')
+    .eq('tmdb_id', tmdbId)
+    .eq('media_type', mediaType)
+    .maybeSingle();
+
+  if (cached) {
+    const fresh =
+      Date.now() - new Date(cached.cached_at).getTime() < TITLE_CACHE_TTL_MS;
+    const couldBackfillImdb =
+      !!OMDB_API_KEY && !!cached.imdb_id && cached.imdb_rating == null;
+    if (fresh && !couldBackfillImdb) {
+      const seasons =
+        mediaType === 'tv'
+          ? ((
+              await admin
+                .from('seasons')
+                .select('*')
+                .eq('title_id', cached.id)
+                .order('season_number')
+            ).data ?? [])
+          : [];
+      return json({ title: cached, seasons });
+    }
+  }
+
   const detail = await tmdb(`/${mediaType}/${tmdbId}`, {
     append_to_response: 'credits,external_ids',
   });
