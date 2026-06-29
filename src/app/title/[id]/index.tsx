@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -14,11 +15,13 @@ import { FavoriteButton } from '@/components/favorite-button';
 import { LibraryStatusBar } from '@/components/library-status-bar';
 import { MovieWatchBar } from '@/components/movie-watch-bar';
 import { RatingBar } from '@/components/rating-bar';
+import { ReviewRow } from '@/components/review-row';
 import { ThemedText } from '@/components/themed-text';
 import { TvWatchBar } from '@/components/tv-watch-bar';
 import { ThemedView } from '@/components/themed-view';
-import { Danger, Spacing } from '@/constants/theme';
+import { Accent, Danger, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import {
   fetchTitle,
   imageUrl,
@@ -61,6 +64,12 @@ export default function TitleDetailScreen() {
   }, [id, type]);
 
   const year = title?.release_date?.slice(0, 4);
+
+  const ratingsQ = useQuery({
+    queryKey: ['titleRatings', title?.id],
+    queryFn: () => getTitleRatings(entityTypeFor(title!.media_type), title!.id),
+    enabled: !!title,
+  });
 
   return (
     <ThemedView style={styles.container}>
@@ -125,6 +134,14 @@ export default function TitleDetailScreen() {
                       <View style={styles.pill}>
                         <Text style={styles.pillText}>
                           IMDb {title.imdb_rating.toFixed(1)}
+                        </Text>
+                      </View>
+                    )}
+                    {ratingsQ.data && ratingsQ.data.count > 0 && (
+                      <View style={styles.pill}>
+                        <Text style={styles.pillText}>
+                          WB {ratingsQ.data.average.toFixed(1)} (
+                          {ratingsQ.data.count})
                         </Text>
                       </View>
                     )}
@@ -195,6 +212,36 @@ export default function TitleDetailScreen() {
                     ))}
                 </View>
               )}
+
+              {ratingsQ.data && ratingsQ.data.reviews.length > 0 && (
+                <>
+                  <View style={[styles.divider, { backgroundColor: c.border }]} />
+                  <View style={styles.reviews}>
+                    <ThemedText type="subtitle">Community reviews</ThemedText>
+                    {ratingsQ.data.reviews.slice(0, 3).map((r) => (
+                      <ReviewRow key={r.userId} review={r} />
+                    ))}
+                    {ratingsQ.data.reviews.length > 3 && (
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: '/title/[id]/reviews',
+                            params: {
+                              id: String(title.tmdb_id),
+                              titleId: title.id,
+                              type: title.media_type,
+                              name: title.title,
+                            },
+                          })
+                        }>
+                        <ThemedText type="smallBold" style={{ color: Accent }}>
+                          See all {ratingsQ.data.reviews.length} reviews ›
+                        </ThemedText>
+                      </Pressable>
+                    )}
+                  </View>
+                </>
+              )}
             </View>
           </>
         )}
@@ -246,6 +293,7 @@ const styles = StyleSheet.create({
   pillText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   body: { padding: Spacing.three, gap: Spacing.three },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
+  reviews: { gap: Spacing.two },
   overview: { lineHeight: 22 },
   seasons: { gap: Spacing.two, marginTop: Spacing.two },
   seasonRow: {

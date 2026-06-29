@@ -68,6 +68,7 @@ export function RatingBar({
       if (clear) await removeRating(entityType, titleId);
       else await setRating(entityType, titleId, n, review);
       queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
     } catch {
       setValue(previous);
     }
@@ -85,6 +86,7 @@ export function RatingBar({
       await setRating(entityType, titleId, value, draft);
       setReview(draft.trim());
       setEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
     } finally {
       setSaving(false);
     }
