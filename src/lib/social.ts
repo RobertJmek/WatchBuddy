@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { requireViewer } from '@/lib/viewer';
 
 /** A person as shown in search results and follower/following lists. */
 export type UserResult = {
@@ -11,14 +12,6 @@ export type UserResult = {
 };
 
 export type FollowCounts = { followers: number; following: number };
-
-async function requireUserId(): Promise<string> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
-  return user.id;
-}
 
 /**
  * Annotate profile rows with whether the viewer follows each one, via a single
@@ -60,7 +53,7 @@ async function fetchProfiles(
  * the typed text can't change the query shape.
  */
 export async function searchUsers(query: string): Promise<UserResult[]> {
-  const viewerId = await requireUserId();
+  const viewerId = await requireViewer();
   const term = query.trim().replace(/[%_,()]/g, '');
   if (term.length === 0) return [];
   const pattern = `${term}%`;
@@ -77,7 +70,7 @@ export async function searchUsers(query: string): Promise<UserResult[]> {
 
 /** Follow a user. No-ops if the edge already exists (unique violation ignored). */
 export async function follow(userId: string): Promise<void> {
-  const viewerId = await requireUserId();
+  const viewerId = await requireViewer();
   const { error } = await supabase
     .from('follows')
     .insert({ follower_id: viewerId, followee_id: userId });
@@ -86,7 +79,7 @@ export async function follow(userId: string): Promise<void> {
 
 /** Unfollow a user (removes the viewer's edge; no-ops if absent). */
 export async function unfollow(userId: string): Promise<void> {
-  const viewerId = await requireUserId();
+  const viewerId = await requireViewer();
   const { error } = await supabase
     .from('follows')
     .delete()
@@ -97,7 +90,7 @@ export async function unfollow(userId: string): Promise<void> {
 
 /** Whether the signed-in viewer follows the given user. */
 export async function getFollowState(userId: string): Promise<boolean> {
-  const viewerId = await requireUserId();
+  const viewerId = await requireViewer();
   const { count, error } = await supabase
     .from('follows')
     .select('*', { count: 'exact', head: true })
@@ -126,7 +119,7 @@ export async function getFollowCounts(userId: string): Promise<FollowCounts> {
 
 /** People who follow the given user. */
 export async function getFollowers(userId: string): Promise<UserResult[]> {
-  const viewerId = await requireUserId();
+  const viewerId = await requireViewer();
   const { data, error } = await supabase
     .from('follows')
     .select('follower_id')
@@ -138,7 +131,7 @@ export async function getFollowers(userId: string): Promise<UserResult[]> {
 
 /** People the given user follows. */
 export async function getFollowing(userId: string): Promise<UserResult[]> {
-  const viewerId = await requireUserId();
+  const viewerId = await requireViewer();
   const { data, error } = await supabase
     .from('follows')
     .select('followee_id')
