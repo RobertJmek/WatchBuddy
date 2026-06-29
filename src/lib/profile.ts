@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { currentViewer, requireViewer } from '@/lib/viewer';
 
 export type Profile = {
   id: string;
@@ -25,15 +26,13 @@ export class UsernameTakenError extends Error {
 
 /** The signed-in user's profile row (created by the new-user trigger). */
 export async function getMyProfile(): Promise<Profile | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const uid = await currentViewer();
+  if (!uid) return null;
 
   const { data, error } = await supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, bio')
-    .eq('id', user.id)
+    .eq('id', uid)
     .maybeSingle();
   if (error) throw error;
   return (data as Profile) ?? null;
@@ -58,14 +57,11 @@ export async function uploadAvatar(
   uri: string,
   mimeType?: string | null,
 ): Promise<string> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
+  const uid = await requireViewer();
 
   const contentType = mimeType ?? 'image/jpeg';
   const ext = contentType.split('/')[1]?.split('+')[0] || 'jpg';
-  const path = `${user.id}/avatar.${ext}`;
+  const path = `${uid}/avatar.${ext}`;
 
   const arrayBuffer = await fetch(uri).then((res) => res.arrayBuffer());
 
@@ -80,15 +76,12 @@ export async function uploadAvatar(
 
 /** Update the signed-in user's profile (RLS restricts this to their own row). */
 export async function updateProfile(update: ProfileUpdate): Promise<void> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
+  const uid = await requireViewer();
 
   const { error } = await supabase
     .from('profiles')
     .update(update)
-    .eq('id', user.id);
+    .eq('id', uid);
   if (error) {
     // 23505 = unique_violation, i.e. the username is taken.
     if (error.code === '23505') throw new UsernameTakenError();

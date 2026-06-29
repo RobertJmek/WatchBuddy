@@ -1,5 +1,6 @@
 import { LIBRARY_STATUSES } from '@/lib/library';
 import { supabase } from '@/lib/supabase';
+import { currentViewer } from '@/lib/viewer';
 
 export type Stats = {
   totalMovieWatches: number;
@@ -70,10 +71,9 @@ function yearOf(iso: string) {
 }
 
 export async function getStats(userId?: string): Promise<Stats> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const uid = userId ?? user?.id;
+  // May compute another user's (public) stats, so honour an explicit id and
+  // otherwise fall back to the viewer.
+  const uid = userId ?? (await currentViewer());
   if (!uid) throw new Error('Not signed in');
 
   const [episodesRes, moviesRes, ratingsRes] = await Promise.all([
