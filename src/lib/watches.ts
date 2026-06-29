@@ -1,3 +1,4 @@
+import { setLibraryStatus } from '@/lib/library';
 import { supabase } from '@/lib/supabase';
 import { currentViewer, requireViewer, selectMine } from '@/lib/viewer';
 
@@ -70,6 +71,10 @@ export async function logMovieWatch(titleId: string) {
     .from('movie_watches')
     .insert({ user_id: uid, title_id: titleId });
   if (error) throw error;
+  // Logging a movie watch means you've seen it: promote the library entry to
+  // Completed, creating it if this title wasn't tracked yet. Upsert overwrites
+  // any earlier status (watchlist, on hold, …) since a watch is proof it's done.
+  await setLibraryStatus(titleId, 'completed');
 }
 
 export async function getMovieWatches(titleId: string): Promise<MovieWatch[]> {
