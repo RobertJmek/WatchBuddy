@@ -46,6 +46,10 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
       await load();
       queryClient.invalidateQueries({ queryKey: ['diary'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
+      // logMovieWatch also promoted the title to Completed — refresh the status
+      // chips on this screen and the Library list so both reflect it.
+      queryClient.invalidateQueries({ queryKey: ['libraryStatus', titleId] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
     } finally {
       setBusy(false);
     }
