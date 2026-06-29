@@ -60,7 +60,7 @@ export default function SignInScreen() {
         <ThemedText type="title" style={styles.brand}>
           WatchBuddy
         </ThemedText>
-        <ThemedText type="small" style={[styles.tagline, { color: c.textSecondary }]}>
+        <ThemedText type="meta" style={[styles.tagline, { color: c.textSecondary }]}>
           Track everything you watch
         </ThemedText>
 
@@ -77,7 +77,7 @@ export default function SignInScreen() {
               />
               <ThemedText type="smallBold">Continue with Google</ThemedText>
             </Pressable>
-            <ThemedText type="small" style={[styles.or, { color: c.textSecondary }]}>
+            <ThemedText type="meta" style={[styles.or, { color: c.textSecondary }]}>
               or with email
             </ThemedText>
           </>

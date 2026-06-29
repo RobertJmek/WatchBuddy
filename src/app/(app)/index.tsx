@@ -87,6 +87,12 @@ export default function LibraryScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ThemedText type="meta" style={[styles.eyebrow, { color: c.textSecondary }]}>
+          {(() => {
+            const n = entries.filter((e) => e.title).length;
+            return `${n} ${n === 1 ? 'Title' : 'Titles'}`;
+          })()}
+        </ThemedText>
         <ThemedText type="title" style={styles.heading}>
           Library
         </ThemedText>
@@ -120,7 +126,8 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, paddingHorizontal: Spacing.three },
-  heading: { marginTop: Spacing.three, marginBottom: Spacing.two },
+  eyebrow: { marginTop: Spacing.three },
+  heading: { marginTop: Spacing.half, marginBottom: Spacing.two },
   list: { gap: Spacing.four, paddingVertical: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });

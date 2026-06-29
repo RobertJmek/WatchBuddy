@@ -5,12 +5,12 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Accent, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import {
   entityTypeFor,
   getRating,
@@ -30,9 +30,9 @@ export function RatingBar({
 }) {
   const entityType = entityTypeFor(mediaType);
   const queryClient = useQueryClient();
-  const scheme = useColorScheme();
-  const textColor = scheme === 'dark' ? '#fff' : '#000';
-  const borderColor = scheme === 'dark' ? '#444' : '#ccc';
+  const c = useTheme();
+  const textColor = c.text;
+  const borderColor = c.border;
 
   const [value, setValue] = useState<number | null>(null);
   const [review, setReview] = useState(''); // saved review
@@ -96,7 +96,9 @@ export function RatingBar({
 
   return (
     <View style={styles.container}>
-      <ThemedText type="smallBold">Your rating</ThemedText>
+      <ThemedText type="meta" style={{ color: c.textSecondary }}>
+        Your rating
+      </ThemedText>
       <View style={styles.scale}>
         {VALUES.map((n) => {
           const on = value != null && n <= value;
@@ -124,7 +126,7 @@ export function RatingBar({
             <TextInput
               style={[styles.review, { color: textColor, borderColor }]}
               placeholder="Write a review…"
-              placeholderTextColor={borderColor}
+              placeholderTextColor={c.textSecondary}
               autoFocus
               multiline
               value={draft}

@@ -1,5 +1,16 @@
+import {
+  Archivo_400Regular,
+  Archivo_500Medium,
+  Archivo_600SemiBold,
+  Archivo_700Bold,
+} from '@expo-google-fonts/archivo';
+import {
+  BodoniModa_600SemiBold,
+  BodoniModa_700Bold,
+} from '@expo-google-fonts/bodoni-moda';
 import { focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
@@ -14,15 +25,24 @@ import {
 function RootNavigator() {
   const { session, initialized } = useAuth();
   const { loaded: themeLoaded } = useThemePreference();
+  const [fontsLoaded] = useFonts({
+    BodoniModa_700Bold,
+    BodoniModa_600SemiBold,
+    Archivo_400Regular,
+    Archivo_500Medium,
+    Archivo_600SemiBold,
+    Archivo_700Bold,
+  });
 
   // Clear cached query data when signed out so nothing leaks between accounts.
   useEffect(() => {
     if (!session) queryClient.clear();
   }, [session]);
 
-  // Wait for the initial session check (avoid flashing sign-in) and for the
-  // saved theme preference to be applied (avoid flashing the wrong scheme).
-  if (!initialized || !themeLoaded) return null;
+  // Wait for the initial session check (avoid flashing sign-in), the saved theme
+  // preference (avoid flashing the wrong scheme), and the typefaces (avoid a
+  // flash of system font before Bodoni/Archivo load).
+  if (!initialized || !themeLoaded || !fontsLoaded) return null;
 
   return (
     <Stack

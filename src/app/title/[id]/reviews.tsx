@@ -5,7 +5,7 @@ import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { ReviewRow } from '@/components/review-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import type { MediaType } from '@/lib/tmdb';
@@ -37,10 +37,10 @@ export default function ReviewsScreen() {
           ListHeaderComponent={
             data && data.count > 0 ? (
               <View style={styles.summary}>
-                <ThemedText style={styles.average}>
+                <ThemedText style={[styles.average, { color: c.glow }]}>
                   {data.average.toFixed(1)}
                 </ThemedText>
-                <ThemedText type="small" style={{ color: c.textSecondary }}>
+                <ThemedText type="meta" style={{ color: c.textSecondary }}>
                   {data.count} {data.count === 1 ? 'rating' : 'ratings'} ·{' '}
                   {data.reviews.length}{' '}
                   {data.reviews.length === 1 ? 'review' : 'reviews'}
@@ -64,6 +64,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: Spacing.three, gap: Spacing.two },
   summary: { alignItems: 'center', gap: Spacing.half, marginBottom: Spacing.two },
-  average: { fontSize: 40, fontWeight: '800', color: Accent },
+  average: { fontFamily: Type.display, fontSize: 48, lineHeight: 52 },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });

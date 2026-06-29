@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -19,7 +20,7 @@ import { ReviewRow } from '@/components/review-row';
 import { ThemedText } from '@/components/themed-text';
 import { TvWatchBar } from '@/components/tv-watch-bar';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Danger, Spacing } from '@/constants/theme';
+import { Accent, Danger, Glow, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import {
@@ -90,7 +91,7 @@ export default function TitleDetailScreen() {
 
         {title && (
           <>
-            {/* Backdrop header */}
+            {/* Backdrop header — letterboxed film frame (the signature) */}
             <View style={styles.backdropWrap}>
               <Image
                 style={StyleSheet.absoluteFill}
@@ -103,7 +104,19 @@ export default function TitleDetailScreen() {
                 contentFit="cover"
                 transition={200}
               />
-              <View style={styles.scrim} />
+              <LinearGradient
+                colors={
+                  ['transparent', 'rgba(0,0,0,0.5)', c.background] as [
+                    string,
+                    string,
+                    string,
+                  ]
+                }
+                locations={[0, 0.55, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+              {/* true-black letterbox bar — the film-frame cue */}
+              <View style={styles.letterboxTop} />
               <View style={styles.headerRow}>
                 <Image
                   style={styles.poster}
@@ -114,13 +127,25 @@ export default function TitleDetailScreen() {
                   transition={150}
                 />
                 <View style={styles.headerText}>
+                  <Text style={styles.eyebrow}>
+                    {title.media_type === 'tv' ? 'TV Series' : 'Film'}
+                  </Text>
                   <Text style={styles.titleText} numberOfLines={3}>
                     {title.title}
                   </Text>
                   <Text style={styles.metaText}>
-                    {title.media_type === 'tv' ? 'TV Series' : 'Movie'}
-                    {year ? ` · ${year}` : ''}
-                    {title.runtime ? ` · ${title.runtime}m` : ''}
+                    {[
+                      year,
+                      title.media_type === 'tv'
+                        ? title.number_of_seasons != null
+                          ? `${title.number_of_seasons} Season${title.number_of_seasons === 1 ? '' : 's'}`
+                          : null
+                        : title.runtime
+                          ? `${title.runtime} Min`
+                          : null,
+                    ]
+                      .filter(Boolean)
+                      .join('  ·  ')}
                   </Text>
                   <View style={styles.pills}>
                     {title.tmdb_rating != null && (
@@ -138,21 +163,14 @@ export default function TitleDetailScreen() {
                       </View>
                     )}
                     {ratingsQ.data && ratingsQ.data.count > 0 && (
-                      <View style={styles.pill}>
-                        <Text style={styles.pillText}>
-                          WB {ratingsQ.data.average.toFixed(1)} (
-                          {ratingsQ.data.count})
+                      <View style={[styles.pill, styles.pillWb]}>
+                        <Text style={[styles.pillText, styles.pillWbText]}>
+                          WB {ratingsQ.data.average.toFixed(1)} ·{' '}
+                          {ratingsQ.data.count}
                         </Text>
                       </View>
                     )}
                   </View>
-                  {title.media_type === 'tv' &&
-                    title.number_of_seasons != null && (
-                      <Text style={styles.metaText}>
-                        {title.number_of_seasons} seasons ·{' '}
-                        {title.number_of_episodes} episodes
-                      </Text>
-                    )}
                 </View>
               </View>
             </View>
@@ -256,17 +274,18 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { paddingBottom: Spacing.six },
   backdropWrap: {
-    height: 280,
+    height: 320,
     justifyContent: 'flex-end',
-    backgroundColor: '#15181C',
+    backgroundColor: '#000',
   },
-  scrim: {
+  // The film-frame cue: a true-black letterbox bar across the top of the still.
+  letterboxTop: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    height: 22,
+    backgroundColor: '#000',
   },
   headerRow: {
     flexDirection: 'row',
@@ -277,20 +296,48 @@ const styles = StyleSheet.create({
   poster: {
     width: POSTER_W,
     height: POSTER_W * 1.5,
-    borderRadius: Spacing.two,
+    borderRadius: 4,
     backgroundColor: '#0003',
+    borderWidth: 1,
+    borderColor: 'rgba(245,241,232,0.15)',
   },
   headerText: { flex: 1, gap: Spacing.one, paddingBottom: Spacing.one },
-  titleText: { color: '#fff', fontSize: 24, fontWeight: '700' },
-  metaText: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
-  pills: { flexDirection: 'row', gap: Spacing.one, marginVertical: Spacing.half },
-  pill: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
-    borderRadius: 6,
+  eyebrow: {
+    fontFamily: Type.semibold,
+    fontSize: 11,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: Glow,
   },
-  pillText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  titleText: {
+    fontFamily: Type.display,
+    color: '#F5F1E8',
+    fontSize: 30,
+    lineHeight: 34,
+  },
+  metaText: {
+    fontFamily: Type.semibold,
+    fontSize: 12,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: 'rgba(245,241,232,0.7)',
+  },
+  pills: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.one },
+  pill: {
+    borderWidth: 1,
+    borderColor: 'rgba(245,241,232,0.28)',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  pillText: {
+    fontFamily: Type.semibold,
+    color: '#F5F1E8',
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  pillWb: { borderColor: Glow },
+  pillWbText: { color: Glow },
   body: { padding: Spacing.three, gap: Spacing.three },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
   reviews: { gap: Spacing.two },
