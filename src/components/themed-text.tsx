@@ -65,16 +65,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
-  // --- display: Bodoni Moda ---
+  // --- display: Bodoni Moda (tall figures need ~1.3x line height or iOS clips) ---
   title: {
     fontFamily: Type.display,
     fontSize: 44,
-    lineHeight: 48,
+    lineHeight: 58,
   },
   subtitle: {
     fontFamily: Type.displaySemi,
     fontSize: 26,
-    lineHeight: 32,
+    lineHeight: 36,
   },
   link: {
     fontFamily: Type.medium,

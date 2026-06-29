@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     fontFamily: Type.display,
     color: '#F5F1E8',
     fontSize: 30,
-    lineHeight: 34,
+    lineHeight: 40,
   },
   metaText: {
     fontFamily: Type.semibold,

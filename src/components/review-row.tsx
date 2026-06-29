@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  avatarInitial: { color: '#fff', fontSize: 15, lineHeight: 19, fontWeight: '700' },
   who: { flex: 1 },
   score: {
     width: 34,
