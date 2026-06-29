@@ -33,6 +33,7 @@ function RootNavigator() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
         <Stack.Screen name="title/[id]" />
+        <Stack.Screen name="title/[id]/reviews" />
         <Stack.Screen name="season" />
         <Stack.Screen name="diary" />
         <Stack.Screen name="edit-profile" />
