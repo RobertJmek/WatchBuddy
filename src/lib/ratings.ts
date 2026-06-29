@@ -13,7 +13,7 @@ export async function getRating(
   entityType: RatingEntityType,
   entityId: string,
 ): Promise<Rating | null> {
-  const q = await selectMine('ratings', 'value, review');
+  const { q } = await selectMine('ratings', 'value, review');
   const { data, error } = await q
     .eq('entity_type', entityType)
     .eq('entity_id', entityId)
