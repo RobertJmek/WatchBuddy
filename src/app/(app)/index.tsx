@@ -38,6 +38,7 @@ export default function LibraryScreen() {
   const {
     data: entries = [],
     isLoading: loading,
+    error,
     refetch,
   } = useQuery({ queryKey: ['library'], queryFn: getLibrary });
 
@@ -99,6 +100,11 @@ export default function LibraryScreen() {
 
         {loading ? (
           <ActivityIndicator style={{ marginTop: Spacing.four }} />
+        ) : error ? (
+          <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
+            Couldn&apos;t load your library. Pull to refresh, or sign out and
+            back in.
+          </ThemedText>
         ) : shelves.length === 0 ? (
           <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
             Nothing yet. Find something in Search and set a status.
