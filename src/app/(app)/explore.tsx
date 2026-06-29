@@ -277,8 +277,10 @@ const styles = StyleSheet.create({
   poster: {
     width: 52,
     height: 78,
-    borderRadius: Spacing.one,
+    borderRadius: 4,
     backgroundColor: '#0002',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.35)',
   },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   empty: { textAlign: 'center', marginTop: Spacing.five },

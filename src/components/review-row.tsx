@@ -52,8 +52,8 @@ export function ReviewRow({ review }: { review: ReviewItem }) {
             {review.is_following ? ' · Following' : ''}
           </ThemedText>
         </View>
-        <View style={styles.score}>
-          <ThemedText type="smallBold" style={styles.scoreText}>
+        <View style={[styles.score, { borderColor: c.glow }]}>
+          <ThemedText type="smallBold" style={{ color: c.glow }}>
             {review.value}
           </ThemedText>
         </View>
@@ -82,11 +82,10 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: Accent,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scoreText: { color: '#fff' },
   text: { lineHeight: 21 },
   date: { opacity: 0.8 },
 });

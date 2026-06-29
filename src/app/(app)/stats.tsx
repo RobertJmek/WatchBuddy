@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, Spacing, Type } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { getStats } from '@/lib/stats';
 
 const ACTIVE = Accent;
@@ -20,10 +21,11 @@ function formatDuration(minutes: number) {
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
+  const c = useTheme();
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
       <ThemedText style={styles.cardValue}>{value}</ThemedText>
-      <ThemedText type="small" style={styles.cardLabel}>
+      <ThemedText type="meta" style={[styles.cardLabel, { color: c.textSecondary }]}>
         {label}
       </ThemedText>
     </ThemedView>
@@ -56,11 +58,21 @@ function BarRow({
   );
 }
 
-function FactRow({ label, value }: { label: string; value: string }) {
+function FactRow({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  /** Personal highlight (streak, biggest day, most rewatched) — shown in amber. */
+  highlight?: boolean;
+}) {
+  const c = useTheme();
   return (
     <View style={styles.factRow}>
       <ThemedText type="small">{label}</ThemedText>
-      <ThemedText type="smallBold" style={styles.factValue}>
+      <ThemedText type="smallBold" style={{ color: highlight ? c.glow : ACTIVE }}>
         {value}
       </ThemedText>
     </View>
@@ -97,8 +109,8 @@ function Section({
 }) {
   return (
     <ThemedView type="backgroundElement" style={styles.section}>
-      <ThemedText type="smallBold" style={styles.sectionTitle}>
-        {title.toUpperCase()}
+      <ThemedText type="meta" style={styles.sectionTitle}>
+        {title}
       </ThemedText>
       {children}
     </ThemedView>
@@ -106,6 +118,7 @@ function Section({
 }
 
 export default function StatsScreen() {
+  const c = useTheme();
   const {
     data: stats,
     isLoading: loading,
@@ -149,8 +162,9 @@ export default function StatsScreen() {
             <ThemedText style={styles.heroValue}>
               {formatDuration(stats.totalMinutes)}
             </ThemedText>
-            <ThemedText type="small" style={styles.heroLabel}>
-              total watched
+            <View style={[styles.heroRule, { backgroundColor: c.glow }]} />
+            <ThemedText type="meta" style={[styles.heroLabel, { color: c.textSecondary }]}>
+              Total watched
             </ThemedText>
           </ThemedView>
 
@@ -170,24 +184,26 @@ export default function StatsScreen() {
         {stats.patterns && (
           <Section title="Patterns">
             {stats.patterns.currentStreak > 0 && (
-              <FactRow label="Current streak" value={`${stats.patterns.currentStreak} days`} />
+              <FactRow label="Current streak" value={`${stats.patterns.currentStreak} days`} highlight />
             )}
             {stats.patterns.longestStreak > 0 && (
-              <FactRow label="Longest streak" value={`${stats.patterns.longestStreak} days`} />
+              <FactRow label="Longest streak" value={`${stats.patterns.longestStreak} days`} highlight />
             )}
             {stats.patterns.busiestWeekday && (
-              <FactRow label="Busiest day" value={stats.patterns.busiestWeekday} />
+              <FactRow label="Busiest day" value={stats.patterns.busiestWeekday} highlight />
             )}
             {stats.patterns.biggestDay && (
               <FactRow
                 label="Biggest day"
                 value={`${stats.patterns.biggestDay.label} · ${stats.patterns.biggestDay.count}`}
+                highlight
               />
             )}
             {stats.patterns.busiestMonth && (
               <FactRow
                 label="Busiest month"
                 value={`${stats.patterns.busiestMonth.label} · ${stats.patterns.busiestMonth.count}`}
+                highlight
               />
             )}
           </Section>
@@ -266,6 +282,7 @@ export default function StatsScreen() {
               <FactRow
                 label="Most rewatched"
                 value={`${stats.mostRewatched.name} ·×${stats.mostRewatched.times}`}
+                highlight
               />
             )}
             {(stats.ratingByGenre?.length ?? 0) > 0 && (
@@ -360,31 +377,31 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.three, gap: Spacing.three },
   hero: {
     borderRadius: Spacing.three,
-    paddingVertical: Spacing.four,
+    paddingVertical: Spacing.five,
     alignItems: 'center',
-    gap: Spacing.half,
+    gap: Spacing.two,
   },
-  heroValue: { fontSize: 44, fontWeight: '800', color: ACTIVE, lineHeight: 50 },
-  heroLabel: { textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.6 },
+  heroValue: { fontFamily: Type.display, fontSize: 56, lineHeight: 60 },
+  heroRule: { width: 32, height: 2, borderRadius: 1 },
+  heroLabel: {},
   cards: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   card: {
     flexGrow: 1,
     flexBasis: '30%',
     padding: Spacing.three,
     borderRadius: Spacing.three,
-    gap: Spacing.half,
+    gap: Spacing.one,
     alignItems: 'center',
   },
-  cardValue: { fontSize: 22, fontWeight: '800', color: ACTIVE },
-  cardLabel: { textAlign: 'center', opacity: 0.7 },
+  cardValue: { fontFamily: Type.display, fontSize: 30, lineHeight: 34 },
+  cardLabel: { textAlign: 'center' },
   section: {
     borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.two,
   },
   sectionTitle: {
-    letterSpacing: 0.5,
-    opacity: 0.5,
+    opacity: 0.55,
     marginBottom: Spacing.half,
   },
   barRow: {

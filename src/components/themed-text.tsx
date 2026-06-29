@@ -1,10 +1,19 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { Accent, Fonts, ThemeColor, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?:
+    | 'default'
+    | 'title'
+    | 'small'
+    | 'smallBold'
+    | 'subtitle'
+    | 'meta'
+    | 'link'
+    | 'linkPrimary'
+    | 'code';
   themeColor?: ThemeColor;
 };
 
@@ -20,6 +29,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
         type === 'subtitle' && styles.subtitle,
+        type === 'meta' && styles.meta,
         type === 'link' && styles.link,
         type === 'linkPrimary' && styles.linkPrimary,
         type === 'code' && styles.code,
@@ -31,39 +41,51 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 }
 
 const styles = StyleSheet.create({
-  small: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
-  },
-  smallBold: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 700,
-  },
+  // --- body & UI: Archivo ---
   default: {
+    fontFamily: Type.body,
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
   },
+  small: {
+    fontFamily: Type.body,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  smallBold: {
+    fontFamily: Type.semibold,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  // Letter-spaced small caps — the "2024 · 166 MIN · SCI-FI" metadata + eyebrows.
+  meta: {
+    fontFamily: Type.semibold,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  // --- display: Bodoni Moda ---
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontFamily: Type.display,
+    fontSize: 44,
+    lineHeight: 48,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+    fontFamily: Type.displaySemi,
+    fontSize: 26,
+    lineHeight: 32,
   },
   link: {
-    lineHeight: 30,
+    fontFamily: Type.medium,
     fontSize: 14,
+    lineHeight: 30,
   },
   linkPrimary: {
-    lineHeight: 30,
+    fontFamily: Type.medium,
     fontSize: 14,
-    color: '#3c87f7',
+    lineHeight: 30,
+    color: Accent,
   },
   code: {
     fontFamily: Fonts.mono,
