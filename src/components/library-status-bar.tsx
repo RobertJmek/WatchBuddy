@@ -1,5 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -14,42 +14,38 @@ import {
 
 const ACTIVE = Accent;
 
+const STATUS_KEY = (titleId: string) => ['libraryStatus', titleId];
+
 export function LibraryStatusBar({ titleId }: { titleId: string }) {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<LibraryStatus | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    getLibraryStatus(titleId)
-      .then((s) => active && setStatus(s))
-      .catch(() => {})
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [titleId]);
+  // Shared source of truth so logging a movie watch (which promotes the title
+  // to Completed) can invalidate this key and flip the chip instantly.
+  const { data: status, isLoading } = useQuery({
+    queryKey: STATUS_KEY(titleId),
+    queryFn: () => getLibraryStatus(titleId),
+  });
 
   async function choose(next: LibraryStatus) {
-    if (saving) return;
-    const previous = status;
+    if (saving || status === undefined) return;
+    const previous = status ?? null;
     // Tapping the active status again removes the title from the library.
     const remove = next === previous;
-    setStatus(remove ? null : next); // optimistic
+    queryClient.setQueryData(STATUS_KEY(titleId), remove ? null : next); // optimistic
     setSaving(true);
     try {
       if (remove) await removeFromLibrary(titleId);
       else await setLibraryStatus(titleId, next);
       queryClient.invalidateQueries({ queryKey: ['library'] });
     } catch {
-      setStatus(previous); // revert on failure
+      queryClient.setQueryData(STATUS_KEY(titleId), previous); // revert on failure
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <ActivityIndicator style={{ alignSelf: 'flex-start' }} />;
+  if (isLoading) return <ActivityIndicator style={{ alignSelf: 'flex-start' }} />;
 
   return (
     <View style={styles.row}>

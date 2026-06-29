@@ -1,3 +1,4 @@
+import { setLibraryStatus } from '@/lib/library';
 import { supabase } from '@/lib/supabase';
 
 /** How many times the user has watched each episode of a title. */
@@ -91,6 +92,10 @@ export async function logMovieWatch(titleId: string) {
     .from('movie_watches')
     .insert({ user_id: user.id, title_id: titleId });
   if (error) throw error;
+  // Logging a movie watch means you've seen it: promote the library entry to
+  // Completed, creating it if this title wasn't tracked yet. Upsert overwrites
+  // any earlier status (watchlist, on hold, …) since a watch is proof it's done.
+  await setLibraryStatus(titleId, 'completed');
 }
 
 export async function getMovieWatches(titleId: string): Promise<MovieWatch[]> {
