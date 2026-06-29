@@ -64,6 +64,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: Spacing.three, gap: Spacing.two },
   summary: { alignItems: 'center', gap: Spacing.half, marginBottom: Spacing.two },
-  average: { fontFamily: Type.display, fontSize: 48, lineHeight: 52 },
+  average: { fontFamily: Type.display, fontSize: 48, lineHeight: 64 },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });

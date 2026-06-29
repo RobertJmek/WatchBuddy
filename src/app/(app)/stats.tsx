@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  heroValue: { fontFamily: Type.display, fontSize: 56, lineHeight: 60 },
+  heroValue: { fontFamily: Type.display, fontSize: 56, lineHeight: 74 },
   heroRule: { width: 32, height: 2, borderRadius: 1 },
   heroLabel: {},
   cards: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     alignItems: 'center',
   },
-  cardValue: { fontFamily: Type.display, fontSize: 30, lineHeight: 34 },
+  cardValue: { fontFamily: Type.display, fontSize: 30, lineHeight: 40 },
   cardLabel: { textAlign: 'center' },
   section: {
     borderRadius: Spacing.three,
