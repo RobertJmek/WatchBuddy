@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,6 +52,11 @@ export default function SignInScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <Image
+          style={styles.logo}
+          source={require('@/assets/images/icon.png')}
+          contentFit="contain"
+        />
         <ThemedText type="title" style={styles.brand}>
           WatchBuddy
         </ThemedText>
@@ -64,6 +70,11 @@ export default function SignInScreen() {
               style={[styles.secondaryBtn, { borderColor: c.border }]}
               onPress={handleGoogle}
               disabled={busy}>
+              <Image
+                style={styles.googleIcon}
+                source={require('@/assets/images/google-g.png')}
+                contentFit="contain"
+              />
               <ThemedText type="smallBold">Continue with Google</ThemedText>
             </Pressable>
             <ThemedText type="small" style={[styles.or, { color: c.textSecondary }]}>
@@ -134,6 +145,13 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
   },
+  logo: {
+    width: 88,
+    height: 88,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginBottom: Spacing.two,
+  },
   brand: { textAlign: 'center' },
   tagline: { textAlign: 'center', marginBottom: Spacing.three },
   input: {
@@ -153,8 +171,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: Spacing.three,
     paddingVertical: Spacing.three,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
   },
+  googleIcon: { width: 18, height: 18 },
   or: { textAlign: 'center' },
   hint: { textAlign: 'center' },
   link: { textAlign: 'center' },
