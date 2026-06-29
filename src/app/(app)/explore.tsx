@@ -16,9 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { UserRow } from '@/components/user-row';
 import { Danger, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
+import { searchUsers } from '@/lib/social';
 import { getTrending, imageUrl, searchTitles, type SearchResult } from '@/lib/tmdb';
 
 const MIN_CHARS = 3;
@@ -84,17 +86,40 @@ export default function SearchScreen() {
 
   const [query, setQuery] = useState('');
   const trimmed = query.trim();
-  const term = useDebouncedValue(trimmed, DEBOUNCE_MS);
-  const searching = term.length >= MIN_CHARS;
 
-  // empty -> trending feed; 1-2 chars -> hint; 3+ -> live search results.
-  const mode: 'trending' | 'hint' | 'search' =
-    trimmed.length === 0 ? 'trending' : trimmed.length < MIN_CHARS ? 'hint' : 'search';
+  // A leading '@' switches to people-search; the '@' is the trigger only and
+  // the rest is the username/name query.
+  const isPeople = trimmed.startsWith('@');
+  const peopleTerm = isPeople ? trimmed.slice(1).trim() : '';
+  const peopleDebounced = useDebouncedValue(peopleTerm, DEBOUNCE_MS);
+
+  const term = useDebouncedValue(trimmed, DEBOUNCE_MS);
+  const searching = !isPeople && term.length >= MIN_CHARS;
+
+  // people: '@' alone -> hint, else live people results.
+  // titles: empty -> trending feed; 1-2 chars -> hint; 3+ -> live results.
+  const mode: 'trending' | 'hint' | 'search' | 'people-hint' | 'people' =
+    isPeople
+      ? peopleTerm.length === 0
+        ? 'people-hint'
+        : 'people'
+      : trimmed.length === 0
+        ? 'trending'
+        : trimmed.length < MIN_CHARS
+          ? 'hint'
+          : 'search';
 
   const search = useQuery({
     queryKey: ['search', term],
     queryFn: () => searchTitles(term),
     enabled: searching,
+    placeholderData: keepPreviousData,
+  });
+
+  const people = useQuery({
+    queryKey: ['userSearch', peopleDebounced],
+    queryFn: () => searchUsers(peopleDebounced),
+    enabled: isPeople && peopleDebounced.length > 0,
     placeholderData: keepPreviousData,
   });
 
@@ -124,7 +149,7 @@ export default function SearchScreen() {
         <View style={styles.inputRow}>
           <TextInput
             style={[styles.input, { color: c.text, backgroundColor: c.backgroundElement }]}
-            placeholder="Movies & TV…"
+            placeholder="Movies, TV, or @username"
             placeholderTextColor={c.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
@@ -132,7 +157,8 @@ export default function SearchScreen() {
             value={query}
             onChangeText={setQuery}
           />
-          {mode === 'search' && search.isFetching && (
+          {((mode === 'search' && search.isFetching) ||
+            (mode === 'people' && people.isFetching)) && (
             <ActivityIndicator style={styles.inputSpinner} />
           )}
         </View>
@@ -140,11 +166,38 @@ export default function SearchScreen() {
         {mode === 'search' && search.error && (
           <ThemedText style={styles.error}>{String(search.error)}</ThemedText>
         )}
+        {mode === 'people' && people.error && (
+          <ThemedText style={styles.error}>{String(people.error)}</ThemedText>
+        )}
 
         {mode === 'hint' && (
           <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
             Type at least {MIN_CHARS} characters to search.
           </ThemedText>
+        )}
+
+        {mode === 'people-hint' && (
+          <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
+            Type a username to find people.
+          </ThemedText>
+        )}
+
+        {mode === 'people' && (
+          <FlatList
+            data={people.data ?? []}
+            keyExtractor={(u) => u.id}
+            contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
+            style={people.isFetching ? styles.dimmed : undefined}
+            ListEmptyComponent={
+              !people.isFetching ? (
+                <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
+                  No people found.
+                </ThemedText>
+              ) : null
+            }
+            renderItem={({ item }) => <UserRow user={item} />}
+          />
         )}
 
         {mode === 'search' && (
@@ -176,6 +229,12 @@ export default function SearchScreen() {
             <ScrollView
               contentContainerStyle={styles.list}
               keyboardShouldPersistTaps="handled">
+              <ThemedText
+                type="small"
+                style={[styles.atHint, { color: c.textSecondary }]}>
+                Tip: start with @ to find and follow other people based on their
+                username.
+              </ThemedText>
               <PosterShelf
                 title="Trending Movies"
                 items={(trending.data?.movies ?? []).map(toPosterItem)}
@@ -196,6 +255,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, paddingHorizontal: Spacing.three },
+  atHint: { paddingHorizontal: Spacing.two },
   heading: { marginTop: Spacing.three, marginBottom: Spacing.two },
   inputRow: { justifyContent: 'center' },
   input: {

@@ -12,9 +12,14 @@ export async function getRating(
   entityType: RatingEntityType,
   entityId: string,
 ): Promise<Rating | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
   const { data, error } = await supabase
     .from('ratings')
     .select('value, review')
+    .eq('user_id', user.id)
     .eq('entity_type', entityType)
     .eq('entity_id', entityId)
     .maybeSingle();

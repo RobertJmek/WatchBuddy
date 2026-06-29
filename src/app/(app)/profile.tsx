@@ -11,6 +11,7 @@ import { Accent, Danger, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getMyProfile } from '@/lib/profile';
+import { getFollowCounts } from '@/lib/social';
 import { useThemePreference } from '@/lib/theme-preference';
 
 const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
@@ -21,15 +22,24 @@ export default function ProfileScreen() {
   const c = useTheme();
   const router = useRouter();
 
+  const myId = session?.user.id;
+
   const { data: profile, refetch } = useQuery({
     queryKey: ['profile'],
     queryFn: getMyProfile,
   });
 
+  const { data: counts, refetch: refetchCounts } = useQuery({
+    queryKey: ['followCounts', myId],
+    queryFn: () => getFollowCounts(myId!),
+    enabled: !!myId,
+  });
+
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch]),
+      refetchCounts();
+    }, [refetch, refetchCounts]),
   );
 
   const email = session?.user.email ?? '';
@@ -70,6 +80,37 @@ export default function ProfileScreen() {
 
         {profile?.bio ? (
           <ThemedText style={styles.bio}>{profile.bio}</ThemedText>
+        ) : null}
+
+        {myId ? (
+          <View style={styles.counts}>
+            <Pressable
+              style={styles.countItem}
+              onPress={() =>
+                router.push({
+                  pathname: '/user/[id]/followers',
+                  params: { id: myId },
+                })
+              }>
+              <ThemedText type="smallBold">{counts?.followers ?? 0}</ThemedText>
+              <ThemedText type="small" style={{ color: c.textSecondary }}>
+                {' followers'}
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              style={styles.countItem}
+              onPress={() =>
+                router.push({
+                  pathname: '/user/[id]/following',
+                  params: { id: myId },
+                })
+              }>
+              <ThemedText type="smallBold">{counts?.following ?? 0}</ThemedText>
+              <ThemedText type="small" style={{ color: c.textSecondary }}>
+                {' following'}
+              </ThemedText>
+            </Pressable>
+          </View>
         ) : null}
 
         <Pressable
@@ -122,6 +163,13 @@ const styles = StyleSheet.create({
   avatarInitial: { color: '#fff', fontSize: 26, fontWeight: '700' },
   identityText: { flex: 1, gap: Spacing.half },
   bio: { lineHeight: 21 },
+  counts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.three,
+  },
+  countItem: { flexDirection: 'row', alignItems: 'center' },
   editBtn: {
     borderWidth: 1,
     borderRadius: 999,

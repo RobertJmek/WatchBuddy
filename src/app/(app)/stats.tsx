@@ -110,7 +110,7 @@ export default function StatsScreen() {
     data: stats,
     isLoading: loading,
     refetch,
-  } = useQuery({ queryKey: ['stats'], queryFn: getStats });
+  } = useQuery({ queryKey: ['stats'], queryFn: () => getStats() });
 
   useFocusEffect(
     useCallback(() => {
