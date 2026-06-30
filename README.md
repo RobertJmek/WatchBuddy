@@ -129,6 +129,37 @@ A **development build** is required (OAuth deep links and native modules don't w
 ```bash
 npx expo run:ios       # or: npx expo run:android
 ```
+This installs a debug build that loads its JavaScript from the Metro dev server
+(`npx expo start`), so during development the device must reach your machine over the network.
+
+#### Run on a physical device
+- **iPhone (free Apple ID):** plug in over USB and set your signing team once in Xcode
+  (`open ios/WatchBuddy.xcworkspace` → target → *Signing & Capabilities* → *Automatically manage
+  signing*), then `npx expo run:ios --device`. A free Apple ID works, but the install expires
+  after ~7 days — re-run to refresh. First launch needs the profile trusted under
+  *Settings → General → VPN & Device Management*.
+- **Android:** enable *USB debugging*, plug in, then `npx expo run:android`. Requires the Android
+  SDK; if `adb`/Gradle can't be found, export `ANDROID_HOME` (e.g. `$HOME/Library/Android/sdk`)
+  and add its `platform-tools` to `PATH`.
+
+#### Standalone install (no Metro, no computer)
+A release binary bundles the JS inside the app, so it runs entirely on its own — it only needs
+internet to reach Supabase/TMDB, not your Mac:
+```bash
+# Android — a sideloadable APK (debug-keystore signed; fine for personal use, not Play-Store-ready)
+cd android && ./gradlew assembleRelease
+# → android/app/build/outputs/apk/release/app-release.apk   (install: adb install -r <apk>)
+
+# iOS — a standalone Release build installed over the cable (free Apple ID: same ~7-day expiry)
+npx expo run:ios --configuration Release --device
+```
+> iOS has no freely-sideloadable equivalent of an APK. A shareable, longer-lived install needs a
+> paid Apple Developer account + TestFlight (e.g. via EAS Build).
+
+> **Gradle 9 / Android builds:** React Native pins an old `foojay-resolver-convention` plugin that
+> breaks on the Gradle 9 wrapper it ships (`JvmVendorSpec … IBM_SEMERU`). A `patch-package` patch
+> in `patches/` bumps it and is applied automatically on `npm install` via the `postinstall`
+> hook — no action needed.
 
 > **Heads-up for contributors:** after moving an Expo Router file into a directory
 > (e.g. `foo/[id].tsx` → `foo/[id]/index.tsx`), run `npx expo export --clear` — a stale
