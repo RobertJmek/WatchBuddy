@@ -50,6 +50,9 @@ function RootNavigator() {
         headerShown: false,
         headerBackButtonDisplayMode: 'minimal',
       }}>
+      {/* Always reachable — the OAuth redirect deep-links here on Android before
+          a session exists, so it must sit outside the session guards. */}
+      <Stack.Screen name="auth-callback" />
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
         <Stack.Screen name="title/[id]" />
