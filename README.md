@@ -9,6 +9,24 @@ importing your history from TV Time.
 
 ---
 
+## 📲 Download (Android)
+
+Install the latest Android build directly — no Play Store needed:
+
+### [⬇️ Download the APK](https://github.com/RobertJmek/WatchBuddy/releases/latest/download/watchbuddy-android-arm64.apk) &nbsp;·&nbsp; ~43 MB
+
+1. Open that link **on your Android phone** and download the file.
+2. Tap it; if prompted, allow your browser/Files app to *install unknown apps*.
+3. If Play Protect warns it wasn't scanned, choose **More details → Install anyway** — normal for
+   apps installed outside the Play Store.
+
+Runs on any 64-bit Android phone (~2017 and newer); no account, no expiry. The link always points
+to the newest [release](https://github.com/RobertJmek/WatchBuddy/releases/latest). iOS isn't
+distributed this way — Apple requires installs via Xcode or TestFlight (see
+[Run on a physical device](#run-on-a-physical-device)).
+
+---
+
 ## Features
 
 ### Discover
