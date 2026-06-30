@@ -18,7 +18,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.watchbuddy"
     },
     "web": {
       "output": "static",
@@ -29,7 +30,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow WatchBuddy to access your photos to set a profile picture."
+          "photosPermission": "Allow WatchBuddy to access your photos to set a profile picture.",
+          "microphonePermission": false
         }
       ],
       [
