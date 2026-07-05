@@ -23,7 +23,7 @@ export function IconSymbol({ name, size, tintColor }: Props) {
       tintColor={tintColor}
       fallback={
         <Text style={{ fontSize: size - 2, color: tintColor }}>
-          {FALLBACKS[name] ?? '•'}
+          {(typeof name === 'string' && FALLBACKS[name]) || '•'}
         </Text>
       }
     />
