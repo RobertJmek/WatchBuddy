@@ -18,6 +18,16 @@ and "scope this read to them". Data modules go through it instead of touching
 - `selectMine(table, columns)` — a **self-scoped read**: a SELECT with the
   viewer's `user_id` filter already applied. Chain further filters on the result.
 
+### TV Time import
+A one-time migration script (`scripts/import_tvtime.py`) that reads a TV Time
+GDPR export and writes into WatchBuddy. Key mapping facts:
+
+- TV Time `tv_show_id` = TVDB ID (resolved via TMDB `/find/{id}?external_source=tvdb_id`)
+- Library status is inferred from `archived` flag + `nb_episodes_seen` vs TMDB total
+- Only `key=watch-episode` rows in `tracking-prod-records-v2.csv` are first-watches;
+  rewatch counts come from `rewatched_episode.csv` (`cpt` field)
+- The script is idempotent: existing WatchBuddy rows win
+
 ### Self-scoped read
 A personal read written through `selectMine`, so it cannot accidentally return
 every user's rows. Under the open-read RLS policy (watch data is world-readable;
