@@ -106,6 +106,8 @@ export type DiaryEntry = {
   subtitle: string | null;
   tmdbId: number;
   mediaType: 'movie' | 'tv';
+  /** Underlying watch rows (1 for movies, N for grouped episode entries). */
+  rows: { id: string; watched_at: string }[];
 };
 
 export type DiaryRange = {
@@ -165,6 +167,7 @@ export async function getDiary({
     subtitle: 'Movie',
     tmdbId: r.title?.tmdb_id,
     mediaType: r.title?.media_type ?? 'movie',
+    rows: [{ id: r.id, watched_at: r.watched_at }],
   }));
 
   // Group episode watches by show + season + calendar day, so logging a whole
@@ -203,10 +206,44 @@ export async function getDiary({
       subtitle,
       tmdbId: r.title?.tmdb_id,
       mediaType: r.title?.media_type ?? 'tv',
+      rows: group.map((g: any) => ({ id: g.id, watched_at: g.watched_at })),
     };
   });
 
   return [...movieEntries, ...episodeEntries]
     .sort((a, b) => b.watched_at.localeCompare(a.watched_at))
     .slice(0, limit ?? undefined);
+}
+
+/**
+ * Move watch rows to a new calendar day, preserving each row's time-of-day so
+ * within-day ordering survives. RLS scopes the updates to the owner's rows.
+ */
+export async function updateWatchDay(
+  kind: 'movie' | 'episode',
+  rows: { id: string; watched_at: string }[],
+  day: Date,
+) {
+  const table = kind === 'movie' ? 'movie_watches' : 'episode_watches';
+  await Promise.all(
+    rows.map((r) => {
+      const old = new Date(r.watched_at);
+      const next = new Date(
+        day.getFullYear(),
+        day.getMonth(),
+        day.getDate(),
+        old.getHours(),
+        old.getMinutes(),
+        old.getSeconds(),
+        old.getMilliseconds(),
+      );
+      return supabase
+        .from(table)
+        .update({ watched_at: next.toISOString() })
+        .eq('id', r.id)
+        .then(({ error }) => {
+          if (error) throw error;
+        });
+    }),
+  );
 }

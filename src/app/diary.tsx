@@ -1,13 +1,25 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import {
   DIARY_PERIODS,
@@ -15,7 +27,12 @@ import {
   type DiaryPeriod,
 } from '@/lib/diary-period';
 import { imageUrl } from '@/lib/tmdb';
-import { getDiary, type DiaryRange } from '@/lib/watches';
+import {
+  getDiary,
+  updateWatchDay,
+  type DiaryEntry,
+  type DiaryRange,
+} from '@/lib/watches';
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -41,6 +58,30 @@ export default function DiaryScreen() {
   const router = useRouter();
   const c = useTheme();
   const [period, setPeriod] = useState<DiaryPeriod>('all');
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
+  const term = useDebouncedValue(query.trim().toLowerCase(), 250);
+
+  const toggleSearch = useCallback(() => {
+    setSearching((s) => {
+      if (s) setQuery('');
+      return !s;
+    });
+  }, []);
+
+  // Date-editing state: the entry whose watch day is being changed.
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<DiaryEntry | null>(null);
+
+  const saveWatchDay = useCallback(
+    async (entry: DiaryEntry, day: Date) => {
+      setEditing(null);
+      await updateWatchDay(entry.kind, entry.rows, day);
+      queryClient.invalidateQueries({ queryKey: ['diary'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    },
+    [queryClient],
+  );
 
   // Custom range state. Defaults to [start of this month, today].
   const today = startOfDay(new Date());
@@ -76,7 +117,21 @@ export default function DiaryScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'Diary' }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: 'Diary',
+          headerRight: () => (
+            <Pressable onPress={toggleSearch} hitSlop={8}>
+              <SymbolView
+                name={searching ? 'xmark' : 'magnifyingglass'}
+                size={20}
+                tintColor={c.textSecondary}
+              />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -102,6 +157,20 @@ export default function DiaryScreen() {
           );
         })}
       </ScrollView>
+
+      {searching && (
+        <TextInput
+          style={[styles.searchInput, { color: c.text, backgroundColor: c.backgroundElement }]}
+          placeholder="Search your diary"
+          placeholderTextColor={c.textSecondary}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoFocus
+          returnKeyType="search"
+          value={query}
+          onChangeText={setQuery}
+        />
+      )}
 
       {period === 'custom' && (
         <View style={styles.customRow}>
@@ -177,18 +246,66 @@ export default function DiaryScreen() {
         </Modal>
       )}
 
+      {/* Watch-day editor: Android uses the system dialog, iOS the same modal
+          sheet pattern as the custom range picker above. */}
+      {editing && Platform.OS === 'android' && (
+        <DateTimePicker
+          mode="date"
+          value={new Date(editing.watched_at)}
+          maximumDate={today}
+          onValueChange={(_, date) => {
+            const entry = editing;
+            saveWatchDay(entry, startOfDay(date));
+          }}
+          onDismiss={() => setEditing(null)}
+        />
+      )}
+
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={!!editing}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditing(null)}>
+          <Pressable style={styles.backdrop} onPress={() => setEditing(null)}>
+            <Pressable
+              style={[styles.sheet, { backgroundColor: c.background }]}
+              onPress={(e) => e.stopPropagation()}>
+              {editing && (
+                <DateTimePicker
+                  mode="date"
+                  display="inline"
+                  value={new Date(editing.watched_at)}
+                  maximumDate={today}
+                  onValueChange={(_, date) => {
+                    const entry = editing;
+                    saveWatchDay(entry, startOfDay(date));
+                  }}
+                />
+              )}
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: Spacing.five }} />
       ) : (
         <FlatList
-          data={entries}
+          data={
+            term
+              ? entries.filter((e) => e.titleName.toLowerCase().includes(term))
+              : entries
+          }
           keyExtractor={(e) => e.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <ThemedText style={styles.empty}>
-              {period === 'all'
-                ? 'No watch history yet. Tick off episodes or log a movie.'
-                : 'No watch history in this period.'}
+              {term
+                ? `No entries match “${query.trim()}”.`
+                : period === 'all'
+                  ? 'No watch history yet. Tick off episodes or log a movie.'
+                  : 'No watch history in this period.'}
             </ThemedText>
           }
           renderItem={({ item }) => (
@@ -223,6 +340,12 @@ export default function DiaryScreen() {
                   {formatDate(item.watched_at)}
                 </ThemedText>
               </ThemedView>
+              <Pressable
+                hitSlop={8}
+                style={styles.editBtn}
+                onPress={() => setEditing(item)}>
+                <SymbolView name="calendar" size={18} tintColor={c.textSecondary} />
+              </Pressable>
             </Pressable>
           )}
         />
@@ -234,6 +357,15 @@ export default function DiaryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   chipBar: { flexGrow: 0 },
+  editBtn: { alignSelf: 'center', paddingHorizontal: Spacing.two },
+  searchInput: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    marginHorizontal: Spacing.three,
+    marginBottom: Spacing.two,
+    fontSize: 16,
+  },
   chips: {
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,

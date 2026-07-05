@@ -1,13 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { getLibrary, LIBRARY_STATUSES, type LibraryEntry } from '@/lib/library';
 
@@ -42,6 +51,15 @@ export default function LibraryScreen() {
     refetch,
   } = useQuery({ queryKey: ['library'], queryFn: getLibrary });
 
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
+  const term = useDebouncedValue(query.trim().toLowerCase(), 250);
+
+  function toggleSearch() {
+    if (searching) setQuery('');
+    setSearching(!searching);
+  }
+
   // Refresh when the tab regains focus (e.g. after adding from Search).
   useFocusEffect(
     useCallback(() => {
@@ -49,12 +67,17 @@ export default function LibraryScreen() {
     }, [refetch]),
   );
 
+  // Search narrows every shelf at once; shelves with no matches self-hide below.
+  const visible = term
+    ? entries.filter((e) => e.title?.title.toLowerCase().includes(term))
+    : entries;
+
   // One shelf per status (canonical order), then favorites split by media type.
   const statusShelves = LIBRARY_STATUSES.map(({ value, label }) => ({
     key: `status-${value}`,
     label,
     params: { status: value, label },
-    items: shelfItems(entries, (e) => e.status === value),
+    items: shelfItems(visible, (e) => e.status === value),
   }));
 
   const favoriteShelves = [
@@ -65,7 +88,7 @@ export default function LibraryScreen() {
     label,
     params: { favorite: type, label },
     items: shelfItems(
-      entries,
+      visible,
       (e) => e.is_favorite && e.title?.media_type === type,
     ),
   }));
@@ -94,9 +117,32 @@ export default function LibraryScreen() {
             return `${n} ${n === 1 ? 'Title' : 'Titles'}`;
           })()}
         </ThemedText>
-        <ThemedText type="title" style={styles.heading}>
-          Library
-        </ThemedText>
+        <View style={styles.headingRow}>
+          <ThemedText type="title" style={styles.heading}>
+            Library
+          </ThemedText>
+          <Pressable onPress={toggleSearch} hitSlop={8} style={styles.searchBtn}>
+            <SymbolView
+              name={searching ? 'xmark' : 'magnifyingglass'}
+              size={22}
+              tintColor={c.textSecondary}
+            />
+          </Pressable>
+        </View>
+
+        {searching && (
+          <TextInput
+            style={[styles.input, { color: c.text, backgroundColor: c.backgroundElement }]}
+            placeholder="Search your library"
+            placeholderTextColor={c.textSecondary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus
+            returnKeyType="search"
+            value={query}
+            onChangeText={setQuery}
+          />
+        )}
 
         {loading ? (
           <ActivityIndicator style={{ marginTop: Spacing.four }} />
@@ -107,7 +153,9 @@ export default function LibraryScreen() {
           </ThemedText>
         ) : shelves.length === 0 ? (
           <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
-            Nothing yet. Find something in Search and set a status.
+            {term
+              ? `No titles match “${query.trim()}”.`
+              : 'Nothing yet. Find something in Search and set a status.'}
           </ThemedText>
         ) : (
           <ScrollView contentContainerStyle={styles.list}>
@@ -133,7 +181,20 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, paddingHorizontal: Spacing.three },
   eyebrow: { marginTop: Spacing.three },
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   heading: { marginTop: Spacing.half, marginBottom: Spacing.two },
+  searchBtn: { padding: Spacing.half },
+  input: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    marginBottom: Spacing.two,
+    fontSize: 16,
+  },
   list: { gap: Spacing.four, paddingVertical: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });
