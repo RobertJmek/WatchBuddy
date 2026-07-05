@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { IconSymbol } from '@/components/icon-symbol';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -122,7 +122,7 @@ export default function LibraryScreen() {
             Library
           </ThemedText>
           <Pressable onPress={toggleSearch} hitSlop={8} style={styles.searchBtn}>
-            <SymbolView
+            <IconSymbol
               name={searching ? 'xmark' : 'magnifyingglass'}
               size={22}
               tintColor={c.textSecondary}

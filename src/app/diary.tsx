@@ -2,7 +2,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,6 +15,7 @@ import {
   View,
 } from 'react-native';
 
+import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
@@ -123,7 +123,7 @@ export default function DiaryScreen() {
           title: 'Diary',
           headerRight: () => (
             <Pressable onPress={toggleSearch} hitSlop={8}>
-              <SymbolView
+              <IconSymbol
                 name={searching ? 'xmark' : 'magnifyingglass'}
                 size={20}
                 tintColor={c.textSecondary}
@@ -344,7 +344,7 @@ export default function DiaryScreen() {
                 hitSlop={8}
                 style={styles.editBtn}
                 onPress={() => setEditing(item)}>
-                <SymbolView name="calendar" size={18} tintColor={c.textSecondary} />
+                <IconSymbol name="calendar" size={18} tintColor={c.textSecondary} />
               </Pressable>
             </Pressable>
           )}
