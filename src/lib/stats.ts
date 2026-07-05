@@ -76,29 +76,56 @@ export async function getStats(userId?: string): Promise<Stats> {
   const uid = userId ?? (await currentViewer());
   if (!uid) throw new Error('Not signed in');
 
-  const [episodesRes, moviesRes, ratingsRes] = await Promise.all([
-    supabase
-      .from('episode_watches')
-      .select(
-        'watched_at, title_id, episode_id, episode:episodes(runtime), title:titles(title, runtime, original_language, release_date, media_type)',
-      )
-      .eq('user_id', uid),
-    supabase
-      .from('movie_watches')
-      .select(
-        'watched_at, title_id, title:titles(title, runtime, original_language, release_date, media_type)',
-      )
-      .eq('user_id', uid),
+  // Watch tables can exceed PostgREST's 1000-row page cap (e.g. after a bulk
+  // import), so page through them instead of a single select.
+  const PAGE = 1000;
+  const fetchAll = async (table: string, select: string) => {
+    const rows: any[] = [];
+    for (let page = 0; ; page++) {
+      const { data, error } = await supabase
+        .from(table)
+        .select(select)
+        .eq('user_id', uid)
+        .range(page * PAGE, (page + 1) * PAGE - 1);
+      if (error) throw error;
+      rows.push(...(data ?? []));
+      if ((data ?? []).length < PAGE) return rows;
+    }
+  };
+
+  // Same cap applies to catalog joins over many watched titles (credits alone
+  // run ~16 rows per title), so page those too.
+  const fetchAllIn = async (table: string, select: string, ids: string[]) => {
+    const rows: any[] = [];
+    for (let page = 0; ; page++) {
+      const { data, error } = await supabase
+        .from(table)
+        .select(select)
+        .in('title_id', ids)
+        .range(page * PAGE, (page + 1) * PAGE - 1);
+      if (error) throw error;
+      rows.push(...(data ?? []));
+      if ((data ?? []).length < PAGE) return rows;
+    }
+  };
+
+  const [episodesData, moviesData, ratingsRes] = await Promise.all([
+    fetchAll(
+      'episode_watches',
+      'watched_at, title_id, episode_id, episode:episodes(runtime), title:titles(title, runtime, original_language, release_date, media_type)',
+    ),
+    fetchAll(
+      'movie_watches',
+      'watched_at, title_id, title:titles(title, runtime, original_language, release_date, media_type)',
+    ),
     supabase
       .from('ratings')
       .select('value, entity_type, entity_id')
       .eq('user_id', uid),
   ]);
-  if (episodesRes.error) throw episodesRes.error;
-  if (moviesRes.error) throw moviesRes.error;
   if (ratingsRes.error) throw ratingsRes.error;
 
-  const episodeWatches: WatchRow[] = (episodesRes.data ?? []).map((r: any) => ({
+  const episodeWatches: WatchRow[] = episodesData.map((r: any) => ({
     watched_at: r.watched_at,
     title_id: r.title_id,
     minutes: r.episode?.runtime ?? r.title?.runtime ?? 0,
@@ -106,7 +133,7 @@ export async function getStats(userId?: string): Promise<Stats> {
     titleName: r.title?.title ?? null,
     episodeId: r.episode_id ?? null,
   }));
-  const movieWatches: WatchRow[] = (moviesRes.data ?? []).map((r: any) => ({
+  const movieWatches: WatchRow[] = moviesData.map((r: any) => ({
     watched_at: r.watched_at,
     title_id: r.title_id,
     minutes: r.title?.runtime ?? 0,
@@ -159,11 +186,7 @@ export async function getStats(userId?: string): Promise<Stats> {
   const genresByTitle = new Map<string, string[]>();
   const genreIds = [...new Set([...distinctIds, ...ratedIds])];
   if (genreIds.length > 0) {
-    const { data, error } = await supabase
-      .from('title_genres')
-      .select('title_id, genres(name)')
-      .in('title_id', genreIds);
-    if (error) throw error;
+    const data = await fetchAllIn('title_genres', 'title_id, genres(name)', genreIds);
     for (const row of data ?? []) {
       const name = (row as any).genres?.name as string | undefined;
       const tid = (row as any).title_id as string;
@@ -241,11 +264,7 @@ export async function getStats(userId?: string): Promise<Stats> {
   const directorCounts = new Map<string, number>();
   const actorCounts = new Map<string, number>();
   if (distinctIds.length > 0) {
-    const { data, error } = await supabase
-      .from('credits')
-      .select('job, person:people(name)')
-      .in('title_id', distinctIds);
-    if (error) throw error;
+    const data = await fetchAllIn('credits', 'job, person:people(name)', distinctIds);
     for (const row of data ?? []) {
       const name = (row as any).person?.name as string | undefined;
       if (!name) continue;
@@ -269,11 +288,7 @@ export async function getStats(userId?: string): Promise<Stats> {
 
   const networkCounts = new Map<string, number>();
   if (tvDistinctIds.length > 0) {
-    const { data, error } = await supabase
-      .from('title_networks')
-      .select('network:networks(name)')
-      .in('title_id', tvDistinctIds);
-    if (error) throw error;
+    const data = await fetchAllIn('title_networks', 'network:networks(name)', tvDistinctIds);
     for (const row of data ?? []) {
       const name = (row as any).network?.name as string | undefined;
       if (name) networkCounts.set(name, (networkCounts.get(name) ?? 0) + 1);

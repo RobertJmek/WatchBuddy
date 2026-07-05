@@ -37,6 +37,8 @@ export function rangeForPeriod(period: DiaryPeriod, now = new Date()): DiaryRang
     case 'all':
     case 'custom':
     default:
-      return {};
+      // Lift the 100-row default; PostgREST still pages at 1000 rows per
+      // table, which bounds the render for very large histories.
+      return { limit: null };
   }
 }
