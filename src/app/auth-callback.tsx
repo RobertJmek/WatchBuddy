@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
@@ -36,12 +37,28 @@ export default function AuthCallback() {
     if (session) return;
     let active = true;
     (async () => {
-      if (!code) {
-        setError('Missing sign-in code. Please try signing in again.');
+      // On an Android cold start the route can mount before the router has the
+      // deep link's query params, so fall back to the launching URL itself.
+      let signInCode = code;
+      if (!signInCode) {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl) {
+          const parsed = Linking.parse(initialUrl);
+          signInCode = parsed.queryParams?.code as string | undefined;
+        }
+      }
+      if (!signInCode) {
+        // The in-app browser path may still be finishing the exchange; give
+        // the session a moment to land before declaring failure.
+        await new Promise((r) => setTimeout(r, 2500));
+        const { data } = await supabase.auth.getSession();
+        if (active && !data.session) {
+          setError('Missing sign-in code. Please try signing in again.');
+        }
         return;
       }
       const { error: exchangeError } =
-        await supabase.auth.exchangeCodeForSession(code);
+        await supabase.auth.exchangeCodeForSession(signInCode);
       if (!active || !exchangeError) return;
       // The code may already have been spent by the in-app browser path; if a
       // session landed anyway, the redirect effect above takes over.
