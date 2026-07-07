@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.watchbuddy"
+      "package": "com.anonymous.watchbuddy",
+      "versionCode": 4
     },
     "web": {
       "output": "static",
