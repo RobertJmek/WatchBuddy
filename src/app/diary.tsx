@@ -160,17 +160,27 @@ export default function DiaryScreen() {
       </ScrollView>
 
       {searching && (
-        <TextInput
-          style={[styles.searchInput, { color: c.text, backgroundColor: c.backgroundElement }]}
-          placeholder="Search your diary"
-          placeholderTextColor={c.textSecondary}
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoFocus
-          returnKeyType="search"
-          value={query}
-          onChangeText={setQuery}
-        />
+        <View style={styles.searchRow}>
+          <TextInput
+            style={[styles.searchInput, { color: c.text, backgroundColor: c.backgroundElement }]}
+            placeholder="Search your diary"
+            placeholderTextColor={c.textSecondary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus
+            returnKeyType="search"
+            value={query}
+            onChangeText={setQuery}
+          />
+          {query.length > 0 && (
+            <Pressable
+              style={styles.searchClear}
+              hitSlop={8}
+              onPress={() => setQuery('')}>
+              <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
+            </Pressable>
+          )}
+        </View>
       )}
 
       {period === 'custom' && (
@@ -367,14 +377,19 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   chipBar: { flexGrow: 0 },
   editBtn: { alignSelf: 'center', paddingHorizontal: Spacing.two },
-  searchInput: {
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+  searchRow: {
+    justifyContent: 'center',
     marginHorizontal: Spacing.three,
     marginBottom: Spacing.two,
+  },
+  searchInput: {
+    borderRadius: Spacing.three,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.five + Spacing.two,
+    paddingVertical: Spacing.three,
     fontSize: 16,
   },
+  searchClear: { position: 'absolute', right: Spacing.three },
   chips: {
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,

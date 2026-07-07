@@ -131,17 +131,27 @@ export default function LibraryScreen() {
         </View>
 
         {searching && (
-          <TextInput
-            style={[styles.input, { color: c.text, backgroundColor: c.backgroundElement }]}
-            placeholder="Search your library"
-            placeholderTextColor={c.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoFocus
-            returnKeyType="search"
-            value={query}
-            onChangeText={setQuery}
-          />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[styles.input, { color: c.text, backgroundColor: c.backgroundElement }]}
+              placeholder="Search your library"
+              placeholderTextColor={c.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+              returnKeyType="search"
+              value={query}
+              onChangeText={setQuery}
+            />
+            {query.length > 0 && (
+              <Pressable
+                style={styles.inputClear}
+                hitSlop={8}
+                onPress={() => setQuery('')}>
+                <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
+              </Pressable>
+            )}
+          </View>
         )}
 
         {loading ? (
@@ -192,13 +202,15 @@ const styles = StyleSheet.create({
   },
   heading: { marginTop: Spacing.half, marginBottom: Spacing.two },
   searchBtn: { padding: Spacing.half },
+  inputRow: { justifyContent: 'center', marginBottom: Spacing.two },
   input: {
     borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.five + Spacing.two,
     paddingVertical: Spacing.three,
-    marginBottom: Spacing.two,
     fontSize: 16,
   },
+  inputClear: { position: 'absolute', right: Spacing.three },
   list: { gap: Spacing.four, paddingVertical: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });
