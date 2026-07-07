@@ -123,7 +123,7 @@ export default function LibraryScreen() {
           </ThemedText>
           <Pressable onPress={toggleSearch} hitSlop={8} style={styles.searchBtn}>
             <IconSymbol
-              name={searching ? 'xmark' : 'magnifyingglass'}
+              name="magnifyingglass"
               size={22}
               tintColor={c.textSecondary}
             />

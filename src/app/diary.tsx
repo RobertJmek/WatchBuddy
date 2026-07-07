@@ -125,7 +125,7 @@ export default function DiaryScreen() {
           headerRight: () => (
             <Pressable onPress={toggleSearch} hitSlop={8}>
               <IconSymbol
-                name={searching ? 'xmark' : 'magnifyingglass'}
+                name="magnifyingglass"
                 size={20}
                 tintColor={c.textSecondary}
               />
