@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 
+import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserRow } from '@/components/user-row';
@@ -21,7 +22,11 @@ export default function FollowersScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Followers' }} />
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: Spacing.five }} />
+        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <RowSkeleton key={i} />
+          ))}
+        </View>
       ) : (
         <FlatList
           data={data ?? []}

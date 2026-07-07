@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
+import { PressScale } from '@/components/press-scale';
+import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserRow } from '@/components/user-row';
@@ -50,7 +52,7 @@ function ResultRow({
   router: ReturnType<typeof useRouter>;
 }) {
   return (
-    <Pressable
+    <PressScale
       style={[styles.row, { backgroundColor: bg }]}
       onPress={() =>
         router.push({
@@ -76,7 +78,7 @@ function ResultRow({
           {item.media_type === 'tv' ? 'TV' : 'Movie'} · {year(item)}
         </ThemedText>
       </ThemedView>
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -222,7 +224,10 @@ export default function SearchScreen() {
 
         {mode === 'trending' &&
           (trending.isLoading ? (
-            <ActivityIndicator style={{ marginTop: Spacing.five }} />
+            <View style={{ gap: Spacing.four, paddingVertical: Spacing.two }}>
+              <ShelfSkeleton />
+              <ShelfSkeleton />
+            </View>
           ) : trending.error ? (
             <ThemedText style={styles.error}>{String(trending.error)}</ThemedText>
           ) : (

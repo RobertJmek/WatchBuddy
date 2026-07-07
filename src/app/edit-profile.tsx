@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
@@ -116,7 +117,11 @@ export default function EditProfileScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Edit Profile' }} />
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: Spacing.five }} />
+        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <RowSkeleton key={i} />
+          ))}
+        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.avatarSection}>

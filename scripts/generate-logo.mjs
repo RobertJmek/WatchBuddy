@@ -25,14 +25,34 @@ const TEAL = '#0D9488'; // accent (src/constants/theme.ts)
 const TEAL_DARK = '#0B7C72'; // gradient bottom
 
 // --- Geometry (1024 canvas) --------------------------------------------
-// Eye/lens almond + right-pointing play triangle, both centered at 512,512.
-const eyePath = 'M 282 512 Q 512 312 742 512 Q 512 712 282 512 Z';
-const playPath = 'M 452 432 L 452 592 L 620 512 Z';
+// Cute character eye: a full, rounded almond with a circular pupil glancing
+// slightly up-right. The play triangle and a sparkle highlight are cut out of
+// the pupil (fill-rule evenodd), so they read in any single mark color.
+const eyePath = 'M 258 512 Q 512 288 766 512 Q 512 736 258 512 Z';
+
+// Pupil center (glancing up-right of the eye center) and sizes.
+const PX = 528;
+const PY = 514;
+const PR = 76; // pupil radius
+const SR = 14; // sparkle radius
+
+const circle = (cx, cy, r) =>
+  `M ${cx - r} ${cy} a ${r} ${r} 0 1 0 ${2 * r} 0 a ${r} ${r} 0 1 0 ${-2 * r} 0 Z`;
+
+// Small play triangle inside the pupil (right-pointing, roughly centered).
+const playCutout = `M ${PX - 24} ${PY - 34} L ${PX - 24} ${PY + 34} L ${PX + 42} ${PY} Z`;
+
+// Sparkle floats inside the pupil's upper-left.
+const pupilPath = [
+  circle(PX, PY, PR),
+  playCutout,
+  circle(PX - 42, PY - 38, SR),
+].join(' ');
 
 function mark(color, scale = 1) {
   return `<g transform="translate(512 512) scale(${scale}) translate(-512 -512)">
-    <path d="${eyePath}" fill="none" stroke="${color}" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="${playPath}" fill="${color}"/>
+    <path d="${eyePath}" fill="none" stroke="${color}" stroke-width="42" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${pupilPath}" fill="${color}" fill-rule="evenodd"/>
   </g>`;
 }
 

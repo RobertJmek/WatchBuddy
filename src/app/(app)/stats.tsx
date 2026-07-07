@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing, Type } from '@/constants/theme';
@@ -138,7 +139,15 @@ export default function StatsScreen() {
           <ThemedText type="title" style={styles.heading}>
             Statistics
           </ThemedText>
-          <ActivityIndicator style={{ marginTop: Spacing.five }} />
+          <View style={{ gap: Spacing.two, marginTop: Spacing.two }}>
+            <Skeleton style={{ height: 160, borderRadius: 12 }} />
+            <View style={{ flexDirection: 'row', gap: Spacing.two }}>
+              <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
+              <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
+              <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
+            </View>
+            <Skeleton style={{ height: 90, borderRadius: 12 }} />
+          </View>
         </SafeAreaView>
       </ThemedView>
     );

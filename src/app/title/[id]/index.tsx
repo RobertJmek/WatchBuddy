@@ -17,6 +17,7 @@ import { LibraryStatusBar } from '@/components/library-status-bar';
 import { MovieWatchBar } from '@/components/movie-watch-bar';
 import { RatingBar } from '@/components/rating-bar';
 import { ReviewRow } from '@/components/review-row';
+import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { TvWatchBar } from '@/components/tv-watch-bar';
 import { ThemedView } from '@/components/themed-view';
@@ -86,7 +87,17 @@ export default function TitleDetailScreen() {
         }}
       />
       <ScrollView contentContainerStyle={styles.scroll}>
-        {loading && <ActivityIndicator style={{ marginTop: Spacing.six }} />}
+        {loading && (
+          <View style={{ gap: Spacing.two }}>
+            <Skeleton style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 0 }} />
+            <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+              <Skeleton style={{ height: 28, width: '65%' }} />
+              <Skeleton style={{ height: 14, width: '40%' }} />
+              <Skeleton style={{ height: 14, width: '90%' }} />
+              <Skeleton style={{ height: 14, width: '85%' }} />
+            </View>
+          </View>
+        )}
         {error && <ThemedText style={styles.error}>{error}</ThemedText>}
 
         {title && (

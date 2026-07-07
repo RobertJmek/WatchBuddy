@@ -4,8 +4,6 @@ import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -14,8 +12,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 
 import { IconSymbol } from '@/components/icon-symbol';
+import { PressScale } from '@/components/press-scale';
+import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
@@ -289,15 +290,20 @@ export default function DiaryScreen() {
       )}
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: Spacing.five }} />
+        <View style={styles.list}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <RowSkeleton key={i} />
+          ))}
+        </View>
       ) : (
-        <FlatList
+        <Animated.FlatList
           data={
             term
               ? entries.filter((e) => e.titleName.toLowerCase().includes(term))
               : entries
           }
           keyExtractor={(e) => e.id}
+          itemLayoutAnimation={LinearTransition.duration(200)}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <ThemedText style={styles.empty}>
@@ -308,8 +314,10 @@ export default function DiaryScreen() {
                   : 'No watch history in this period.'}
             </ThemedText>
           }
-          renderItem={({ item }) => (
-            <Pressable
+          renderItem={({ item, index }) => (
+            <Animated.View
+              entering={FadeInDown.delay(Math.min(index, 12) * 30).duration(220)}>
+            <PressScale
               style={[styles.row, { backgroundColor: c.backgroundElement }]}
               onPress={() =>
                 router.push({
@@ -346,7 +354,8 @@ export default function DiaryScreen() {
                 onPress={() => setEditing(item)}>
                 <IconSymbol name="calendar" size={18} tintColor={c.textSecondary} />
               </Pressable>
-            </Pressable>
+            </PressScale>
+            </Animated.View>
           )}
         />
       )}

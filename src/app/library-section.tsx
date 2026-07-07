@@ -9,6 +9,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { PressScale } from '@/components/press-scale';
+import { GridSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -47,7 +49,7 @@ export default function LibrarySectionScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: label ?? 'Library' }} />
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: Spacing.five }} />
+        <GridSkeleton rows={4} />
       ) : (
         <FlatList
           data={items}
@@ -61,7 +63,7 @@ export default function LibrarySectionScreen() {
             </ThemedText>
           }
           renderItem={({ item }) => (
-            <Pressable
+            <PressScale
               style={{ width: cardW }}
               onPress={() =>
                 router.push({
@@ -86,7 +88,7 @@ export default function LibrarySectionScreen() {
                 contentFit="cover"
                 transition={150}
               />
-            </Pressable>
+            </PressScale>
           )}
         />
       )}

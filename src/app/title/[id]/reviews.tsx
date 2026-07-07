@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import { ReviewRow } from '@/components/review-row';
+import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing, Type } from '@/constants/theme';
@@ -28,7 +29,11 @@ export default function ReviewsScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Reviews' }} />
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: Spacing.five }} />
+        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <RowSkeleton key={i} />
+          ))}
+        </View>
       ) : (
         <FlatList
           data={data?.reviews ?? []}

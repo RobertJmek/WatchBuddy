@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { PressScale } from '@/components/press-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -22,14 +24,14 @@ export function PosterCard({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <PressScale style={styles.card} onPress={onPress}>
       <Image
         style={styles.cardPoster}
         source={{ uri: imageUrl(posterPath, 'w342') ?? undefined }}
         contentFit="cover"
         transition={150}
       />
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -53,7 +55,7 @@ export function PosterShelf({
   if (items.length === 0) return null;
 
   return (
-    <View style={styles.shelf}>
+    <Animated.View entering={FadeIn.duration(250)} style={styles.shelf}>
       {onPressHeader ? (
         <Pressable
           style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
@@ -84,7 +86,7 @@ export function PosterShelf({
           />
         )}
       />
-    </View>
+    </Animated.View>
   );
 }
 

@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/icon-symbol';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
+import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -145,7 +145,11 @@ export default function LibraryScreen() {
         )}
 
         {loading ? (
-          <ActivityIndicator style={{ marginTop: Spacing.four }} />
+          <ScrollView contentContainerStyle={styles.list} scrollEnabled={false}>
+            <ShelfSkeleton />
+            <ShelfSkeleton />
+            <ShelfSkeleton />
+          </ScrollView>
         ) : error ? (
           <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
             Couldn&apos;t load your library. Pull to refresh, or sign out and

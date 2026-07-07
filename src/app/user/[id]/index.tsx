@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { FollowButton } from '@/components/follow-button';
+import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing } from '@/constants/theme';
@@ -160,7 +161,11 @@ export default function UserProfileScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: '' }} />
       {profileQ.isLoading ? (
-        <ActivityIndicator style={{ marginTop: Spacing.five }} />
+        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <RowSkeleton key={i} />
+          ))}
+        </View>
       ) : (
         <FlatList
           data={diaryQ.data ?? []}

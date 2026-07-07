@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+
+import { PressScale } from '@/components/press-scale';
 
 import { FollowButton } from '@/components/follow-button';
 import { ThemedText } from '@/components/themed-text';
@@ -19,7 +21,7 @@ export function UserRow({ user }: { user: UserResult }) {
   const initial = (name.replace('@', '') || '?').charAt(0).toUpperCase();
 
   return (
-    <Pressable
+    <PressScale
       style={[styles.row, { backgroundColor: c.backgroundElement }]}
       onPress={() =>
         router.push({ pathname: '/user/[id]', params: { id: user.id } })
@@ -45,7 +47,7 @@ export function UserRow({ user }: { user: UserResult }) {
         ) : null}
       </ThemedView>
       <FollowButton userId={user.id} initialFollowing={user.is_following} />
-    </Pressable>
+    </PressScale>
   );
 }
 
