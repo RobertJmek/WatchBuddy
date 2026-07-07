@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
+import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
@@ -163,6 +164,14 @@ export default function SearchScreen() {
             (mode === 'people' && people.isFetching)) && (
             <ActivityIndicator style={styles.inputSpinner} />
           )}
+          {query.length > 0 && (
+            <Pressable
+              style={styles.inputClear}
+              hitSlop={8}
+              onPress={() => setQuery('')}>
+              <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
+            </Pressable>
+          )}
         </View>
 
         {mode === 'search' && search.error && (
@@ -265,11 +274,13 @@ const styles = StyleSheet.create({
   inputRow: { justifyContent: 'center' },
   input: {
     borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.five + Spacing.four,
     paddingVertical: Spacing.three,
     fontSize: 16,
   },
-  inputSpinner: { position: 'absolute', right: Spacing.three },
+  inputSpinner: { position: 'absolute', right: Spacing.five + Spacing.three },
+  inputClear: { position: 'absolute', right: Spacing.three },
   dimmed: { opacity: 0.4 },
   list: { gap: Spacing.two, paddingVertical: Spacing.three },
   row: {
