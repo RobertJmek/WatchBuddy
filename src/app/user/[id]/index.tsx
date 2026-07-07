@@ -189,30 +189,38 @@ export default function UserProfileScreen() {
         />
       </View>
 
-      {/* Taste card — what this person actually watches. */}
+      {/* Taste — what this person actually watches. Open, airy layout in the
+          app's eyebrow style rather than a boxed card. */}
       {stats && stats.topGenres.length > 0 && (
-        <View style={[styles.tasteCard, { backgroundColor: c.backgroundElement }]}>
+        <View style={styles.taste}>
           <View style={styles.genreChips}>
-            {stats.topGenres.slice(0, 5).map((g) => (
-              <View style={[styles.chip, { borderColor: c.border }]} key={g.name}>
+            {stats.topGenres.slice(0, 4).map((g) => (
+              <View
+                style={[styles.chip, { backgroundColor: c.backgroundElement }]}
+                key={g.name}>
                 <ThemedText type="small">{g.name}</ThemedText>
               </View>
             ))}
           </View>
-          <ThemedText type="small" style={{ color: c.textSecondary }}>
-            {stats.mediaSplit.movies} movies · {stats.mediaSplit.tv} shows watched
-          </ThemedText>
           {stats.topActors.length > 0 && (
-            <ThemedText type="small" numberOfLines={2}>
-              <ThemedText type="smallBold">Often watches </ThemedText>
-              {stats.topActors.slice(0, 3).map((a) => a.name).join(', ')}
-            </ThemedText>
+            <View style={styles.tasteBlock}>
+              <ThemedText type="meta" style={{ color: c.textSecondary }}>
+                Often watches
+              </ThemedText>
+              <ThemedText type="small" numberOfLines={1}>
+                {stats.topActors.slice(0, 3).map((a) => a.name).join(' · ')}
+              </ThemedText>
+            </View>
           )}
           {stats.topDirectors.length > 0 && (
-            <ThemedText type="small" numberOfLines={2}>
-              <ThemedText type="smallBold">Favorite directors </ThemedText>
-              {stats.topDirectors.slice(0, 3).map((d) => d.name).join(', ')}
-            </ThemedText>
+            <View style={styles.tasteBlock}>
+              <ThemedText type="meta" style={{ color: c.textSecondary }}>
+                Favorite directors
+              </ThemedText>
+              <ThemedText type="small" numberOfLines={1}>
+                {stats.topDirectors.slice(0, 3).map((d) => d.name).join(' · ')}
+              </ThemedText>
+            </View>
           )}
         </View>
       )}
@@ -327,19 +335,17 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 22, fontWeight: '800', color: Accent },
   recentHeading: { alignSelf: 'flex-start', marginTop: Spacing.three },
-  tasteCard: {
+  taste: {
     alignSelf: 'stretch',
-    borderRadius: 12,
-    padding: Spacing.three,
-    gap: Spacing.two,
-    marginTop: Spacing.two,
+    gap: Spacing.three,
+    marginTop: Spacing.three,
   },
-  genreChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  tasteBlock: { gap: Spacing.half },
+  genreChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: {
-    borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
   },
   shelves: { alignSelf: 'stretch', gap: Spacing.four, marginTop: Spacing.three },
   row: {
