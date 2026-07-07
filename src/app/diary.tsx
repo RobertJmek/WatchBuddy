@@ -172,11 +172,11 @@ export default function DiaryScreen() {
             value={query}
             onChangeText={setQuery}
           />
-          {query.length > 0 && (
+          {(
             <Pressable
               style={styles.searchClear}
               hitSlop={8}
-              onPress={() => setQuery('')}>
+              onPress={toggleSearch}>
               <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
             </Pressable>
           )}
