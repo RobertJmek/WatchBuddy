@@ -1,31 +1,19 @@
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { Text } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
-// SF Symbols render natively on iOS only; Android gets the `fallback` node.
-// Keep the map tiny — add glyphs as symbols are adopted.
-const FALLBACKS: Record<string, string> = {
-  magnifyingglass: '🔍',
-  xmark: '✕',
-  calendar: '📅',
-};
+// Feather line icons on both platforms, so iOS and Android render identically
+// and tint to any theme color. Add glyphs here as icons are adopted.
+const GLYPHS = {
+  magnifyingglass: 'search',
+  xmark: 'x',
+  calendar: 'calendar',
+} as const;
 
 type Props = {
-  name: SymbolViewProps['name'];
+  name: keyof typeof GLYPHS;
   size: number;
   tintColor: string;
 };
 
 export function IconSymbol({ name, size, tintColor }: Props) {
-  return (
-    <SymbolView
-      name={name}
-      size={size}
-      tintColor={tintColor}
-      fallback={
-        <Text style={{ fontSize: size - 2, color: tintColor }}>
-          {(typeof name === 'string' && FALLBACKS[name]) || '•'}
-        </Text>
-      }
-    />
-  );
+  return <Feather name={GLYPHS[name]} size={size} color={tintColor} />;
 }
