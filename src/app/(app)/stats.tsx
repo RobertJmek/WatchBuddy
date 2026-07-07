@@ -16,6 +16,13 @@ const ACTIVE = Accent;
 function formatDuration(minutes: number) {
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);
+  // Two most-significant units, scaling up through weeks and months (30d).
+  if (days >= 30) {
+    const months = Math.floor(days / 30);
+    const weeks = Math.floor((days % 30) / 7);
+    return weeks > 0 ? `${months}mo ${weeks}w` : `${months}mo ${days % 30}d`;
+  }
+  if (days >= 7) return `${Math.floor(days / 7)}w ${days % 7}d`;
   if (days > 0) return `${days}d ${hours}h`;
   const mins = minutes % 60;
   return `${hours}h ${mins}m`;
@@ -52,7 +59,7 @@ function BarRow({
         <View style={[styles.barFill, { flex: pct }]} />
         <View style={{ flex: 1 - pct }} />
       </View>
-      <ThemedText type="small" style={styles.barValue}>
+      <ThemedText type="small" style={styles.barValue} numberOfLines={1}>
         {value}
       </ThemedText>
     </View>
@@ -429,7 +436,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   barFill: { backgroundColor: ACTIVE, borderRadius: 5 },
-  barValue: { width: 28, textAlign: 'right' },
+  barValue: { minWidth: 40, textAlign: 'right' },
   personRow: {
     flexDirection: 'row',
     alignItems: 'center',
