@@ -72,11 +72,17 @@ async function imdbRating(imdbId: string | null): Promise<number | null> {
 // --- search -------------------------------------------------------------
 async function handleSearch(q: string) {
   if (!q?.trim()) return json({ results: [] });
-  const data = await tmdb('/search/multi', {
-    query: q,
-    include_adult: 'false',
-  });
-  const results = (data.results ?? [])
+  // One TMDB page is only 20 mixed results (often ~15 after dropping people),
+  // so pull the first three pages for a usefully deep list.
+  const pages = await Promise.all(
+    ['1', '2', '3'].map((page) =>
+      tmdb('/search/multi', { query: q, include_adult: 'false', page }).catch(
+        () => ({ results: [] }),
+      ),
+    ),
+  );
+  const results = pages
+    .flatMap((data: any) => data.results ?? [])
     .filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
     .map((r: any) => ({
       tmdb_id: r.id,
