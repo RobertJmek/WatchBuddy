@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { FollowButton } from '@/components/follow-button';
+import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { getLibraryFor, type LibraryEntry } from '@/lib/library';
 import { getProfileById } from '@/lib/profile';
 import { getFollowCounts, getFollowState } from '@/lib/social';
 import { getStats } from '@/lib/stats';
@@ -65,6 +67,10 @@ export default function UserProfileScreen() {
     queryKey: ['userDiary', id],
     queryFn: () => getDiary({ userId: id, limit: 12 }),
   });
+  const libraryQ = useQuery({
+    queryKey: ['userLibrary', id],
+    queryFn: () => getLibraryFor(id),
+  });
 
   // Optimistic follower count: shift by the difference between the button's
   // current state and the state we originally loaded.
@@ -77,6 +83,38 @@ export default function UserProfileScreen() {
     (countsQ.data?.followers ?? 0) +
     ((followingNow ? 1 : 0) - (initiallyFollowing ? 1 : 0));
   const following = countsQ.data?.following ?? 0;
+
+  // Library-derived shelves (entries arrive newest-updated first).
+  const toShelfItem = (e: LibraryEntry): PosterItem | null =>
+    e.title
+      ? {
+          key: e.id,
+          tmdb_id: e.title.tmdb_id,
+          media_type: e.title.media_type,
+          title: e.title.title,
+          poster_path: e.title.poster_path,
+        }
+      : null;
+  const shelfOf = (pred: (e: LibraryEntry) => boolean): PosterItem[] =>
+    (libraryQ.data ?? [])
+      .filter(pred)
+      .slice(0, 10)
+      .map(toShelfItem)
+      .filter((i): i is PosterItem => i !== null);
+  const watchingShelf = shelfOf((e) => e.status === 'watching');
+  const favoritesShelf = shelfOf((e) => e.is_favorite);
+  const completedShelf = shelfOf((e) => e.status === 'completed');
+
+  function openTitle(item: PosterItem) {
+    router.push({
+      pathname: '/title/[id]',
+      params: {
+        id: String(item.tmdb_id),
+        type: item.media_type,
+        name: item.title,
+      },
+    });
+  }
 
   const profile = profileQ.data;
   const name =
@@ -149,6 +187,46 @@ export default function UserProfileScreen() {
           value={String(Math.round((stats?.totalMinutes ?? 0) / 60))}
           label="Hours"
         />
+      </View>
+
+      {/* Taste card — what this person actually watches. */}
+      {stats && stats.topGenres.length > 0 && (
+        <View style={[styles.tasteCard, { backgroundColor: c.backgroundElement }]}>
+          <View style={styles.genreChips}>
+            {stats.topGenres.slice(0, 5).map((g) => (
+              <View style={[styles.chip, { borderColor: c.border }]} key={g.name}>
+                <ThemedText type="small">{g.name}</ThemedText>
+              </View>
+            ))}
+          </View>
+          <ThemedText type="small" style={{ color: c.textSecondary }}>
+            {stats.mediaSplit.movies} movies · {stats.mediaSplit.tv} shows watched
+          </ThemedText>
+          {stats.topActors.length > 0 && (
+            <ThemedText type="small" numberOfLines={2}>
+              <ThemedText type="smallBold">Often watches </ThemedText>
+              {stats.topActors.slice(0, 3).map((a) => a.name).join(', ')}
+            </ThemedText>
+          )}
+          {stats.topDirectors.length > 0 && (
+            <ThemedText type="small" numberOfLines={2}>
+              <ThemedText type="smallBold">Favorite directors </ThemedText>
+              {stats.topDirectors.slice(0, 3).map((d) => d.name).join(', ')}
+            </ThemedText>
+          )}
+        </View>
+      )}
+
+      <View style={styles.shelves}>
+        {watchingShelf.length > 0 && (
+          <PosterShelf title="Watching now" items={watchingShelf} onPressItem={openTitle} />
+        )}
+        {favoritesShelf.length > 0 && (
+          <PosterShelf title="Favorites" items={favoritesShelf} onPressItem={openTitle} />
+        )}
+        {completedShelf.length > 0 && (
+          <PosterShelf title="Recently completed" items={completedShelf} onPressItem={openTitle} />
+        )}
       </View>
 
       <ThemedText type="subtitle" style={styles.recentHeading}>
@@ -249,6 +327,21 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 22, fontWeight: '800', color: Accent },
   recentHeading: { alignSelf: 'flex-start', marginTop: Spacing.three },
+  tasteCard: {
+    alignSelf: 'stretch',
+    borderRadius: 12,
+    padding: Spacing.three,
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  genreChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  chip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  shelves: { alignSelf: 'stretch', gap: Spacing.four, marginTop: Spacing.three },
   row: {
     flexDirection: 'row',
     gap: Spacing.three,

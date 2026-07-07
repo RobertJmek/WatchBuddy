@@ -121,6 +121,15 @@ export default function ProfileScreen() {
           </ThemedText>
         </Pressable>
 
+        <Pressable
+          style={styles.link}
+          onPress={() =>
+            myId &&
+            router.push({ pathname: '/user/[id]', params: { id: myId } })
+          }>
+          <ThemedText type="subtitle">View my profile</ThemedText>
+          <ThemedText style={styles.chevron}>›</ThemedText>
+        </Pressable>
         <Pressable style={styles.link} onPress={() => router.push('/diary')}>
           <ThemedText type="subtitle">Diary</ThemedText>
           <ThemedText style={styles.chevron}>›</ThemedText>

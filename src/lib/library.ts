@@ -49,6 +49,22 @@ export async function getLibrary(): Promise<LibraryEntry[]> {
   return (data ?? []) as unknown as LibraryEntry[];
 }
 
+/**
+ * Another user's library, for the public profile shelves. Watch data is
+ * world-readable under RLS, so this is a plain parametrized read.
+ */
+export async function getLibraryFor(userId: string): Promise<LibraryEntry[]> {
+  const { data, error } = await supabase
+    .from('library_items')
+    .select(
+      'id, status, is_favorite, created_at, updated_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date)',
+    )
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as LibraryEntry[];
+}
+
 /** The current user's status for a title, or null if not in their library. */
 export async function getLibraryStatus(
   titleId: string,
