@@ -116,10 +116,12 @@ console.log(`Rendering WatchBuddy logo -> ${OUT}${WRITE ? '' : '  (preview)'}`);
 // Launcher / iOS icon: full-bleed gradient, opaque.
 render(svg({ bg: 'gradient', scale: 1.15 }), 1024, 'icon.png');
 
-// Android adaptive layers (mark sized up for the safe zone).
-render(svg({ bg: 'none', markColor: '#FFFFFF', scale: 1.4 }), 1024, 'android-icon-foreground.png');
+// Android adaptive layers. The launcher mask only shows the center ~66/108 of
+// the layer, so the mark must be *smaller* than on iOS to end up the same
+// apparent size: 0.8 here ≈ 1.15 * (66/108) with a little breathing room.
+render(svg({ bg: 'none', markColor: '#FFFFFF', scale: 0.8 }), 1024, 'android-icon-foreground.png');
 render(svg({ bg: 'gradient', scale: 1.15 }).replace(mark('#FFFFFF', 1.15), ''), 1024, 'android-icon-background.png');
-render(svg({ bg: 'none', markColor: '#FFFFFF', scale: 1.4 }), 1024, 'android-icon-monochrome.png');
+render(svg({ bg: 'none', markColor: '#FFFFFF', scale: 0.8 }), 1024, 'android-icon-monochrome.png');
 
 // Web favicon.
 render(svg({ bg: 'gradient', scale: 1.15 }), 48, 'favicon.png');

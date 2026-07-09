@@ -2,7 +2,7 @@
   "expo": {
     "name": "WatchBuddy",
     "slug": "watchbuddy",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "watchbuddy",
@@ -20,7 +20,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.watchbuddy",
-      "versionCode": 11
+      "versionCode": 12
     },
     "web": {
       "output": "static",
