@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   entityTypeFor,
@@ -177,8 +177,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   numOn: { backgroundColor: ACTIVE },
-  numSelected: { borderWidth: 2, borderColor: '#fff' },
-  numTextOn: { color: '#fff' },
+  numSelected: { borderWidth: 2, borderColor: AccentText },
+  numTextOn: { color: AccentText },
   review: {
     borderWidth: 1,
     borderRadius: Spacing.two,

@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -14,12 +15,13 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 
+import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -115,6 +117,13 @@ export default function DiaryScreen() {
       refetch();
     }, [refetch]),
   );
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   return (
     <ThemedView style={styles.container}>
@@ -315,14 +324,36 @@ export default function DiaryScreen() {
           keyExtractor={(e) => e.id}
           itemLayoutAnimation={LinearTransition.duration(200)}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={c.tint}
+              colors={[c.tint]}
+            />
+          }
           ListEmptyComponent={
-            <ThemedText style={styles.empty}>
-              {term
-                ? `No entries match “${query.trim()}”.`
-                : period === 'all'
-                  ? 'No watch history yet. Tick off episodes or log a movie.'
-                  : 'No watch history in this period.'}
-            </ThemedText>
+            term ? (
+              <EmptyState
+                icon="magnifyingglass"
+                title={`No entries match “${query.trim()}”`}
+                hint="Try a shorter title."
+              />
+            ) : (
+              <EmptyState
+                icon="book.closed"
+                title={
+                  period === 'all'
+                    ? 'No watch history yet'
+                    : 'Nothing in this period'
+                }
+                hint={
+                  period === 'all'
+                    ? 'Tick off episodes or log a movie to start your diary.'
+                    : 'Try a wider period.'
+                }
+              />
+            )
           }
           renderItem={({ item, index }) => (
             <Animated.View
@@ -447,7 +478,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 66,
     borderRadius: Spacing.one,
-    backgroundColor: '#0002',
+    backgroundColor: PlaceholderBg,
   },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   date: { opacity: 0.6 },

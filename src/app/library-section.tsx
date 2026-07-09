@@ -13,7 +13,7 @@ import { PressScale } from '@/components/press-scale';
 import { GridSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getLibrary, type LibraryStatus } from '@/lib/library';
 import { imageUrl } from '@/lib/tmdb';
@@ -80,7 +80,7 @@ export default function LibrarySectionScreen() {
                   width: cardW,
                   height: cardW * 1.5,
                   borderRadius: 4,
-                  backgroundColor: '#0002',
+                  backgroundColor: PlaceholderBg,
                   borderWidth: 1,
                   borderColor: 'rgba(0,0,0,0.35)',
                 }}

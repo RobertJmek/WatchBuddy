@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Spacing, Type } from '@/constants/theme';
+import { Accent, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 
@@ -96,9 +97,7 @@ export default function SignInScreen() {
               editable={!busy}
               onChangeText={setEmail}
             />
-            <Pressable style={styles.primaryBtn} onPress={handleSend} disabled={busy}>
-              <ThemedText style={styles.primaryText}>Send code</ThemedText>
-            </Pressable>
+            <Button title="Send code" onPress={handleSend} disabled={busy} />
           </>
         ) : (
           <>
@@ -115,9 +114,7 @@ export default function SignInScreen() {
               editable={!busy}
               onChangeText={setCode}
             />
-            <Pressable style={styles.primaryBtn} onPress={handleVerify} disabled={busy}>
-              <ThemedText style={styles.primaryText}>Verify & sign in</ThemedText>
-            </Pressable>
+            <Button title="Verify & sign in" onPress={handleVerify} disabled={busy} />
             <Pressable
               onPress={() => {
                 setCodeSent(false);
@@ -161,13 +158,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     fontSize: 16,
   },
-  primaryBtn: {
-    backgroundColor: Accent,
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  primaryText: { color: AccentText, fontWeight: '700', fontSize: 16 },
   secondaryBtn: {
     borderWidth: 1,
     borderRadius: Spacing.three,

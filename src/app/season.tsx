@@ -12,7 +12,7 @@ import {
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
 import {
   getEpisodeWatchCounts,
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: ACTIVE,
   },
-  seasonButtonText: { color: '#fff', fontWeight: '600' },
+  seasonButtonText: { color: AccentText, fontWeight: '600' },
   busy: { opacity: 0.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   check: {
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkOn: { backgroundColor: ACTIVE },
-  badgeOn: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  badgeOn: { color: AccentText, fontWeight: '700', fontSize: 13 },
   badgeOff: { color: 'transparent' },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   minus: {

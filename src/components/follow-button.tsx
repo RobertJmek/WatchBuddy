@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Accent } from '@/constants/theme';
+import { Accent, AccentText } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { follow, unfollow } from '@/lib/social';
 
@@ -61,7 +61,7 @@ export function FollowButton({
       ]}>
       <ThemedText
         type="smallBold"
-        style={{ color: following ? c.textSecondary : '#fff' }}>
+        style={{ color: following ? c.textSecondary : AccentText }}>
         {following ? 'Following' : 'Follow'}
       </ThemedText>
     </Pressable>

@@ -49,13 +49,14 @@ function BarRow({
   value: number;
   max: number;
 }) {
+  const c = useTheme();
   const pct = max > 0 ? Math.max(0.03, value / max) : 0;
   return (
     <View style={styles.barRow}>
       <ThemedText type="small" style={styles.barLabel} numberOfLines={1}>
         {label}
       </ThemedText>
-      <View style={styles.barTrack}>
+      <View style={[styles.barTrack, { backgroundColor: c.backgroundSelected }]}>
         <View style={[styles.barFill, { flex: pct }]} />
         <View style={{ flex: 1 - pct }} />
       </View>
@@ -431,7 +432,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 10,
     flexDirection: 'row',
-    backgroundColor: '#8883',
     borderRadius: 5,
     overflow: 'hidden',
   },

@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -10,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { ShelfSkeleton } from '@/components/skeleton';
@@ -50,6 +52,13 @@ export default function LibraryScreen() {
     error,
     refetch,
   } = useQuery({ queryKey: ['library'], queryFn: getLibrary });
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
@@ -160,30 +169,50 @@ export default function LibraryScreen() {
             <ShelfSkeleton />
             <ShelfSkeleton />
           </ScrollView>
-        ) : error ? (
-          <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
-            Couldn&apos;t load your library. Pull to refresh, or sign out and
-            back in.
-          </ThemedText>
-        ) : shelves.length === 0 ? (
-          <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
-            {term
-              ? `No titles match “${query.trim()}”.`
-              : 'Nothing yet. Find something in Search and set a status.'}
-          </ThemedText>
         ) : (
-          <ScrollView contentContainerStyle={styles.list}>
-            {shelves.map((s) => (
-              <PosterShelf
-                key={s.key}
-                title={s.label}
-                items={s.items}
-                onPressItem={openTitle}
-                onPressHeader={() =>
-                  router.push({ pathname: '/library-section', params: s.params })
-                }
+          <ScrollView
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={c.tint}
+                colors={[c.tint]}
               />
-            ))}
+            }>
+            {error ? (
+              <EmptyState
+                icon="film"
+                title="Couldn't load your library"
+                hint="Pull to refresh, or sign out and back in."
+              />
+            ) : shelves.length === 0 ? (
+              term ? (
+                <EmptyState
+                  icon="magnifyingglass"
+                  title={`No titles match “${query.trim()}”`}
+                  hint="Try a shorter title."
+                />
+              ) : (
+                <EmptyState
+                  icon="film"
+                  title="Nothing here yet"
+                  hint="Find something in Search and set a status."
+                />
+              )
+            ) : (
+              shelves.map((s) => (
+                <PosterShelf
+                  key={s.key}
+                  title={s.label}
+                  items={s.items}
+                  onPressItem={openTitle}
+                  onPressHeader={() =>
+                    router.push({ pathname: '/library-section', params: s.params })
+                  }
+                />
+              ))
+            )}
           </ScrollView>
         )}
       </SafeAreaView>

@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ReviewItem } from '@/lib/ratings';
 
@@ -70,13 +70,13 @@ export function ReviewRow({ review }: { review: ReviewItem }) {
 const styles = StyleSheet.create({
   card: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.two },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#0002' },
+  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: PlaceholderBg },
   avatarFallback: {
     backgroundColor: Accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontSize: 15, lineHeight: 19, fontWeight: '700' },
+  avatarInitial: { color: AccentText, fontSize: 15, lineHeight: 19, fontWeight: '700' },
   who: { flex: 1 },
   score: {
     width: 34,

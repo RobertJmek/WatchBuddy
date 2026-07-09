@@ -5,9 +5,11 @@ import { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/button';
+import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Danger, Spacing } from '@/constants/theme';
+import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getMyProfile } from '@/lib/profile';
@@ -113,42 +115,39 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        <Pressable
-          style={[styles.editBtn, { borderColor: c.border }]}
-          onPress={() => router.push('/edit-profile')}>
-          <ThemedText type="smallBold" style={{ color: Accent }}>
-            Edit Profile
-          </ThemedText>
-        </Pressable>
+        <Button
+          title="Edit Profile"
+          variant="outline"
+          onPress={() => router.push('/edit-profile')}
+        />
 
         <Pressable
-          style={styles.link}
+          style={[styles.link, { borderBottomColor: c.border }]}
           onPress={() =>
             myId &&
             router.push({ pathname: '/user/[id]', params: { id: myId } })
           }>
           <ThemedText type="subtitle">View my profile</ThemedText>
-          <ThemedText style={styles.chevron}>›</ThemedText>
+          <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
         </Pressable>
-        <Pressable style={styles.link} onPress={() => router.push('/diary')}>
+        <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={() => router.push('/diary')}>
           <ThemedText type="subtitle">Diary</ThemedText>
-          <ThemedText style={styles.chevron}>›</ThemedText>
+          <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
         </Pressable>
-        <Pressable style={styles.link} onPress={cycle}>
+        <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={cycle}>
           <ThemedText type="subtitle">Theme</ThemedText>
           <ThemedView style={styles.value}>
             <ThemedText type="small">{THEME_LABEL[pref]}</ThemedText>
-            <ThemedText style={styles.chevron}>›</ThemedText>
+            <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
           </ThemedView>
         </Pressable>
 
-        <Pressable
-          style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
-          onPress={signOut}>
-          <ThemedText type="smallBold" style={styles.signOutText}>
-            Sign out
-          </ThemedText>
-        </Pressable>
+        <Button
+          title="Sign out"
+          variant="danger"
+          style={{ marginTop: Spacing.two }}
+          onPress={signOut}
+        />
       </SafeAreaView>
     </ThemedView>
   );
@@ -163,13 +162,13 @@ const styles = StyleSheet.create({
   },
   heading: { marginTop: Spacing.three },
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#0002' },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: PlaceholderBg },
   avatarFallback: {
     backgroundColor: Accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontSize: 26, lineHeight: 32, fontWeight: '700' },
+  avatarInitial: { color: AccentText, fontSize: 26, lineHeight: 32, fontWeight: '700' },
   identityText: { flex: 1, gap: Spacing.half },
   bio: { lineHeight: 21 },
   counts: {
@@ -179,35 +178,17 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   countItem: { flexDirection: 'row', alignItems: 'center' },
-  editBtn: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
   link: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: Spacing.three,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#8884',
   },
-  chevron: { opacity: 0.4, fontSize: 20 },
   value: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
     backgroundColor: 'transparent',
   },
-  signOutBtn: {
-    marginTop: Spacing.two,
-    borderWidth: 1,
-    borderColor: Danger,
-    borderRadius: 999,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  signOutText: { color: Danger },
-  pressed: { opacity: 0.6 },
 });

@@ -14,6 +14,9 @@ export const Accent = '#0D9488';
 export const AccentText = '#ffffff';
 export const Danger = '#E5484D';
 
+/** Neutral fill behind avatars/posters while their image loads (works on any theme). */
+export const PlaceholderBg = '#0002';
+
 export const Colors = {
   // Daylight matinee — warm paper, not clinical white.
   light: {

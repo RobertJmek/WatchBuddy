@@ -2,14 +2,21 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { FollowButton } from '@/components/follow-button';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getLibraryFor, type LibraryEntry } from '@/lib/library';
@@ -104,6 +111,19 @@ export default function UserProfileScreen() {
   const watchingShelf = shelfOf((e) => e.status === 'watching');
   const favoritesShelf = shelfOf((e) => e.is_favorite);
   const completedShelf = shelfOf((e) => e.status === 'completed');
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      profileQ.refetch(),
+      countsQ.refetch(),
+      statsQ.refetch(),
+      diaryQ.refetch(),
+      libraryQ.refetch(),
+    ]);
+    setRefreshing(false);
+  };
 
   function openTitle(item: PosterItem) {
     router.push({
@@ -258,6 +278,14 @@ export default function UserProfileScreen() {
           keyExtractor={(e) => e.id}
           ListHeaderComponent={header}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={c.tint}
+              colors={[c.tint]}
+            />
+          }
           ListEmptyComponent={
             !diaryQ.isLoading ? (
               <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
@@ -309,9 +337,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: Spacing.three, gap: Spacing.two },
   header: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.three },
-  avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#0002' },
+  avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: PlaceholderBg },
   avatarFallback: { backgroundColor: Accent, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#fff', fontSize: 36, lineHeight: 44, fontWeight: '700' },
+  avatarInitial: { color: AccentText, fontSize: 36, lineHeight: 44, fontWeight: '700' },
   bio: { textAlign: 'center', lineHeight: 21 },
   counts: {
     flexDirection: 'row',
@@ -355,7 +383,7 @@ const styles = StyleSheet.create({
     padding: Spacing.two,
     borderRadius: Spacing.three,
   },
-  poster: { width: 52, height: 78, borderRadius: Spacing.one, backgroundColor: '#0002' },
+  poster: { width: 52, height: 78, borderRadius: Spacing.one, backgroundColor: PlaceholderBg },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   date: { opacity: 0.6 },
   empty: { textAlign: 'center', marginTop: Spacing.five },

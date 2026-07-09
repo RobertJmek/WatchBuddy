@@ -7,7 +7,7 @@ import { PressScale } from '@/components/press-scale';
 import { FollowButton } from '@/components/follow-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { UserResult } from '@/lib/social';
 
@@ -59,12 +59,12 @@ const styles = StyleSheet.create({
     padding: Spacing.two,
     borderRadius: Spacing.three,
   },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#0002' },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: PlaceholderBg },
   avatarFallback: {
     backgroundColor: Accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontSize: 18, lineHeight: 22, fontWeight: '700' },
+  avatarInitial: { color: AccentText, fontSize: 18, lineHeight: 22, fontWeight: '700' },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
 });

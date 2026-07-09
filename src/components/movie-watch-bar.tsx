@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import {
   getMovieWatches,
   logMovieWatch,
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     backgroundColor: ACTIVE,
   },
   buttonBusy: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  buttonText: { color: AccentText, fontWeight: '600' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   undo: { color: ACTIVE },
 });

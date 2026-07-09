@@ -16,7 +16,7 @@ import {
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Danger, PlaceholderBg, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   getMyProfile,
@@ -197,13 +197,13 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.two },
   avatarSection: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#0002' },
+  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: PlaceholderBg },
   avatarFallback: {
     backgroundColor: Accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontSize: 38, lineHeight: 46, fontWeight: '700' },
+  avatarInitial: { color: AccentText, fontSize: 38, lineHeight: 46, fontWeight: '700' },
   input: {
     fontFamily: Type.body,
     borderRadius: Spacing.three,

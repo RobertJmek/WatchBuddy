@@ -6,10 +6,16 @@ const GLYPHS = {
   magnifyingglass: 'search',
   xmark: 'x',
   calendar: 'calendar',
+  'chevron.right': 'chevron-right',
+  film: 'film',
+  'book.closed': 'book-open',
+  'person.2': 'users',
 } as const;
 
+export type IconName = keyof typeof GLYPHS;
+
 type Props = {
-  name: keyof typeof GLYPHS;
+  name: IconName;
   size: number;
   tintColor: string;
 };

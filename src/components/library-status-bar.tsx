@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import {
   getLibraryStatus,
   LIBRARY_STATUSES,
@@ -78,5 +78,5 @@ const styles = StyleSheet.create({
     borderColor: ACTIVE,
   },
   chipActive: { backgroundColor: ACTIVE },
-  chipTextActive: { color: '#fff' },
+  chipTextActive: { color: AccentText },
 });

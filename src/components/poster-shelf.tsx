@@ -2,9 +2,10 @@ import { Image } from 'expo-image';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { imageUrl } from '@/lib/tmdb';
 
@@ -65,7 +66,7 @@ export function PosterShelf({
             <ThemedText type="meta" style={{ color: c.textSecondary }}>
               {items.length}
             </ThemedText>
-            <ThemedText style={styles.chevron}>›</ThemedText>
+            <IconSymbol name="chevron.right" size={18} tintColor={c.tint} />
           </View>
         </Pressable>
       ) : (
@@ -100,14 +101,13 @@ const styles = StyleSheet.create({
   headerLabel: {},
   pressed: { opacity: 0.6 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  chevron: { color: Accent, fontSize: 22, fontWeight: '600' },
   row: { gap: Spacing.two, paddingRight: Spacing.three },
   card: { width: 110 },
   cardPoster: {
     width: 110,
     height: 165,
     borderRadius: 4,
-    backgroundColor: '#0002',
+    backgroundColor: PlaceholderBg,
     // a thin dark frame reads as a film plate on both themes
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.35)',

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { fetchAllEpisodes, type SeasonRow } from '@/lib/tmdb';
 import { logManyEpisodeWatches } from '@/lib/watches';
 
@@ -69,5 +69,5 @@ const styles = StyleSheet.create({
     backgroundColor: ACTIVE,
   },
   busy: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600' },
+  buttonText: { color: AccentText, fontWeight: '600' },
 });

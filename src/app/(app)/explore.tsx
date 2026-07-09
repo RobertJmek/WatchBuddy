@@ -14,13 +14,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
+import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserRow } from '@/components/user-row';
-import { Danger, Spacing } from '@/constants/theme';
+import { Danger, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { searchUsers } from '@/lib/social';
@@ -202,9 +203,11 @@ export default function SearchScreen() {
             style={people.isFetching ? styles.dimmed : undefined}
             ListEmptyComponent={
               !people.isFetching ? (
-                <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
-                  No people found.
-                </ThemedText>
+                <EmptyState
+                  icon="person.2"
+                  title="No people found"
+                  hint="Usernames match from the first letters."
+                />
               ) : null
             }
             renderItem={({ item }) => <UserRow user={item} />}
@@ -220,9 +223,11 @@ export default function SearchScreen() {
             style={search.isFetching ? styles.dimmed : undefined}
             ListEmptyComponent={
               !search.isFetching ? (
-                <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
-                  No results.
-                </ThemedText>
+                <EmptyState
+                  icon="magnifyingglass"
+                  title="No results"
+                  hint="Check the spelling or try the original title."
+                />
               ) : null
             }
             renderItem={({ item }) => (
@@ -294,7 +299,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 78,
     borderRadius: 4,
-    backgroundColor: '#0002',
+    backgroundColor: PlaceholderBg,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.35)',
   },

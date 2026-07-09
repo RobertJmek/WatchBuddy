@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { FavoriteButton } from '@/components/favorite-button';
+import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryStatusBar } from '@/components/library-status-bar';
 import { MovieWatchBar } from '@/components/movie-watch-bar';
 import { RatingBar } from '@/components/rating-bar';
@@ -234,9 +235,11 @@ export default function TitleDetailScreen() {
                           {s.name ?? `Season ${s.season_number}`}
                           {s.episode_count ? ` · ${s.episode_count} eps` : ''}
                         </ThemedText>
-                        <ThemedText style={[styles.chevron, { color: c.textSecondary }]}>
-                          ›
-                        </ThemedText>
+                        <IconSymbol
+                          name="chevron.right"
+                          size={18}
+                          tintColor={c.textSecondary}
+                        />
                       </Pressable>
                     ))}
                 </View>
@@ -362,6 +365,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.two,
   },
-  chevron: { fontSize: 20 },
   error: { color: Danger, marginTop: Spacing.six, textAlign: 'center' },
 });
