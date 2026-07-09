@@ -2,8 +2,8 @@
 
 A cross-platform mobile app to track the movies and TV series you watch, turn that
 history into rich statistics, and follow what your friends are watching and rating.
-Built personal-core-first on a social-ready foundation, with a future path to
-importing your history from TV Time.
+Built personal-core-first on a social-ready foundation, with a ready-to-use importer
+for your TV Time history.
 
 > React Native + Expo + Supabase. iOS and Android from one codebase.
 
@@ -30,7 +30,8 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 ## Features
 
 ### Discover
-- **Live search-as-you-type** across movies and TV (TMDB), backed by a server-side cache.
+- **Live search-as-you-type** across movies and TV (TMDB), backed by a server-side cache;
+  results span multiple TMDB pages for deep matches.
 - **Trending this week** feed shown by default on the Search tab as horizontal poster shelves.
 - **People search:** type `@` to find other users by username or name, and follow them.
 - Full **title detail** — poster, overview, TMDB / IMDb / WatchBuddy ratings, and seasons/episodes.
@@ -42,7 +43,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Episode-level check-off**, with **rewatch logging per episode, per season, and per series**.
 - **Movie watch logging** (rewatches included).
 - A dated **Diary** of everything you've watched, filterable by **day / week / month / year /
-  custom range**.
+  custom range**, with **editable watch dates** (grouped episode entries move together).
+- **Search inside Library and Diary** — a toggleable title search that composes with the
+  existing status/period filters.
 - **10-point ratings with optional reviews** for movies and shows.
 
 ### Statistics (its own tab)
@@ -56,7 +59,8 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 ### Social & community
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
 - **Public profiles** (`/user/[id]`) — avatar, bio, follower counts, a compact stats summary,
-  and recent activity.
+  a **taste summary** (top genres + favorite directors), and **Watching now / Favorites /
+  Recently completed** shelves alongside recent activity.
 - **Community ratings per title** — an aggregate **WatchBuddy score** (mean + count) shown
   beside the TMDB/IMDb badges.
 - **Community reviews** — read everyone's written reviews on a title, with **people you follow
@@ -68,6 +72,7 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Appearance** — light / dark / system theme toggle (persisted), teal accent throughout.
 - **Offline** — read data (Library / Diary / Stats / profiles) is cached and persisted, so the
   app cold-opens and browses offline.
+- **Polish** — press/entry animations and skeleton loading states across all screens.
 
 ---
 
@@ -101,6 +106,7 @@ src/
                            follow button, user row, …)
   lib/                     supabase client, query client, TMDB client, and data modules
                            (library, watches, ratings, stats, social, profile, …)
+scripts/                   TV Time importer (import_tvtime.py + docs) and app-icon generator
 supabase/
   migrations/              SQL schema + RLS (0001 init, 0002 favorites, 0003 avatars,
                            0004 follows + public reads)
@@ -185,6 +191,16 @@ npx expo run:ios --configuration Release --device
 
 ---
 
+## Import your TV Time history
+
+A Python script imports your TV Time GDPR export — followed shows (with inferred statuses),
+every episode watch, rewatches, movie watches, and favorites — matching titles to TMDB and
+skipping anything already imported (safe to re-run). It runs against your own Supabase project
+using `SUPABASE_SERVICE_ROLE_KEY`, `TMDB_API_KEY`, and `WATCHBUDDY_USER_ID` env vars.
+See **[`scripts/import_tvtime.md`](scripts/import_tvtime.md)** for the full walkthrough.
+
+---
+
 ## Verify it works
 ```bash
 npx tsc --noEmit                 # type-check
@@ -195,8 +211,9 @@ npx expo export --platform ios   # bundle without a device
 
 ## Status
 
-v1 personal core is complete — tracking, a full statistics tab, offline read cache, and email +
-Google auth — on a teal light/dark design. The **social layer** is live: user search, follows,
-public profiles, and community ratings/reviews per title.
+The personal core is complete — tracking, library/diary search, editable watch dates, a full
+statistics tab, offline read cache, and email + Google auth — on a teal light/dark design.
+The **social layer** is live: user search, follows, rich public profiles (taste summary +
+shelves), and community ratings/reviews per title. The **TV Time importer** has shipped.
 
-**Planned next:** Apple sign-in and the TV Time CSV importer.
+**Planned next:** Apple sign-in, over-the-air updates (EAS Update), and store publishing.
