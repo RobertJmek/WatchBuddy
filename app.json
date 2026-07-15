@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.anonymous.watchbuddy"
+      "bundleIdentifier": "com.robertjmek.watchbuddy"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.watchbuddy",
+      "package": "com.robertjmek.watchbuddy",
       "versionCode": 13
     },
     "web": {
