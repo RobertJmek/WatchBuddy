@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -25,13 +24,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Accent, Danger, Glow, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
-import {
-  fetchTitle,
-  imageUrl,
-  type MediaType,
-  type SeasonRow,
-  type TitleRow,
-} from '@/lib/tmdb';
+import { imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
 
 export default function TitleDetailScreen() {
   const router = useRouter();
@@ -42,29 +35,11 @@ export default function TitleDetailScreen() {
     name?: string;
   }>();
 
-  const [title, setTitle] = useState<TitleRow | null>(null);
-  const [seasons, setSeasons] = useState<SeasonRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const data = await fetchTitle(Number(id), type);
-        if (!active) return;
-        setTitle(data.title);
-        setSeasons(data.seasons ?? []);
-      } catch (e) {
-        if (active) setError(String(e));
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [id, type]);
+  const titleQ = useQuery(titleQueryOptions(Number(id), type));
+  const title = titleQ.data?.title ?? null;
+  const seasons = titleQ.data?.seasons ?? [];
+  const loading = titleQ.isLoading;
+  const error = titleQ.error ? String(titleQ.error) : null;
 
   const year = title?.release_date?.slice(0, 4);
 

@@ -87,6 +87,57 @@ export function fetchTitle(tmdbId: number, mediaType: MediaType) {
   });
 }
 
+// Mirrors the edge function's cache gate (TITLE_CACHE_TTL_HOURS, default 168h).
+const TITLE_CACHE_TTL_MS = 168 * 3600_000;
+
+/**
+ * Read-through title fetch: serve straight from the Postgres cache when fresh
+ * (a fast PostgREST read — no edge-function cold start), falling back to the
+ * tmdb-proxy function only for missing/stale rows.
+ */
+export async function getTitle(
+  tmdbId: number,
+  mediaType: MediaType,
+): Promise<{ title: TitleRow; seasons: SeasonRow[] }> {
+  const { data: cached } = await supabase
+    .from('titles')
+    .select('*')
+    .eq('tmdb_id', tmdbId)
+    .eq('media_type', mediaType)
+    .maybeSingle();
+
+  if (cached) {
+    const fresh =
+      Date.now() - new Date(cached.cached_at).getTime() < TITLE_CACHE_TTL_MS;
+    // Same backfill rule as the server: a row with a known imdb_id but no
+    // rating yet should go through the function so OMDb can fill it in.
+    const couldBackfillImdb = !!cached.imdb_id && cached.imdb_rating == null;
+    if (fresh && !couldBackfillImdb) {
+      if (mediaType !== 'tv') return { title: cached, seasons: [] };
+      const { data: seasons } = await supabase
+        .from('seasons')
+        .select('*')
+        .eq('title_id', cached.id)
+        .order('season_number');
+      return { title: cached, seasons: seasons ?? [] };
+    }
+  }
+
+  return fetchTitle(tmdbId, mediaType);
+}
+
+/**
+ * Shared React Query options for title details, so the detail screen and
+ * poster prefetches hit the same cache entry.
+ */
+export function titleQueryOptions(tmdbId: number, mediaType: MediaType) {
+  return {
+    queryKey: ['title', mediaType, tmdbId] as const,
+    queryFn: () => getTitle(tmdbId, mediaType),
+    staleTime: 60 * 60 * 1000, // in-memory hour; the DB cache covers the rest
+  };
+}
+
 export type EpisodeRow = {
   id: string;
   title_id: string;
@@ -112,9 +163,8 @@ export async function fetchAllEpisodes(
   tmdbId: number,
   seasonNumbers: number[],
 ): Promise<EpisodeRow[]> {
-  const all: EpisodeRow[] = [];
-  for (const n of seasonNumbers) {
-    all.push(...(await fetchSeason(tmdbId, n)));
-  }
-  return all;
+  const perSeason = await Promise.all(
+    seasonNumbers.map((n) => fetchSeason(tmdbId, n)),
+  );
+  return perSeason.flat();
 }

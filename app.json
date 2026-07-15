@@ -2,7 +2,7 @@
   "expo": {
     "name": "WatchBuddy",
     "slug": "watchbuddy",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "watchbuddy",
@@ -24,7 +24,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.robertjmek.watchbuddy",
-      "versionCode": 13
+      "versionCode": 14
     },
     "web": {
       "output": "static",

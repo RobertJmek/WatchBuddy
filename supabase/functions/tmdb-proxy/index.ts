@@ -192,76 +192,87 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
     .single();
   if (error) throw new Error(`upsert title: ${error.message}`);
 
-  // genres
-  const genres = detail.genres ?? [];
-  if (genres.length) {
-    await admin.from('genres').upsert(genres, { onConflict: 'id' });
-    await admin.from('title_genres').upsert(
-      genres.map((g: any) => ({ title_id: title.id, genre_id: g.id })),
-      { onConflict: 'title_id,genre_id' },
-    );
-  }
-
-  // credits: top cast + directors
-  const cast = (detail.credits?.cast ?? []).slice(0, 15);
-  const directors = (detail.credits?.crew ?? []).filter(
-    (c: any) => c.job === 'Director',
-  );
-  const people = [...cast, ...directors];
-  if (people.length) {
-    await admin.from('people').upsert(
-      people.map((p: any) => ({
-        tmdb_id: p.id,
-        name: p.name,
-        profile_path: p.profile_path ?? null,
-      })),
-      { onConflict: 'tmdb_id' },
-    );
-    const { data: peopleRows } = await admin
-      .from('people')
-      .select('id, tmdb_id')
-      .in('tmdb_id', people.map((p: any) => p.id));
-    const idByTmdb = new Map(peopleRows?.map((r) => [r.tmdb_id, r.id]));
-    const credits = [
-      ...cast.map((c: any) => ({
-        title_id: title.id,
-        person_id: idByTmdb.get(c.id),
-        department: 'cast',
-        job: 'Actor',
-        role: c.character ?? null,
-        sort_order: c.order ?? null,
-      })),
-      ...directors.map((c: any) => ({
-        title_id: title.id,
-        person_id: idByTmdb.get(c.id),
-        department: 'crew',
-        job: 'Director',
-        role: null,
-        sort_order: null,
-      })),
-    ].filter((c) => c.person_id);
-    if (credits.length) {
-      await admin
-        .from('credits')
-        .upsert(credits, { onConflict: 'title_id,person_id,job' });
+  // The response only needs the title (+ seasons below); genres/credits/networks
+  // exist for statistics SQL, so they're written after responding.
+  const enrich = async () => {
+    // genres
+    const genres = detail.genres ?? [];
+    if (genres.length) {
+      await admin.from('genres').upsert(genres, { onConflict: 'id' });
+      await admin.from('title_genres').upsert(
+        genres.map((g: any) => ({ title_id: title.id, genre_id: g.id })),
+        { onConflict: 'title_id,genre_id' },
+      );
     }
-  }
 
-  // networks (tv)
-  const networks = detail.networks ?? [];
-  if (networks.length) {
-    await admin.from('networks').upsert(
-      networks.map((n: any) => ({
-        id: n.id,
-        name: n.name,
-        logo_path: n.logo_path ?? null,
-      })),
-      { onConflict: 'id' },
+    // credits: top cast + directors
+    const cast = (detail.credits?.cast ?? []).slice(0, 15);
+    const directors = (detail.credits?.crew ?? []).filter(
+      (c: any) => c.job === 'Director',
     );
-    await admin.from('title_networks').upsert(
-      networks.map((n: any) => ({ title_id: title.id, network_id: n.id })),
-      { onConflict: 'title_id,network_id' },
-    );
+    const people = [...cast, ...directors];
+    if (people.length) {
+      await admin.from('people').upsert(
+        people.map((p: any) => ({
+          tmdb_id: p.id,
+          name: p.name,
+          profile_path: p.profile_path ?? null,
+        })),
+        { onConflict: 'tmdb_id' },
+      );
+      const { data: peopleRows } = await admin
+        .from('people')
+        .select('id, tmdb_id')
+        .in('tmdb_id', people.map((p: any) => p.id));
+      const idByTmdb = new Map(peopleRows?.map((r) => [r.tmdb_id, r.id]));
+      const credits = [
+        ...cast.map((c: any) => ({
+          title_id: title.id,
+          person_id: idByTmdb.get(c.id),
+          department: 'cast',
+          job: 'Actor',
+          role: c.character ?? null,
+          sort_order: c.order ?? null,
+        })),
+        ...directors.map((c: any) => ({
+          title_id: title.id,
+          person_id: idByTmdb.get(c.id),
+          department: 'crew',
+          job: 'Director',
+          role: null,
+          sort_order: null,
+        })),
+      ].filter((c) => c.person_id);
+      if (credits.length) {
+        await admin
+          .from('credits')
+          .upsert(credits, { onConflict: 'title_id,person_id,job' });
+      }
+    }
+
+    // networks (tv)
+    const networks = detail.networks ?? [];
+    if (networks.length) {
+      await admin.from('networks').upsert(
+        networks.map((n: any) => ({
+          id: n.id,
+          name: n.name,
+          logo_path: n.logo_path ?? null,
+        })),
+        { onConflict: 'id' },
+      );
+      await admin.from('title_networks').upsert(
+        networks.map((n: any) => ({ title_id: title.id, network_id: n.id })),
+        { onConflict: 'title_id,network_id' },
+      );
+    }
+  };
+  // Keep the isolate alive past the response while enrichment finishes.
+  try {
+    // @ts-ignore EdgeRuntime is provided by the Supabase Edge runtime
+    EdgeRuntime.waitUntil(enrich().catch((e) => console.error('enrich:', e)));
+  } catch {
+    enrich().catch((e) => console.error('enrich:', e));
   }
 
   // seasons (tv) — episodes are fetched on demand via action 'season'

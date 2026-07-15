@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -25,7 +25,13 @@ import { Danger, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { searchUsers } from '@/lib/social';
-import { getTrending, imageUrl, searchTitles, type SearchResult } from '@/lib/tmdb';
+import {
+  getTrending,
+  imageUrl,
+  searchTitles,
+  titleQueryOptions,
+  type SearchResult,
+} from '@/lib/tmdb';
 
 const MIN_CHARS = 3;
 const DEBOUNCE_MS = 500;
@@ -53,9 +59,14 @@ function ResultRow({
   bg: string;
   router: ReturnType<typeof useRouter>;
 }) {
+  const queryClient = useQueryClient();
   return (
     <PressScale
       style={[styles.row, { backgroundColor: bg }]}
+      // Warm the detail cache while the finger is still down.
+      onPressIn={() =>
+        queryClient.prefetchQuery(titleQueryOptions(item.tmdb_id, item.media_type))
+      }
       onPress={() =>
         router.push({
           pathname: '/title/[id]',

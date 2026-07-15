@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -7,7 +8,7 @@ import { PressScale } from '@/components/press-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { imageUrl } from '@/lib/tmdb';
+import { imageUrl, titleQueryOptions } from '@/lib/tmdb';
 
 export type PosterItem = {
   key: string;
@@ -20,12 +21,14 @@ export type PosterItem = {
 export function PosterCard({
   posterPath,
   onPress,
+  onPressIn,
 }: {
   posterPath: string | null;
   onPress: () => void;
+  onPressIn?: () => void;
 }) {
   return (
-    <PressScale style={styles.card} onPress={onPress}>
+    <PressScale style={styles.card} onPress={onPress} onPressIn={onPressIn}>
       <Image
         style={styles.cardPoster}
         source={{ uri: imageUrl(posterPath, 'w342') ?? undefined }}
@@ -53,6 +56,7 @@ export function PosterShelf({
   onPressHeader?: () => void;
 }) {
   const c = useTheme();
+  const queryClient = useQueryClient();
   if (items.length === 0) return null;
 
   return (
@@ -84,6 +88,12 @@ export function PosterShelf({
           <PosterCard
             posterPath={item.poster_path}
             onPress={() => onPressItem(item)}
+            // Warm the detail cache while the finger is still down.
+            onPressIn={() =>
+              queryClient.prefetchQuery(
+                titleQueryOptions(item.tmdb_id, item.media_type),
+              )
+            }
           />
         )}
       />
