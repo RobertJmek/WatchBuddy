@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.robertjmek.watchbuddy"
+      "bundleIdentifier": "com.robertjmek.watchbuddy",
+      "appleTeamId": "[redacted]",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -52,6 +56,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5751393f-b11d-41c0-921e-2f48afe154e7"
+      }
+    },
+    "owner": "robertjmek"
   }
 }

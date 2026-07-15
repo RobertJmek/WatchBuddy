@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "production": {
+      "autoIncrement": false,
+      "ios": {
+        "credentialsSource": "local"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://unasguwyjwovxjwjmrkx.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_uvEYRAxzFuivuDJmeDoYJA_3pukSagB"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "[redacted]"
+      }
+    }
+  }
+}

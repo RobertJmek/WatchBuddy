@@ -43,3 +43,7 @@ example
 # generated native folders
 /ios
 /android
+
+# iOS signing credentials (never commit)
+credentials/
+credentials.json
