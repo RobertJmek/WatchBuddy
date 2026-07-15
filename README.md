@@ -177,8 +177,9 @@ cd android && ./gradlew assembleRelease
 # iOS — a standalone Release build installed over the cable (free Apple ID: same ~7-day expiry)
 npx expo run:ios --configuration Release --device
 ```
-> iOS has no freely-sideloadable equivalent of an APK. A shareable, longer-lived install needs a
-> paid Apple Developer account + TestFlight (e.g. via EAS Build).
+> iOS has no freely-sideloadable equivalent of an APK. iOS builds now ship through
+> **TestFlight** (EAS cloud build signed with a borrowed distribution certificate; 90-day
+> builds) — see **[`docs/ios-testflight.md`](docs/ios-testflight.md)** for the full pipeline.
 
 > **Gradle 9 / Android builds:** React Native pins an old `foojay-resolver-convention` plugin that
 > breaks on the Gradle 9 wrapper it ships (`JvmVendorSpec … IBM_SEMERU`). A `patch-package` patch
@@ -215,5 +216,6 @@ The personal core is complete — tracking, library/diary search, editable watch
 statistics tab, offline read cache, and email + Google auth — on a teal light/dark design.
 The **social layer** is live: user search, follows, rich public profiles (taste summary +
 shelves), and community ratings/reviews per title. The **TV Time importer** has shipped.
+iOS distribution moved to **TestFlight** (see [`docs/ios-testflight.md`](docs/ios-testflight.md)).
 
-**Planned next:** Apple sign-in, over-the-air updates (EAS Update), and store publishing.
+**Planned next:** Apple sign-in, over-the-air updates (EAS Update), and App Store publishing.
