@@ -316,7 +316,29 @@ async function handleSeason(tmdbId: number, seasonNumber: number) {
     .single();
   if (!season) return json({ error: 'Season not cached yet' }, 409);
 
-  const data = await tmdb(`/tv/${tmdbId}/season/${seasonNumber}`);
+  // Cache gate: serve stored episodes while fresh, and fall back to them
+  // (stale) if TMDB is unreachable — episode metadata barely changes.
+  const { data: cachedEps } = await admin
+    .from('episodes')
+    .select('*')
+    .eq('season_id', season.id)
+    .order('episode_number');
+  if (cachedEps?.length) {
+    const newest = Math.max(
+      ...cachedEps.map((e: any) => new Date(e.cached_at ?? 0).getTime()),
+    );
+    if (Date.now() - newest < TITLE_CACHE_TTL_MS) {
+      return json({ episodes: cachedEps });
+    }
+  }
+
+  let data;
+  try {
+    data = await tmdb(`/tv/${tmdbId}/season/${seasonNumber}`);
+  } catch (err) {
+    if (cachedEps?.length) return json({ episodes: cachedEps });
+    throw err;
+  }
   const episodeRows = (data.episodes ?? []).map((e: any) => ({
     season_id: season.id,
     title_id: title.id,
@@ -328,6 +350,7 @@ async function handleSeason(tmdbId: number, seasonNumber: number) {
     runtime: e.runtime ?? null,
     air_date: e.air_date || null,
     still_path: e.still_path ?? null,
+    cached_at: new Date().toISOString(),
   }));
   const { data: episodes, error } = await admin
     .from('episodes')

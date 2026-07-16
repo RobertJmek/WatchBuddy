@@ -180,7 +180,8 @@ export default function LibraryScreen() {
                 colors={[c.tint]}
               />
             }>
-            {error ? (
+            {/* A failed refresh keeps showing the cached shelves. */}
+            {error && entries.length === 0 ? (
               <EmptyState
                 icon="film"
                 title="Couldn't load your library"

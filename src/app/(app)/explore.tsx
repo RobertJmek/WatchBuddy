@@ -186,10 +186,11 @@ export default function SearchScreen() {
           )}
         </View>
 
-        {mode === 'search' && search.error && (
+        {/* Errors only replace content when there's nothing cached to show. */}
+        {mode === 'search' && search.error && !search.data && (
           <ThemedText style={styles.error}>{String(search.error)}</ThemedText>
         )}
-        {mode === 'people' && people.error && (
+        {mode === 'people' && people.error && !people.data && (
           <ThemedText style={styles.error}>{String(people.error)}</ThemedText>
         )}
 
@@ -253,12 +254,23 @@ export default function SearchScreen() {
               <ShelfSkeleton />
               <ShelfSkeleton />
             </View>
-          ) : trending.error ? (
-            <ThemedText style={styles.error}>{String(trending.error)}</ThemedText>
+          ) : trending.error && !trending.data ? (
+            <EmptyState
+              icon="film"
+              title="Couldn't load trending"
+              hint="The movie database seems unreachable. Try again in a bit."
+            />
           ) : (
             <ScrollView
               contentContainerStyle={styles.list}
               keyboardShouldPersistTaps="handled">
+              {trending.error != null && (
+                <ThemedText
+                  type="small"
+                  style={[styles.atHint, { color: c.textSecondary }]}>
+                  Couldn’t refresh — showing saved data.
+                </ThemedText>
+              )}
               <ThemedText
                 type="small"
                 style={[styles.atHint, { color: c.textSecondary }]}>

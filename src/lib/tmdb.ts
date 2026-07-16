@@ -46,8 +46,26 @@ export type SeasonRow = {
   poster_path: string | null;
 };
 
+// Fail fast when TMDB hangs instead of refusing: spinners resolve into a
+// catchable error the stale-cache fallbacks can act on.
+const INVOKE_TIMEOUT_MS = 10_000;
+
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('tmdb-proxy', { body });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), INVOKE_TIMEOUT_MS);
+  let data, error;
+  try {
+    ({ data, error } = await supabase.functions.invoke('tmdb-proxy', {
+      body,
+      signal: controller.signal,
+    }));
+  } catch (e) {
+    throw controller.signal.aborted
+      ? new Error('The movie database is not responding. Try again later.')
+      : e;
+  } finally {
+    clearTimeout(timer);
+  }
   if (error) {
     // supabase-js reports only the HTTP status; the function's JSON `{ error }`
     // body (the useful part) is on error.context — read it when present.
@@ -123,7 +141,21 @@ export async function getTitle(
     }
   }
 
-  return fetchTitle(tmdbId, mediaType);
+  try {
+    return await fetchTitle(tmdbId, mediaType);
+  } catch (e) {
+    // TMDB (or the function) is down — a stale copy beats an error screen.
+    if (cached) {
+      if (mediaType !== 'tv') return { title: cached, seasons: [] };
+      const { data: seasons } = await supabase
+        .from('seasons')
+        .select('*')
+        .eq('title_id', cached.id)
+        .order('season_number');
+      return { title: cached, seasons: seasons ?? [] };
+    }
+    throw e;
+  }
 }
 
 /**
