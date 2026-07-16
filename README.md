@@ -13,7 +13,7 @@ for your TV Time history.
 
 Install the latest Android build directly — no Play Store needed:
 
-### [⬇️ Download the APK](https://github.com/RobertJmek/WatchBuddy/releases/latest/download/watchbuddy-android-arm64.apk) &nbsp;·&nbsp; ~43 MB
+### [⬇️ Download the APK](https://github.com/RobertJmek/WatchBuddy/releases/latest/download/watchbuddy-android-arm64.apk) &nbsp;·&nbsp; ~45 MB
 
 1. Open that link **on your Android phone** and download the file.
 2. Tap it; if prompted, allow your browser/Files app to *install unknown apps*.
@@ -217,5 +217,7 @@ statistics tab, offline read cache, and email + Google auth — on a teal light/
 The **social layer** is live: user search, follows, rich public profiles (taste summary +
 shelves), and community ratings/reviews per title. The **TV Time importer** has shipped.
 iOS distribution moved to **TestFlight** (see [`docs/ios-testflight.md`](docs/ios-testflight.md)).
+Title screens serve from a **read-through Postgres cache** with stale fallbacks and request
+timeouts, so browsing stays fast and keeps working even when TMDB is down.
 
 **Planned next:** Apple sign-in, over-the-air updates (EAS Update), and App Store publishing.
