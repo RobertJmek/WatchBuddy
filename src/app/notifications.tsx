@@ -93,20 +93,30 @@ export default function NotificationsScreen() {
                   params: { ratingId: item.ratingId },
                 })
               }>
-              {item.actorAvatarUrl ? (
-                <Image
-                  style={styles.avatar}
-                  source={{ uri: item.actorAvatarUrl }}
-                  contentFit="cover"
-                  transition={150}
-                />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]}>
-                  <ThemedText style={styles.avatarInitial}>
-                    {item.actorName.replace('@', '').charAt(0).toUpperCase()}
-                  </ThemedText>
-                </View>
-              )}
+              {/* Avatar goes to the actor's profile; the row goes to the thread. */}
+              <Pressable
+                hitSlop={6}
+                onPress={() =>
+                  router.push({
+                    pathname: '/user/[id]',
+                    params: { id: item.actorId },
+                  })
+                }>
+                {item.actorAvatarUrl ? (
+                  <Image
+                    style={styles.avatar}
+                    source={{ uri: item.actorAvatarUrl }}
+                    contentFit="cover"
+                    transition={150}
+                  />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback]}>
+                    <ThemedText style={styles.avatarInitial}>
+                      {item.actorName.replace('@', '').charAt(0).toUpperCase()}
+                    </ThemedText>
+                  </View>
+                )}
+              </Pressable>
               <View style={styles.body}>
                 <ThemedText type="small" style={styles.message}>
                   <ThemedText type="smallBold">{item.actorName}</ThemedText>{' '}

@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,6 +32,7 @@ export function RatingBar({
 }) {
   const entityType = entityTypeFor(mediaType);
   const queryClient = useQueryClient();
+  const router = useRouter();
   const c = useTheme();
   const textColor = c.text;
   const borderColor = c.border;
@@ -38,6 +40,7 @@ export function RatingBar({
   const [value, setValue] = useState<number | null>(null);
   const [review, setReview] = useState(''); // saved review
   const [likeCount, setLikeCount] = useState(0);
+  const [ratingId, setRatingId] = useState<string | null>(null);
   const [draft, setDraft] = useState(''); // edit buffer
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -51,6 +54,7 @@ export function RatingBar({
         setValue(r.value);
         setReview(r.review ?? '');
         setLikeCount(r.likeCount);
+        setRatingId(r.id);
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
@@ -176,7 +180,17 @@ export function RatingBar({
                 </ThemedText>
               </View>
               {likeCount > 0 && (
-                <View style={styles.editRow}>
+                <Pressable
+                  hitSlop={10}
+                  // Long-press: who liked my review.
+                  onLongPress={() =>
+                    ratingId &&
+                    router.push({
+                      pathname: '/review/[ratingId]/likes',
+                      params: { ratingId },
+                    })
+                  }
+                  style={styles.editRow}>
                   <IconSymbol
                     name="heart"
                     size={13}
@@ -185,7 +199,7 @@ export function RatingBar({
                   <ThemedText type="small" style={{ color: c.textSecondary }}>
                     {likeCount}
                   </ThemedText>
-                </View>
+                </Pressable>
               )}
             </View>
           </Pressable>

@@ -38,6 +38,15 @@ export function ReviewRow({
   const [liked, setLiked] = useState(review.likedByMe);
   const [likes, setLikes] = useState(review.likeCount);
 
+  // Long-press on the heart shows who liked (only when there's someone).
+  function openLikers() {
+    if (likes === 0) return;
+    router.push({
+      pathname: '/review/[ratingId]/likes',
+      params: { ratingId: review.ratingId },
+    });
+  }
+
   async function toggleLike() {
     const next = !liked;
     setLiked(next);
@@ -116,17 +125,25 @@ export function ReviewRow({
           </Pressable>
         )}
         {review.isMine ? (
-          // Own review: the heart is a display-only counter (no self-likes).
+          // Own review: display-only counter (no self-likes); long-press
+          // opens the Liked-by list.
           likes > 0 && (
-            <View style={styles.likeBtn}>
+            <Pressable
+              onLongPress={openLikers}
+              hitSlop={10}
+              style={styles.likeBtn}>
               <IconSymbol name="heart" size={16} tintColor={c.textSecondary} />
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 {likes}
               </ThemedText>
-            </View>
+            </Pressable>
           )
         ) : (
-          <Pressable onPress={toggleLike} hitSlop={10} style={styles.likeBtn}>
+          <Pressable
+            onPress={toggleLike}
+            onLongPress={openLikers}
+            hitSlop={10}
+            style={styles.likeBtn}>
             <IconSymbol
               name="heart"
               size={16}

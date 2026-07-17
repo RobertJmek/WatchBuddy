@@ -216,6 +216,52 @@ export async function getTitleRatings(
   return { average, count, reviews: sortReviews(reviews, 'top') };
 }
 
+/** Everyone who liked a review, follow state included — for the Liked-by list. */
+export async function getReviewLikers(ratingId: string) {
+  const viewerId = await currentViewer();
+  const { data, error } = await supabase
+    .from('review_likes')
+    .select('user_id, created_at')
+    .eq('rating_id', ratingId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  const ids = (data ?? []).map((l: any) => l.user_id);
+  if (ids.length === 0) return [];
+
+  const [profilesRes, followsRes] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url')
+      .in('id', ids),
+    viewerId
+      ? supabase
+          .from('follows')
+          .select('followee_id')
+          .eq('follower_id', viewerId)
+          .in('followee_id', ids)
+      : Promise.resolve({ data: [], error: null } as any),
+  ]);
+  if (profilesRes.error) throw profilesRes.error;
+  if (followsRes.error) throw followsRes.error;
+  const profileById = new Map<string, any>(
+    (profilesRes.data ?? []).map((p: any) => [p.id, p]),
+  );
+  const following = new Set(
+    (followsRes.data ?? []).map((f: any) => f.followee_id),
+  );
+
+  return ids.map((id) => {
+    const p = profileById.get(id);
+    return {
+      id,
+      username: p?.username ?? null,
+      display_name: p?.display_name ?? null,
+      avatar_url: p?.avatar_url ?? null,
+      is_following: following.has(id),
+    };
+  });
+}
+
 export async function likeReview(ratingId: string) {
   const uid = await requireViewer();
   const { error } = await supabase
