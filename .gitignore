@@ -47,3 +47,10 @@ example
 # iOS signing credentials (never commit)
 credentials/
 credentials.json
+
+# Local tooling/config kept out of the repo
+.claude/
+.vscode/
+AGENTS.md
+CLAUDE.md
+CONTEXT.md
