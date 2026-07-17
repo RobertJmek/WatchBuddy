@@ -134,6 +134,33 @@ render(glowSvg(), 600, 'wb-glow.png');
 // Google "G" for the sign-in button.
 render(googleSvg(), 72, 'google-g.png');
 
+// Google Play store assets: 512x512 icon + 1024x500 feature graphic.
+// Rendered into store/ at the repo root (not assets/, so they never get
+// bundled into the app binary).
+const STORE_OUT = WRITE ? join(ROOT, 'store') : OUT;
+function renderTo(dir, svgStr, width, file) {
+  const resvg = new Resvg(svgStr, {
+    fitTo: { mode: 'width', value: width },
+    background: 'rgba(0,0,0,0)',
+  });
+  const png = resvg.render().asPng();
+  const path = join(dir, file);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, png);
+  console.log(`  ${file}  (${width}px)`);
+}
+renderTo(STORE_OUT, svg({ bg: 'gradient', scale: 1.15 }), 512, 'play-icon-512.png');
+function featureSvg() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>${gradientDef}</defs>
+  <rect x="0" y="0" width="1024" height="500" fill="url(#bg)"/>
+  <g transform="translate(60 250) scale(0.34) translate(-512 -512)">${mark('#FFFFFF', 1.6)}</g>
+  <text x="420" y="235" font-family="Georgia, 'Bodoni 72', serif" font-size="92" fill="#FFFFFF">WatchBuddy</text>
+  <text x="423" y="300" font-family="Helvetica, Arial, sans-serif" font-size="34" fill="#E6FFFA" opacity="0.9">Track movies &amp; TV with friends</text>
+</svg>`;
+}
+renderTo(STORE_OUT, featureSvg(), 1024, 'play-feature-1024x500.png');
+
 // A 4x contact sheet for quick visual review (preview only).
 if (!WRITE) {
   const tile = (x, y, inner) =>

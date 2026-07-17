@@ -27,6 +27,8 @@ type AuthState = {
     provider: 'google' | 'apple',
   ) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  /** Permanently delete the account and all its data, then sign out. */
+  deleteAccount: () => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -103,6 +105,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await supabase.auth.signOut();
   }
 
+  async function deleteAccount() {
+    const { data, error } = await supabase.functions.invoke('delete-account');
+    if (error || data?.error) {
+      return { error: data?.error ?? error?.message ?? 'Deletion failed' };
+    }
+    await supabase.auth.signOut();
+    return { error: null };
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -112,6 +123,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         verifyCode,
         signInWithProvider,
         signOut,
+        deleteAccount,
       }}>
       {children}
     </AuthContext.Provider>
