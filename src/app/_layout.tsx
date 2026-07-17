@@ -14,6 +14,7 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { asyncStoragePersister, queryClient } from '@/lib/query';
@@ -97,7 +98,9 @@ export default function RootLayout() {
       <ThemePreferenceProvider>
         <AuthProvider>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <RootNavigator />
+            <KeyboardProvider>
+              <RootNavigator />
+            </KeyboardProvider>
           </ThemeProvider>
         </AuthProvider>
       </ThemePreferenceProvider>

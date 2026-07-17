@@ -7,7 +7,6 @@ import {
   ActionSheetIOS,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/icon-symbol';
@@ -140,8 +140,6 @@ export default function ReviewThreadScreen() {
       <Stack.Screen options={{ headerShown: true, title: 'Review' }} />
       <KeyboardAvoidingView
         style={styles.container}
-        // Android is edge-to-edge in SDK 56, which disables adjustResize —
-        // 'padding' is needed on both platforms so the composer rises.
         behavior="padding"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
         {isLoading || !review ? (
