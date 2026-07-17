@@ -52,9 +52,9 @@ export default function AuthCallback() {
         // the session a moment to land before declaring failure.
         await new Promise((r) => setTimeout(r, 2500));
         const { data } = await supabase.auth.getSession();
-        if (active && !data.session) {
-          setError('Missing sign-in code. Please try signing in again.');
-        }
+        // Landed here without a code and no session materialized: nothing to
+        // finish — this wasn't a real OAuth redirect, so just go to sign-in.
+        if (active && !data.session) router.replace('/sign-in');
         return;
       }
       const { error: exchangeError } =

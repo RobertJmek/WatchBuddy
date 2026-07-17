@@ -50,6 +50,13 @@ function RootNavigator() {
         headerShown: false,
         headerBackButtonDisplayMode: 'minimal',
       }}>
+      {/* First screen = signed-out fallback. Expo Router redirects to the
+          first available screen whenever a guard kicks the user out, so
+          sign-in must come before auth-callback or logout lands on the
+          OAuth-callback error screen. */}
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="sign-in" />
+      </Stack.Protected>
       {/* Always reachable — the OAuth redirect deep-links here on Android before
           a session exists, so it must sit outside the session guards. */}
       <Stack.Screen name="auth-callback" />
@@ -64,9 +71,6 @@ function RootNavigator() {
         <Stack.Screen name="user/[id]" />
         <Stack.Screen name="user/[id]/followers" />
         <Stack.Screen name="user/[id]/following" />
-      </Stack.Protected>
-      <Stack.Protected guard={!session}>
-        <Stack.Screen name="sign-in" />
       </Stack.Protected>
     </Stack>
   );
