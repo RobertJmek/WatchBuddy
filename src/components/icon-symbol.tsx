@@ -11,6 +11,7 @@ const GLYPHS = {
   'book.closed': 'book-open',
   'person.2': 'users',
   pencil: 'edit-2',
+  heart: 'heart',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

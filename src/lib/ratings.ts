@@ -44,6 +44,7 @@ export async function setRating(
 
 /** One user's written review of a title, for the community list. */
 export type ReviewItem = {
+  ratingId: string;
   userId: string;
   username: string | null;
   display_name: string | null;
@@ -52,7 +53,41 @@ export type ReviewItem = {
   value: number;
   review: string;
   updated_at: string;
+  likeCount: number;
+  likedByMe: boolean;
 };
+
+export type ReviewSort = 'top' | 'recent' | 'highest' | 'lowest';
+
+/**
+ * Sort a review list. 'top' pins followed users first (then likes, then
+ * newest); every other sort is pure — no followed-first pinning.
+ */
+export function sortReviews(reviews: ReviewItem[], sort: ReviewSort) {
+  const byRecent = (a: ReviewItem, b: ReviewItem) =>
+    b.updated_at.localeCompare(a.updated_at);
+  const byLikes = (a: ReviewItem, b: ReviewItem) =>
+    b.likeCount - a.likeCount || byRecent(a, b);
+  const sorted = [...reviews];
+  switch (sort) {
+    case 'top':
+      sorted.sort((a, b) => {
+        if (a.is_following !== b.is_following) return a.is_following ? -1 : 1;
+        return byLikes(a, b);
+      });
+      break;
+    case 'recent':
+      sorted.sort(byRecent);
+      break;
+    case 'highest':
+      sorted.sort((a, b) => b.value - a.value || byLikes(a, b));
+      break;
+    case 'lowest':
+      sorted.sort((a, b) => a.value - b.value || byLikes(a, b));
+      break;
+  }
+  return sorted;
+}
 
 export type TitleRatings = {
   /** Mean of every user's score (0 when there are no ratings). */
@@ -76,7 +111,7 @@ export async function getTitleRatings(
 
   const { data, error } = await supabase
     .from('ratings')
-    .select('user_id, value, review, updated_at')
+    .select('id, user_id, value, review, updated_at')
     .eq('entity_type', entityType)
     .eq('entity_id', entityId);
   if (error) throw error;
@@ -93,8 +128,9 @@ export async function getTitleRatings(
   if (textRows.length === 0) return { average, count, reviews: [] };
 
   const ids: string[] = textRows.map((r) => r.user_id);
+  const ratingIds: string[] = textRows.map((r) => r.id);
 
-  const [profilesRes, followsRes] = await Promise.all([
+  const [profilesRes, followsRes, likesRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url')
@@ -106,9 +142,21 @@ export async function getTitleRatings(
           .eq('follower_id', viewerId)
           .in('followee_id', ids)
       : Promise.resolve({ data: [], error: null } as any),
+    supabase
+      .from('review_likes')
+      .select('rating_id, user_id')
+      .in('rating_id', ratingIds),
   ]);
   if (profilesRes.error) throw profilesRes.error;
   if (followsRes.error) throw followsRes.error;
+  if (likesRes.error) throw likesRes.error;
+
+  const likeCounts = new Map<string, number>();
+  const likedByMe = new Set<string>();
+  for (const l of (likesRes.data ?? []) as any[]) {
+    likeCounts.set(l.rating_id, (likeCounts.get(l.rating_id) ?? 0) + 1);
+    if (l.user_id === viewerId) likedByMe.add(l.rating_id);
+  }
 
   const profiles = new Map<string, any>(
     (profilesRes.data ?? []).map((p: any) => [p.id, p]),
@@ -120,6 +168,7 @@ export async function getTitleRatings(
   const reviews: ReviewItem[] = textRows.map((r) => {
     const p = profiles.get(r.user_id);
     return {
+      ratingId: r.id,
       userId: r.user_id,
       username: p?.username ?? null,
       display_name: p?.display_name ?? null,
@@ -128,16 +177,31 @@ export async function getTitleRatings(
       value: r.value,
       review: r.review.trim(),
       updated_at: r.updated_at,
+      likeCount: likeCounts.get(r.id) ?? 0,
+      likedByMe: likedByMe.has(r.id),
     };
   });
 
-  // Followed users first, then most recent.
-  reviews.sort((a, b) => {
-    if (a.is_following !== b.is_following) return a.is_following ? -1 : 1;
-    return b.updated_at.localeCompare(a.updated_at);
-  });
+  return { average, count, reviews: sortReviews(reviews, 'top') };
+}
 
-  return { average, count, reviews };
+export async function likeReview(ratingId: string) {
+  const uid = await requireViewer();
+  const { error } = await supabase
+    .from('review_likes')
+    .insert({ rating_id: ratingId, user_id: uid });
+  // Double-tap races just mean the like already exists — not an error.
+  if (error && !error.message.includes('duplicate')) throw error;
+}
+
+export async function unlikeReview(ratingId: string) {
+  const uid = await requireViewer();
+  const { error } = await supabase
+    .from('review_likes')
+    .delete()
+    .eq('rating_id', ratingId)
+    .eq('user_id', uid);
+  if (error) throw error;
 }
 
 export async function removeRating(

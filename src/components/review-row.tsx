@@ -1,11 +1,14 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { ReviewItem } from '@/lib/ratings';
+import { likeReview, unlikeReview, type ReviewItem } from '@/lib/ratings';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -19,6 +22,25 @@ function formatDate(iso: string) {
 export function ReviewRow({ review }: { review: ReviewItem }) {
   const router = useRouter();
   const c = useTheme();
+  const queryClient = useQueryClient();
+
+  // Optimistic like state; the server truth arrives on the next refetch.
+  const [liked, setLiked] = useState(review.likedByMe);
+  const [likes, setLikes] = useState(review.likeCount);
+
+  async function toggleLike() {
+    const next = !liked;
+    setLiked(next);
+    setLikes((n) => n + (next ? 1 : -1));
+    try {
+      if (next) await likeReview(review.ratingId);
+      else await unlikeReview(review.ratingId);
+      queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+    } catch {
+      setLiked(!next);
+      setLikes((n) => n + (next ? -1 : 1));
+    }
+  }
   const name =
     review.display_name?.trim() ||
     (review.username ? `@${review.username}` : 'User');
@@ -60,9 +82,25 @@ export function ReviewRow({ review }: { review: ReviewItem }) {
       </View>
 
       <ThemedText style={styles.text}>{review.review}</ThemedText>
-      <ThemedText type="small" style={[styles.date, { color: c.textSecondary }]}>
-        {formatDate(review.updated_at)}
-      </ThemedText>
+      <View style={styles.footer}>
+        <ThemedText type="small" style={[styles.date, { color: c.textSecondary }]}>
+          {formatDate(review.updated_at)}
+        </ThemedText>
+        <Pressable onPress={toggleLike} hitSlop={10} style={styles.likeBtn}>
+          <IconSymbol
+            name="heart"
+            size={16}
+            tintColor={liked ? Accent : c.textSecondary}
+          />
+          {likes > 0 && (
+            <ThemedText
+              type="small"
+              style={{ color: liked ? Accent : c.textSecondary }}>
+              {likes}
+            </ThemedText>
+          )}
+        </Pressable>
+      </View>
     </Pressable>
   );
 }
@@ -87,5 +125,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   text: { lineHeight: 21 },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   date: { opacity: 0.8 },
+  likeBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
 });
