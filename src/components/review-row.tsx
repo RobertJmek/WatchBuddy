@@ -71,7 +71,7 @@ export function ReviewRow({ review }: { review: ReviewItem }) {
           </ThemedText>
           <ThemedText type="small" style={{ color: c.textSecondary }}>
             {review.username ? `@${review.username}` : ''}
-            {review.is_following ? ' · Following' : ''}
+            {review.isMine ? ' · You' : review.is_following ? ' · Following' : ''}
           </ThemedText>
         </View>
         <View style={[styles.score, { borderColor: c.glow }]}>
@@ -86,20 +86,32 @@ export function ReviewRow({ review }: { review: ReviewItem }) {
         <ThemedText type="small" style={[styles.date, { color: c.textSecondary }]}>
           {formatDate(review.updated_at)}
         </ThemedText>
-        <Pressable onPress={toggleLike} hitSlop={10} style={styles.likeBtn}>
-          <IconSymbol
-            name="heart"
-            size={16}
-            tintColor={liked ? Accent : c.textSecondary}
-          />
-          {likes > 0 && (
-            <ThemedText
-              type="small"
-              style={{ color: liked ? Accent : c.textSecondary }}>
-              {likes}
-            </ThemedText>
-          )}
-        </Pressable>
+        {review.isMine ? (
+          // Own review: the heart is a display-only counter (no self-likes).
+          likes > 0 && (
+            <View style={styles.likeBtn}>
+              <IconSymbol name="heart" size={16} tintColor={c.textSecondary} />
+              <ThemedText type="small" style={{ color: c.textSecondary }}>
+                {likes}
+              </ThemedText>
+            </View>
+          )
+        ) : (
+          <Pressable onPress={toggleLike} hitSlop={10} style={styles.likeBtn}>
+            <IconSymbol
+              name="heart"
+              size={16}
+              tintColor={liked ? Accent : c.textSecondary}
+            />
+            {likes > 0 && (
+              <ThemedText
+                type="small"
+                style={{ color: liked ? Accent : c.textSecondary }}>
+                {likes}
+              </ThemedText>
+            )}
+          </Pressable>
+        )}
       </View>
     </Pressable>
   );

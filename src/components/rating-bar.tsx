@@ -37,6 +37,7 @@ export function RatingBar({
 
   const [value, setValue] = useState<number | null>(null);
   const [review, setReview] = useState(''); // saved review
+  const [likeCount, setLikeCount] = useState(0);
   const [draft, setDraft] = useState(''); // edit buffer
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,7 @@ export function RatingBar({
         if (!active || !r) return;
         setValue(r.value);
         setReview(r.review ?? '');
+        setLikeCount(r.likeCount);
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
@@ -166,11 +168,25 @@ export function RatingBar({
               Your review
             </ThemedText>
             <ThemedText style={styles.reviewText}>{review}</ThemedText>
-            <View style={styles.editRow}>
-              <IconSymbol name="pencil" size={13} tintColor={ACTIVE} />
-              <ThemedText type="small" style={{ color: ACTIVE }}>
-                Edit
-              </ThemedText>
+            <View style={styles.cardFooter}>
+              <View style={styles.editRow}>
+                <IconSymbol name="pencil" size={13} tintColor={ACTIVE} />
+                <ThemedText type="small" style={{ color: ACTIVE }}>
+                  Edit
+                </ThemedText>
+              </View>
+              {likeCount > 0 && (
+                <View style={styles.editRow}>
+                  <IconSymbol
+                    name="heart"
+                    size={13}
+                    tintColor={c.textSecondary}
+                  />
+                  <ThemedText type="small" style={{ color: c.textSecondary }}>
+                    {likeCount}
+                  </ThemedText>
+                </View>
+              )}
             </View>
           </Pressable>
         ) : (
@@ -212,11 +228,16 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.one,
   },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.half,
+  },
   editRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.half,
-    marginTop: Spacing.half,
   },
   actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   saveBtn: {

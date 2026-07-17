@@ -7,19 +7,36 @@ export function entityTypeFor(mediaType: 'movie' | 'tv'): RatingEntityType {
   return mediaType === 'tv' ? 'show' : 'movie';
 }
 
-export type Rating = { value: number; review: string | null };
+export type Rating = {
+  id: string;
+  value: number;
+  review: string | null;
+  /** Likes received on the written review (0 when none / no text). */
+  likeCount: number;
+};
 
 export async function getRating(
   entityType: RatingEntityType,
   entityId: string,
 ): Promise<Rating | null> {
-  const { q } = await selectMine('ratings', 'value, review');
+  const { q } = await selectMine('ratings', 'id, value, review');
   const { data, error } = await q
     .eq('entity_type', entityType)
     .eq('entity_id', entityId)
     .maybeSingle();
   if (error) throw error;
-  return data ? { value: data.value, review: data.review } : null;
+  if (!data) return null;
+
+  const { count } = await supabase
+    .from('review_likes')
+    .select('rating_id', { count: 'exact', head: true })
+    .eq('rating_id', data.id);
+  return {
+    id: data.id,
+    value: data.value,
+    review: data.review,
+    likeCount: count ?? 0,
+  };
 }
 
 export async function setRating(
@@ -50,6 +67,8 @@ export type ReviewItem = {
   display_name: string | null;
   avatar_url: string | null;
   is_following: boolean;
+  /** The viewer's own review — shown with a "You" badge, heart display-only. */
+  isMine: boolean;
   value: number;
   review: string;
   updated_at: string;
@@ -94,7 +113,7 @@ export type TitleRatings = {
   average: number;
   /** How many users have rated (with or without a written review). */
   count: number;
-  /** Written reviews only, excluding the viewer, sorted followed-first then newest. */
+  /** Written reviews only (the viewer's own included), in Top order. */
   reviews: ReviewItem[];
 };
 
@@ -121,10 +140,8 @@ export async function getTitleRatings(
   const average =
     count > 0 ? rows.reduce((sum, r) => sum + (r.value ?? 0), 0) / count : 0;
 
-  // Written reviews by other users.
-  const textRows = rows.filter(
-    (r) => r.review && r.review.trim() && r.user_id !== viewerId,
-  );
+  // Every written review, the viewer's own included (marked isMine below).
+  const textRows = rows.filter((r) => r.review && r.review.trim());
   if (textRows.length === 0) return { average, count, reviews: [] };
 
   const ids: string[] = textRows.map((r) => r.user_id);
@@ -174,6 +191,7 @@ export async function getTitleRatings(
       display_name: p?.display_name ?? null,
       avatar_url: p?.avatar_url ?? null,
       is_following: following.has(r.user_id),
+      isMine: r.user_id === viewerId,
       value: r.value,
       review: r.review.trim(),
       updated_at: r.updated_at,
