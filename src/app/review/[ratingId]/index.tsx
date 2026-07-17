@@ -8,6 +8,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -58,6 +59,7 @@ export default function ReviewThreadScreen() {
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<ReplyItem | null>(null);
   const [sending, setSending] = useState(false);
+  const [menuFor, setMenuFor] = useState<ReplyItem | null>(null);
 
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ['reviewThread', ratingId] });
@@ -81,8 +83,8 @@ export default function ReviewThreadScreen() {
   }
 
   // ⋯ menu on each reply: Reply / Copy / Delete (own). Native action sheet on
-  // iOS, Alert-based menu on Android.
-  function openReplyMenu(item: ReplyItem) {
+  // iOS, themed bottom-sheet Modal on Android.
+  function actionsFor(item: ReplyItem) {
     const actions: { label: string; destructive?: boolean; run: () => void }[] = [
       { label: 'Reply', run: () => setReplyTo(item) },
       { label: 'Copy text', run: () => void Clipboard.setStringAsync(item.body) },
@@ -94,7 +96,12 @@ export default function ReviewThreadScreen() {
         run: () => confirmDelete(item),
       });
     }
+    return actions;
+  }
+
+  function openReplyMenu(item: ReplyItem) {
     if (Platform.OS === 'ios') {
+      const actions = actionsFor(item);
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options: [...actions.map((a) => a.label), 'Cancel'],
@@ -104,14 +111,7 @@ export default function ReviewThreadScreen() {
         (i) => actions[i]?.run(),
       );
     } else {
-      Alert.alert('Comment', undefined, [
-        ...actions.map((a) => ({
-          text: a.label,
-          style: a.destructive ? ('destructive' as const) : undefined,
-          onPress: a.run,
-        })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]);
+      setMenuFor(item);
     }
   }
 
@@ -140,7 +140,9 @@ export default function ReviewThreadScreen() {
       <Stack.Screen options={{ headerShown: true, title: 'Review' }} />
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Android is edge-to-edge in SDK 56, which disables adjustResize —
+        // 'padding' is needed on both platforms so the composer rises.
+        behavior="padding"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
         {isLoading || !review ? (
           <View style={{ padding: Spacing.three, gap: Spacing.two }}>
@@ -268,6 +270,47 @@ export default function ReviewThreadScreen() {
           </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
+
+      {/* Android ⋯ menu: bottom sheet, dismissed by backdrop tap or Cancel. */}
+      <Modal
+        visible={menuFor != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuFor(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setMenuFor(null)}>
+          <Pressable
+            style={[styles.sheet, { backgroundColor: c.backgroundElement }]}
+            onPress={(e) => e.stopPropagation()}>
+            {menuFor &&
+              actionsFor(menuFor).map((a) => (
+                <Pressable
+                  key={a.label}
+                  style={({ pressed }) => [
+                    styles.sheetRow,
+                    pressed && { backgroundColor: c.backgroundSelected },
+                  ]}
+                  onPress={() => {
+                    setMenuFor(null);
+                    a.run();
+                  }}>
+                  <ThemedText
+                    style={a.destructive ? styles.sheetDestructive : undefined}>
+                    {a.label}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            <View style={[styles.sheetDivider, { backgroundColor: c.border }]} />
+            <Pressable
+              style={({ pressed }) => [
+                styles.sheetRow,
+                pressed && { backgroundColor: c.backgroundSelected },
+              ]}
+              onPress={() => setMenuFor(null)}>
+              <ThemedText style={{ color: c.textSecondary }}>Cancel</ThemedText>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -340,4 +383,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendDisabled: { opacity: 0.5 },
+  backdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  sheet: {
+    borderTopLeftRadius: Spacing.four,
+    borderTopRightRadius: Spacing.four,
+    paddingVertical: Spacing.two,
+    paddingBottom: Spacing.five,
+  },
+  sheetRow: {
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.four,
+  },
+  sheetDestructive: { color: '#e5484d' },
+  sheetDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: Spacing.one,
+  },
 });
