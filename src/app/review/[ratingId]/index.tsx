@@ -1,0 +1,299 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { IconSymbol } from '@/components/icon-symbol';
+import { RowSkeleton } from '@/components/skeleton';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import {
+  addReply,
+  deleteReply,
+  getReviewThread,
+  type ReplyItem,
+} from '@/lib/replies';
+
+function nameOf(r: { display_name: string | null; username: string | null }) {
+  return r.display_name?.trim() || (r.username ? `@${r.username}` : 'User');
+}
+
+function Avatar({ uri, name }: { uri: string | null; name: string }) {
+  const initial = (name.replace('@', '') || '?').charAt(0).toUpperCase();
+  return uri ? (
+    <Image style={styles.avatar} source={{ uri }} contentFit="cover" transition={150} />
+  ) : (
+    <View style={[styles.avatar, styles.avatarFallback]}>
+      <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
+    </View>
+  );
+}
+
+export default function ReviewThreadScreen() {
+  const c = useTheme();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { ratingId } = useLocalSearchParams<{ ratingId: string }>();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['reviewThread', ratingId],
+    queryFn: () => getReviewThread(ratingId),
+  });
+
+  const [draft, setDraft] = useState('');
+  const [replyTo, setReplyTo] = useState<ReplyItem | null>(null);
+  const [sending, setSending] = useState(false);
+
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ['reviewThread', ratingId] });
+    queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+  }
+
+  async function send() {
+    const body = draft.trim();
+    if (!body || sending) return;
+    setSending(true);
+    try {
+      await addReply(ratingId, body, replyTo?.id);
+      setDraft('');
+      setReplyTo(null);
+      refresh();
+    } catch {
+      Alert.alert('Could not post the reply. Try again.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function confirmDelete(item: ReplyItem) {
+    Alert.alert('Delete this reply?', 'A "[deleted comment]" placeholder remains.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteReply(item.id);
+            refresh();
+          } catch {
+            Alert.alert('Could not delete the reply.');
+          }
+        },
+      },
+    ]);
+  }
+
+  const review = data?.review;
+
+  return (
+    <ThemedView style={styles.container}>
+      <Stack.Screen options={{ headerShown: true, title: 'Review' }} />
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
+        {isLoading || !review ? (
+          <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+            {[0, 1, 2].map((i) => (
+              <RowSkeleton key={i} />
+            ))}
+          </View>
+        ) : (
+          <FlatList
+            data={data.replies}
+            keyExtractor={(r) => r.id}
+            contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              <View
+                style={[styles.reviewCard, { backgroundColor: c.backgroundElement }]}>
+                <Pressable
+                  style={styles.top}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/user/[id]',
+                      params: { id: review.userId },
+                    })
+                  }>
+                  <Avatar uri={review.avatar_url} name={nameOf(review)} />
+                  <View style={styles.who}>
+                    <ThemedText type="smallBold" numberOfLines={1}>
+                      {nameOf(review)}
+                    </ThemedText>
+                    {review.username && (
+                      <ThemedText type="small" style={{ color: c.textSecondary }}>
+                        @{review.username}
+                      </ThemedText>
+                    )}
+                  </View>
+                  <View style={[styles.score, { borderColor: c.glow }]}>
+                    <ThemedText type="smallBold" style={{ color: c.glow }}>
+                      {review.value}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+                <ThemedText style={styles.text}>{review.review}</ThemedText>
+              </View>
+            }
+            ListEmptyComponent={
+              <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
+                No replies yet — start the conversation.
+              </ThemedText>
+            }
+            renderItem={({ item }) => (
+              <Pressable
+                onLongPress={item.isMine && !item.isDeleted ? () => confirmDelete(item) : undefined}
+                style={[styles.reply, item.level === 1 && styles.replyNested]}>
+                <Avatar uri={item.avatar_url} name={nameOf(item)} />
+                <View style={styles.replyBody}>
+                  <ThemedText type="small" style={{ color: c.textSecondary }}>
+                    {nameOf(item)}
+                    {item.isMine ? ' · You' : ''}
+                  </ThemedText>
+                  {item.isDeleted ? (
+                    <ThemedText
+                      type="small"
+                      style={[styles.deleted, { color: c.textSecondary }]}>
+                      [deleted comment]
+                    </ThemedText>
+                  ) : (
+                    <ThemedText style={styles.text}>
+                      {item.replyToUsername ? (
+                        <ThemedText type="smallBold" style={{ color: Accent }}>
+                          @{item.replyToUsername}{' '}
+                        </ThemedText>
+                      ) : null}
+                      {item.body}
+                    </ThemedText>
+                  )}
+                  {!item.isDeleted && (
+                    <Pressable
+                      hitSlop={8}
+                      onPress={() => setReplyTo(item)}>
+                      <ThemedText type="small" style={{ color: Accent }}>
+                        Reply
+                      </ThemedText>
+                    </Pressable>
+                  )}
+                </View>
+              </Pressable>
+            )}
+          />
+        )}
+
+        <SafeAreaView edges={['bottom']}>
+          {replyTo && (
+            <View style={[styles.replyingTo, { borderTopColor: c.border }]}>
+              <ThemedText type="small" style={{ color: c.textSecondary }}>
+                Replying to @{replyTo.username ?? nameOf(replyTo)}
+              </ThemedText>
+              <Pressable hitSlop={8} onPress={() => setReplyTo(null)}>
+                <IconSymbol name="xmark" size={16} tintColor={c.textSecondary} />
+              </Pressable>
+            </View>
+          )}
+          <View style={styles.composer}>
+            <TextInput
+              style={[
+                styles.input,
+                { color: c.text, backgroundColor: c.backgroundElement },
+              ]}
+              placeholder="Add a reply…"
+              placeholderTextColor={c.textSecondary}
+              multiline
+              value={draft}
+              onChangeText={setDraft}
+            />
+            <Pressable
+              onPress={send}
+              disabled={!draft.trim() || sending}
+              style={[
+                styles.sendBtn,
+                (!draft.trim() || sending) && styles.sendDisabled,
+              ]}>
+              <IconSymbol name="paperplane.fill" size={18} tintColor={AccentText} />
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  list: { padding: Spacing.three, gap: Spacing.three },
+  reviewCard: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.two,
+    marginBottom: Spacing.two,
+  },
+  top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  who: { flex: 1 },
+  score: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: { lineHeight: 21 },
+  empty: { textAlign: 'center', marginTop: Spacing.four },
+  reply: { flexDirection: 'row', gap: Spacing.two },
+  replyNested: { marginLeft: Spacing.five + Spacing.two },
+  replyBody: { flex: 1, gap: Spacing.half },
+  deleted: { fontStyle: 'italic' },
+  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: PlaceholderBg },
+  avatarFallback: {
+    backgroundColor: Accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: { color: AccentText, fontSize: 14, lineHeight: 18, fontWeight: '700' },
+  replyingTo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.two,
+    padding: Spacing.three,
+  },
+  input: {
+    flex: 1,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 16,
+    maxHeight: 110,
+  },
+  sendBtn: {
+    backgroundColor: Accent,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendDisabled: { opacity: 0.5 },
+});

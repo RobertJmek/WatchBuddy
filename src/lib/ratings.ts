@@ -74,6 +74,7 @@ export type ReviewItem = {
   updated_at: string;
   likeCount: number;
   likedByMe: boolean;
+  replyCount: number;
 };
 
 export type ReviewSort = 'top' | 'recent' | 'highest' | 'lowest';
@@ -147,7 +148,7 @@ export async function getTitleRatings(
   const ids: string[] = textRows.map((r) => r.user_id);
   const ratingIds: string[] = textRows.map((r) => r.id);
 
-  const [profilesRes, followsRes, likesRes] = await Promise.all([
+  const [profilesRes, followsRes, likesRes, repliesRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url')
@@ -163,10 +164,21 @@ export async function getTitleRatings(
       .from('review_likes')
       .select('rating_id, user_id')
       .in('rating_id', ratingIds),
+    supabase
+      .from('review_replies')
+      .select('rating_id')
+      .is('deleted_at', null)
+      .in('rating_id', ratingIds),
   ]);
   if (profilesRes.error) throw profilesRes.error;
   if (followsRes.error) throw followsRes.error;
   if (likesRes.error) throw likesRes.error;
+  if (repliesRes.error) throw repliesRes.error;
+
+  const replyCounts = new Map<string, number>();
+  for (const r of (repliesRes.data ?? []) as any[]) {
+    replyCounts.set(r.rating_id, (replyCounts.get(r.rating_id) ?? 0) + 1);
+  }
 
   const likeCounts = new Map<string, number>();
   const likedByMe = new Set<string>();
@@ -197,6 +209,7 @@ export async function getTitleRatings(
       updated_at: r.updated_at,
       likeCount: likeCounts.get(r.id) ?? 0,
       likedByMe: likedByMe.has(r.id),
+      replyCount: replyCounts.get(r.id) ?? 0,
     };
   });
 

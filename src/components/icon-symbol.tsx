@@ -12,6 +12,8 @@ const GLYPHS = {
   'person.2': 'users',
   pencil: 'edit-2',
   heart: 'heart',
+  bubble: 'message-circle',
+  'paperplane.fill': 'send',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

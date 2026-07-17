@@ -18,8 +18,18 @@ function formatDate(iso: string) {
   });
 }
 
-/** A single community review: author, score, text — taps through to the profile. */
-export function ReviewRow({ review }: { review: ReviewItem }) {
+/**
+ * A single community review: author, score, text — taps through to the
+ * profile. `showThreadAction` adds the 💬 reply-count button (off on the
+ * thread screen itself, where the row is the header).
+ */
+export function ReviewRow({
+  review,
+  showThreadAction = true,
+}: {
+  review: ReviewItem;
+  showThreadAction?: boolean;
+}) {
   const router = useRouter();
   const c = useTheme();
   const queryClient = useQueryClient();
@@ -86,6 +96,25 @@ export function ReviewRow({ review }: { review: ReviewItem }) {
         <ThemedText type="small" style={[styles.date, { color: c.textSecondary }]}>
           {formatDate(review.updated_at)}
         </ThemedText>
+        <View style={styles.actions}>
+        {showThreadAction && (
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: '/review/[ratingId]',
+                params: { ratingId: review.ratingId },
+              })
+            }
+            hitSlop={10}
+            style={styles.likeBtn}>
+            <IconSymbol name="bubble" size={16} tintColor={c.textSecondary} />
+            {review.replyCount > 0 && (
+              <ThemedText type="small" style={{ color: c.textSecondary }}>
+                {review.replyCount}
+              </ThemedText>
+            )}
+          </Pressable>
+        )}
         {review.isMine ? (
           // Own review: the heart is a display-only counter (no self-likes).
           likes > 0 && (
@@ -112,6 +141,7 @@ export function ReviewRow({ review }: { review: ReviewItem }) {
             )}
           </Pressable>
         )}
+        </View>
       </View>
     </Pressable>
   );
@@ -144,4 +174,5 @@ const styles = StyleSheet.create({
   },
   date: { opacity: 0.8 },
   likeBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
 });
