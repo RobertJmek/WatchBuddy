@@ -14,8 +14,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  KeyboardStickyView,
+  useKeyboardState,
+} from 'react-native-keyboard-controller';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeleton } from '@/components/skeleton';
@@ -134,14 +140,15 @@ export default function ReviewThreadScreen() {
   }
 
   const review = data?.review;
+  // The composer sticks above the keyboard; the list gets matching bottom
+  // padding so the last replies can still scroll into view.
+  const keyboard = useKeyboardState();
+  const insets = useSafeAreaInsets();
 
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Review' }} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
+      <View style={styles.container}>
         {isLoading || !review ? (
           <View style={{ padding: Spacing.three, gap: Spacing.two }}>
             {[0, 1, 2].map((i) => (
@@ -152,7 +159,10 @@ export default function ReviewThreadScreen() {
           <FlatList
             data={data.replies}
             keyExtractor={(r) => r.id}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[
+              styles.list,
+              keyboard.isVisible && { paddingBottom: keyboard.height + 72 },
+            ]}
             keyboardShouldPersistTaps="handled"
             ListHeaderComponent={
               <View
@@ -233,6 +243,7 @@ export default function ReviewThreadScreen() {
           />
         )}
 
+        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
         <SafeAreaView edges={['bottom']}>
           {replyTo && (
             <View style={[styles.replyingTo, { borderTopColor: c.border }]}>
@@ -267,7 +278,8 @@ export default function ReviewThreadScreen() {
             </Pressable>
           </View>
         </SafeAreaView>
-      </KeyboardAvoidingView>
+        </KeyboardStickyView>
+      </View>
 
       {/* Android ⋯ menu: bottom sheet, dismissed by backdrop tap or Cancel. */}
       <Modal
