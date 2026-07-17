@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -19,37 +19,7 @@ import { useThemePreference } from '@/lib/theme-preference';
 const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
 
 export default function ProfileScreen() {
-  const { session, signOut, deleteAccount } = useAuth();
-
-  function confirmDeleteAccount() {
-    Alert.alert(
-      'Delete account?',
-      'This permanently erases your profile, library, watch history, ratings and follows. There is no undo.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Continue', style: 'destructive', onPress: reconfirmDeleteAccount },
-      ],
-    );
-  }
-
-  // Second, final gate — deletion is irreversible, so one tap must never do it.
-  function reconfirmDeleteAccount() {
-    Alert.alert(
-      'Are you absolutely sure?',
-      'Your account and every trace of your activity will be gone forever, right now.',
-      [
-        { text: 'Keep my account', style: 'cancel' },
-        {
-          text: 'Delete forever',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await deleteAccount();
-            if (error) Alert.alert('Could not delete account', error);
-          },
-        },
-      ],
-    );
-  }
+  const { session, signOut } = useAuth();
   const { pref, cycle } = useThemePreference();
   const c = useTheme();
   const router = useRouter();
@@ -178,15 +148,6 @@ export default function ProfileScreen() {
           style={{ marginTop: Spacing.two }}
           onPress={signOut}
         />
-        {/* Pinned to the bottom, far from everyday actions. */}
-        <View style={styles.spacer} />
-        <Pressable onPress={confirmDeleteAccount} hitSlop={8}>
-          <ThemedText
-            type="small"
-            style={[styles.deleteLink, { color: c.textSecondary }]}>
-            Delete account…
-          </ThemedText>
-        </Pressable>
       </SafeAreaView>
     </ThemedView>
   );
@@ -194,8 +155,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  spacer: { flex: 1 },
-  deleteLink: { textAlign: 'center', marginBottom: Spacing.four },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.three,

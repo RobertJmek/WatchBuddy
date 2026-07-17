@@ -18,6 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Danger, PlaceholderBg, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
 import {
   getMyProfile,
   updateProfile,
@@ -31,6 +32,38 @@ export default function EditProfileScreen() {
   const c = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { deleteAccount } = useAuth();
+
+  // Two explicit gates — deletion is irreversible, one tap must never do it.
+  function confirmDeleteAccount() {
+    Alert.alert(
+      'Delete account?',
+      'This permanently erases your profile, library, watch history, ratings and follows. There is no undo.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert(
+              'Are you absolutely sure?',
+              'Your account and every trace of your activity will be gone forever, right now.',
+              [
+                { text: 'Keep my account', style: 'cancel' },
+                {
+                  text: 'Delete forever',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const { error } = await deleteAccount();
+                    if (error) Alert.alert('Could not delete account', error);
+                  },
+                },
+              ],
+            ),
+        },
+      ],
+    );
+  }
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
@@ -187,6 +220,16 @@ export default function EditProfileScreen() {
               {saving ? 'Saving…' : 'Save'}
             </ThemedText>
           </Pressable>
+
+          <Pressable
+            onPress={confirmDeleteAccount}
+            disabled={saving}
+            hitSlop={8}
+            style={styles.deleteRow}>
+            <ThemedText type="small" style={{ color: Danger }}>
+              Delete account…
+            </ThemedText>
+          </Pressable>
         </ScrollView>
       )}
     </ThemedView>
@@ -222,5 +265,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   busy: { opacity: 0.6 },
+  deleteRow: { alignItems: 'center', marginTop: Spacing.five },
   saveText: { color: AccentText, fontWeight: '700', fontSize: 16 },
 });
