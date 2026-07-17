@@ -19,7 +19,7 @@ Google Play Child Safety Standards policy.
 ## Reporting
 
 - Anyone can report abusive content or accounts by contacting us at
-  **probertemailyt@gmail.com** (subject: "Abuse report"). Reports are reviewed
+  **bunescurobert16@gmail.com** (subject: "Abuse report"). Reports are reviewed
   promptly and acted on, typically within 48 hours.
 - Where required, we report identified CSAM to the relevant authorities
   (e.g., NCMEC) and cooperate with law enforcement requests.
@@ -32,4 +32,4 @@ Google Play Child Safety Standards policy.
 
 ## Contact
 
-Child safety point of contact: **probertemailyt@gmail.com**
+Child safety point of contact: **bunescurobert16@gmail.com**
