@@ -2,7 +2,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
+import * as Clipboard from 'expo-clipboard';
 import {
+  ActionSheetIOS,
   Alert,
   FlatList,
   KeyboardAvoidingView,
@@ -75,6 +77,41 @@ export default function ReviewThreadScreen() {
       Alert.alert('Could not post the reply. Try again.');
     } finally {
       setSending(false);
+    }
+  }
+
+  // ⋯ menu on each reply: Reply / Copy / Delete (own). Native action sheet on
+  // iOS, Alert-based menu on Android.
+  function openReplyMenu(item: ReplyItem) {
+    const actions: { label: string; destructive?: boolean; run: () => void }[] = [
+      { label: 'Reply', run: () => setReplyTo(item) },
+      { label: 'Copy text', run: () => void Clipboard.setStringAsync(item.body) },
+    ];
+    if (item.isMine) {
+      actions.push({
+        label: 'Delete',
+        destructive: true,
+        run: () => confirmDelete(item),
+      });
+    }
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...actions.map((a) => a.label), 'Cancel'],
+          cancelButtonIndex: actions.length,
+          destructiveButtonIndex: item.isMine ? actions.length - 1 : undefined,
+        },
+        (i) => actions[i]?.run(),
+      );
+    } else {
+      Alert.alert('Comment', undefined, [
+        ...actions.map((a) => ({
+          text: a.label,
+          style: a.destructive ? ('destructive' as const) : undefined,
+          onPress: a.run,
+        })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]);
     }
   }
 
@@ -154,15 +191,26 @@ export default function ReviewThreadScreen() {
               </ThemedText>
             }
             renderItem={({ item }) => (
-              <Pressable
-                onLongPress={item.isMine && !item.isDeleted ? () => confirmDelete(item) : undefined}
-                style={[styles.reply, item.level === 1 && styles.replyNested]}>
+              <View style={[styles.reply, item.level === 1 && styles.replyNested]}>
                 <Avatar uri={item.avatar_url} name={nameOf(item)} />
                 <View style={styles.replyBody}>
-                  <ThemedText type="small" style={{ color: c.textSecondary }}>
-                    {nameOf(item)}
-                    {item.isMine ? ' · You' : ''}
-                  </ThemedText>
+                  <View style={styles.replyHeader}>
+                    <ThemedText type="small" style={{ color: c.textSecondary }}>
+                      {nameOf(item)}
+                      {item.isMine ? ' · You' : ''}
+                    </ThemedText>
+                    {!item.isDeleted && (
+                      <Pressable
+                        hitSlop={10}
+                        onPress={() => openReplyMenu(item)}>
+                        <IconSymbol
+                          name="ellipsis"
+                          size={16}
+                          tintColor={c.textSecondary}
+                        />
+                      </Pressable>
+                    )}
+                  </View>
                   {item.isDeleted ? (
                     <ThemedText
                       type="small"
@@ -179,17 +227,8 @@ export default function ReviewThreadScreen() {
                       {item.body}
                     </ThemedText>
                   )}
-                  {!item.isDeleted && (
-                    <Pressable
-                      hitSlop={8}
-                      onPress={() => setReplyTo(item)}>
-                      <ThemedText type="small" style={{ color: Accent }}>
-                        Reply
-                      </ThemedText>
-                    </Pressable>
-                  )}
                 </View>
-              </Pressable>
+              </View>
             )}
           />
         )}
@@ -257,6 +296,11 @@ const styles = StyleSheet.create({
   reply: { flexDirection: 'row', gap: Spacing.two },
   replyNested: { marginLeft: Spacing.five + Spacing.two },
   replyBody: { flex: 1, gap: Spacing.half },
+  replyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   deleted: { fontStyle: 'italic' },
   avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: PlaceholderBg },
   avatarFallback: {

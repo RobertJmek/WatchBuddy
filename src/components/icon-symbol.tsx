@@ -13,6 +13,8 @@ const GLYPHS = {
   pencil: 'edit-2',
   heart: 'heart',
   bubble: 'message-circle',
+  ellipsis: 'more-horizontal',
+  bell: 'bell',
   'paperplane.fill': 'send',
 } as const;
 
