@@ -177,9 +177,9 @@ cd android && ./gradlew assembleRelease
 # iOS — a standalone Release build installed over the cable (free Apple ID: same ~7-day expiry)
 npx expo run:ios --configuration Release --device
 ```
-> iOS has no freely-sideloadable equivalent of an APK. iOS builds now ship through
-> **TestFlight** (EAS cloud build signed with a borrowed distribution certificate; 90-day
-> builds) — see **[`docs/ios-testflight.md`](docs/ios-testflight.md)** for the full pipeline.
+> iOS has no freely-sideloadable equivalent of an APK. iOS builds ship through
+> **TestFlight** (EAS cloud build signed with a distribution certificate; 90-day builds).
+> The signing credentials and pipeline notes live outside the repo.
 
 > **Gradle 9 / Android builds:** React Native pins an old `foojay-resolver-convention` plugin that
 > breaks on the Gradle 9 wrapper it ships (`JvmVendorSpec … IBM_SEMERU`). A `patch-package` patch
@@ -216,7 +216,7 @@ The personal core is complete — tracking, library/diary search, editable watch
 statistics tab, offline read cache, and email + Google auth — on a teal light/dark design.
 The **social layer** is live: user search, follows, rich public profiles (taste summary +
 shelves), and community ratings/reviews per title. The **TV Time importer** has shipped.
-iOS distribution moved to **TestFlight** (see [`docs/ios-testflight.md`](docs/ios-testflight.md)).
+iOS distribution moved to **TestFlight**.
 Title screens serve from a **read-through Postgres cache** with stale fallbacks and request
 timeouts, so browsing stays fast and keeps working even when TMDB is down.
 

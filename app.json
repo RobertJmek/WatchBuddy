@@ -10,7 +10,6 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.robertjmek.watchbuddy",
-      "appleTeamId": "[redacted]",
       "config": {
         "usesNonExemptEncryption": false
       }
