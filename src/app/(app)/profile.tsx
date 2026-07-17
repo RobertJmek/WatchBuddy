@@ -27,6 +27,18 @@ export default function ProfileScreen() {
       'This permanently erases your profile, library, watch history, ratings and follows. There is no undo.',
       [
         { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', style: 'destructive', onPress: reconfirmDeleteAccount },
+      ],
+    );
+  }
+
+  // Second, final gate — deletion is irreversible, so one tap must never do it.
+  function reconfirmDeleteAccount() {
+    Alert.alert(
+      'Are you absolutely sure?',
+      'Your account and every trace of your activity will be gone forever, right now.',
+      [
+        { text: 'Keep my account', style: 'cancel' },
         {
           text: 'Delete forever',
           style: 'destructive',
@@ -166,6 +178,8 @@ export default function ProfileScreen() {
           style={{ marginTop: Spacing.two }}
           onPress={signOut}
         />
+        {/* Pinned to the bottom, far from everyday actions. */}
+        <View style={styles.spacer} />
         <Pressable onPress={confirmDeleteAccount} hitSlop={8}>
           <ThemedText
             type="small"
@@ -180,7 +194,8 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  deleteLink: { textAlign: 'center', marginTop: Spacing.three },
+  spacer: { flex: 1 },
+  deleteLink: { textAlign: 'center', marginBottom: Spacing.four },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.three,
