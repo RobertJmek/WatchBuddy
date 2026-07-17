@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 
+import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -124,7 +125,14 @@ export function RatingBar({
         (editing ? (
           <>
             <TextInput
-              style={[styles.review, { color: textColor, borderColor }]}
+              style={[
+                styles.review,
+                {
+                  color: textColor,
+                  borderColor,
+                  backgroundColor: c.backgroundElement,
+                },
+              ]}
               placeholder="Write a review…"
               placeholderTextColor={c.textSecondary}
               autoFocus
@@ -147,11 +155,23 @@ export function RatingBar({
             </View>
           </>
         ) : review ? (
-          <Pressable onPress={startEditing}>
-            <ThemedText style={styles.reviewText}>{review}</ThemedText>
-            <ThemedText type="small" style={styles.link}>
-              Edit review
+          <Pressable
+            style={({ pressed }) => [
+              styles.reviewCard,
+              { backgroundColor: c.backgroundElement },
+              pressed && styles.busy,
+            ]}
+            onPress={startEditing}>
+            <ThemedText type="meta" style={{ color: c.textSecondary }}>
+              Your review
             </ThemedText>
+            <ThemedText style={styles.reviewText}>{review}</ThemedText>
+            <View style={styles.editRow}>
+              <IconSymbol name="pencil" size={13} tintColor={ACTIVE} />
+              <ThemedText type="small" style={{ color: ACTIVE }}>
+                Edit
+              </ThemedText>
+            </View>
           </Pressable>
         ) : (
           <Pressable onPress={startEditing}>
@@ -187,6 +207,17 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   reviewText: { lineHeight: 21 },
+  reviewCard: {
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  editRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    marginTop: Spacing.half,
+  },
   actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   saveBtn: {
     alignSelf: 'flex-start',

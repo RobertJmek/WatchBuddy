@@ -10,6 +10,7 @@ const GLYPHS = {
   film: 'film',
   'book.closed': 'book-open',
   'person.2': 'users',
+  pencil: 'edit-2',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;
