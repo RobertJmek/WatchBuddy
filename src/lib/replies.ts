@@ -47,7 +47,7 @@ export type ReviewThread = {
 export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
   const viewerId = await currentViewer();
 
-  const [ratingRes, repliesRes, likesRes] = await Promise.all([
+  const [ratingRes, repliesRes, likeCountRes, myLikeRes] = await Promise.all([
     supabase
       .from('ratings')
       .select('id, user_id, value, review, updated_at')
@@ -58,14 +58,27 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
       .select('id, user_id, body, created_at, parent_reply_id, deleted_at')
       .eq('rating_id', ratingId)
       .order('created_at'),
-    supabase.from('review_likes').select('user_id').eq('rating_id', ratingId),
+    // Just the total — the likers list is fetched separately on the likes screen.
+    supabase
+      .from('review_likes')
+      .select('rating_id', { count: 'exact', head: true })
+      .eq('rating_id', ratingId),
+    // Viewer-scoped existence (0/1); skipped when signed out.
+    viewerId
+      ? supabase
+          .from('review_likes')
+          .select('rating_id', { count: 'exact', head: true })
+          .eq('rating_id', ratingId)
+          .eq('user_id', viewerId)
+      : Promise.resolve({ count: 0, error: null }),
   ]);
   if (ratingRes.error) throw ratingRes.error;
   if (repliesRes.error) throw repliesRes.error;
-  if (likesRes.error) throw likesRes.error;
+  if (likeCountRes.error) throw likeCountRes.error;
   const rating = ratingRes.data as any;
   const rows = (repliesRes.data ?? []) as any[];
-  const likeRows = (likesRes.data ?? []) as { user_id: string }[];
+  const likeCount = likeCountRes.count ?? 0;
+  const myLikeCount = myLikeRes.count ?? 0;
 
   const userIds = [...new Set([rating.user_id, ...rows.map((r) => r.user_id)])];
   const { data: profiles, error: profErr } = await supabase
@@ -130,9 +143,9 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
       value: rating.value,
       review: (rating.review ?? '').trim(),
       updated_at: rating.updated_at,
-      likeCount: likeRows.length,
+      likeCount,
       // Never mark your own review as liked (self-likes don't exist / RLS-blocked).
-      likedByMe: !isMine && likeRows.some((l) => l.user_id === viewerId),
+      likedByMe: !isMine && myLikeCount > 0,
       isMine,
     },
     replies,
