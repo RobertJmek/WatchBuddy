@@ -18,5 +18,11 @@ export function subscribeTabReset(name: string, cb: Callback) {
   set.add(cb);
   return () => {
     set.delete(cb);
+    // Drop the key once empty so the registry doesn't accumulate stale sets
+    // (dynamic keys, hot reload). Guard on identity in case the key was
+    // replaced by a concurrent subscribe.
+    if (set.size === 0 && subscribers.get(name) === set) {
+      subscribers.delete(name);
+    }
   };
 }
