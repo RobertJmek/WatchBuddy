@@ -29,6 +29,12 @@ export type ReviewThread = {
     value: number;
     review: string;
     updated_at: string;
+    /** Likes received on the written review. */
+    likeCount: number;
+    /** Whether the viewer has liked it (always false on your own review). */
+    likedByMe: boolean;
+    /** The review is the viewer's own — no self-like, display-only counter. */
+    isMine: boolean;
   };
   replies: ReplyItem[];
 };
@@ -41,7 +47,7 @@ export type ReviewThread = {
 export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
   const viewerId = await currentViewer();
 
-  const [ratingRes, repliesRes] = await Promise.all([
+  const [ratingRes, repliesRes, likeCountRes, myLikeRes] = await Promise.all([
     supabase
       .from('ratings')
       .select('id, user_id, value, review, updated_at')
@@ -52,11 +58,27 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
       .select('id, user_id, body, created_at, parent_reply_id, deleted_at')
       .eq('rating_id', ratingId)
       .order('created_at'),
+    // Just the total — the likers list is fetched separately on the likes screen.
+    supabase
+      .from('review_likes')
+      .select('rating_id', { count: 'exact', head: true })
+      .eq('rating_id', ratingId),
+    // Viewer-scoped existence (0/1); skipped when signed out.
+    viewerId
+      ? supabase
+          .from('review_likes')
+          .select('rating_id', { count: 'exact', head: true })
+          .eq('rating_id', ratingId)
+          .eq('user_id', viewerId)
+      : Promise.resolve({ count: 0, error: null }),
   ]);
   if (ratingRes.error) throw ratingRes.error;
   if (repliesRes.error) throw repliesRes.error;
+  if (likeCountRes.error) throw likeCountRes.error;
   const rating = ratingRes.data as any;
   const rows = (repliesRes.data ?? []) as any[];
+  const likeCount = likeCountRes.count ?? 0;
+  const myLikeCount = myLikeRes.count ?? 0;
 
   const userIds = [...new Set([rating.user_id, ...rows.map((r) => r.user_id)])];
   const { data: profiles, error: profErr } = await supabase
@@ -110,6 +132,7 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
   }
 
   const rp = profileById.get(rating.user_id);
+  const isMine = rating.user_id === viewerId;
   return {
     review: {
       ratingId: rating.id,
@@ -120,6 +143,10 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
       value: rating.value,
       review: (rating.review ?? '').trim(),
       updated_at: rating.updated_at,
+      likeCount,
+      // Never mark your own review as liked (self-likes don't exist / RLS-blocked).
+      likedByMe: !isMine && myLikeCount > 0,
+      isMine,
     },
     replies,
   };
