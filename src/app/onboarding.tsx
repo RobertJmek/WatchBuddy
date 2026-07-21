@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -51,9 +51,12 @@ export default function OnboardingScreen() {
 
   // Seed the display name from the auto-created profile. On email sign-up this is
   // the email address (the new-user trigger's fallback) — pre-filling lets the
-  // user replace it with a real name instead of starting blank.
+  // user replace it with a real name instead of starting blank. Seed once: a
+  // background refetch must not overwrite edits the user is typing.
+  const seeded = useRef(false);
   useEffect(() => {
-    if (!profile) return;
+    if (seeded.current || !profile) return;
+    seeded.current = true;
     setDisplayName(profile.display_name ?? '');
     setUsername(profile.username ?? '');
   }, [profile]);
@@ -62,7 +65,15 @@ export default function OnboardingScreen() {
   const initial = (displayName.trim() || '?').charAt(0).toUpperCase();
 
   async function finish() {
-    if (session) await markOnboardingSeen(session.user.id);
+    // Best-effort: a failed local-storage write must not trap the user on this
+    // screen (worst case the gate re-suggests onboarding next launch).
+    if (session) {
+      try {
+        await markOnboardingSeen(session.user.id);
+      } catch {
+        // ignore — navigate regardless
+      }
+    }
     router.replace('/');
   }
 
