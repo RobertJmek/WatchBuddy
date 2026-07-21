@@ -68,6 +68,8 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 
 ### Account & platform
 - **Auth** — passwordless email one-time code, plus Google sign-in (OAuth).
+- **First-run onboarding** — new accounts are gently prompted to set a username and photo so
+  friends can find and follow them; skippable and shown once.
 - **Editable profile** — display name, unique username, bio, and avatar upload.
 - **Appearance** — light / dark / system theme toggle (persisted), teal accent throughout.
 - **Offline** — read data (Library / Diary / Stats / profiles) is cached and persisted, so the
@@ -108,8 +110,9 @@ src/
                            (library, watches, ratings, stats, social, profile, …)
 scripts/                   TV Time importer (import_tvtime.py + docs) and app-icon generator
 supabase/
-  migrations/              SQL schema + RLS (0001 init, 0002 favorites, 0003 avatars,
-                           0004 follows + public reads)
+  migrations/              SQL schema + RLS, applied in order (0001 init, 0002 favorites,
+                           0003 avatars, 0004 follows + public reads, 0005 episode cache,
+                           0006 review likes, 0007 review replies, 0008 notifications)
   functions/               Edge Functions (tmdb-proxy)
 ```
 
@@ -140,7 +143,9 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 
 ### 3. Set up the backend
 - Apply the migrations in `supabase/migrations/` **in order** (Supabase SQL Editor or CLI):
-  `0001_init` → `0002_favorites` → `0003_avatars` → `0004_follows`.
+  `0001_init` → `0002_favorites` → `0003_avatars` → `0004_follows` →
+  `0005_episodes_cached_at` → `0006_review_likes` → `0007_review_replies` →
+  `0008_notifications`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
@@ -215,9 +220,14 @@ npx expo export --platform ios   # bundle without a device
 The personal core is complete — tracking, library/diary search, editable watch dates, a full
 statistics tab, offline read cache, and email + Google auth — on a teal light/dark design.
 The **social layer** is live: user search, follows, rich public profiles (taste summary +
-shelves), and community ratings/reviews per title. The **TV Time importer** has shipped.
-iOS distribution moved to **TestFlight**.
-Title screens serve from a **read-through Postgres cache** with stale fallbacks and request
-timeouts, so browsing stays fast and keeps working even when TMDB is down.
+shelves), community ratings/reviews per title, **threaded review replies**, and **realtime
+in-app notifications** (reply + like activity, delivered over Supabase Realtime). The
+**TV Time importer** has shipped. Title screens serve from a **read-through Postgres cache**
+with stale fallbacks and request timeouts, so browsing stays fast and keeps working even when
+TMDB is down.
 
-**Planned next:** Apple sign-in, over-the-air updates (EAS Update), and App Store publishing.
+**Distribution:** Android ships as a free sideload APK (GitHub releases) and is in **Google Play
+closed testing**; iOS ships via **TestFlight**.
+
+**Planned next:** finish Play closed testing → production, a PRO tier (ad-free) with AdMob
+banners, Apple sign-in, and over-the-air updates (EAS Update).
