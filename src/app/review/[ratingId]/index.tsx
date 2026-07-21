@@ -150,8 +150,14 @@ export default function ReviewThreadScreen() {
     if (review) {
       setLiked(review.likedByMe);
       setLikes(review.likeCount);
+    } else {
+      // Different thread (or still loading): clear so stale like state from the
+      // previous review can't linger.
+      setLiked(false);
+      setLikes(0);
     }
-  }, [review?.likedByMe, review?.likeCount]);
+    // ratingId keyed so a new thread re-syncs even if its counts coincide.
+  }, [ratingId, review?.likedByMe, review?.likeCount]);
 
   function openLikers() {
     if (likes === 0) return;
