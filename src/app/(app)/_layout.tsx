@@ -19,12 +19,19 @@ export default function AppLayout() {
   // friends can find them. Skippable and remembered — see src/lib/onboarding.ts.
   useEffect(() => {
     if (redirected.current || !session || !profile || profile.username) return;
-    hasSeenOnboarding(session.user.id).then((seen) => {
-      if (!seen && !redirected.current) {
+    let cancelled = false;
+    hasSeenOnboarding(session.user.id)
+      .then((seen) => {
+        if (cancelled || seen || redirected.current) return;
         redirected.current = true;
         router.replace('/onboarding');
-      }
-    });
+      })
+      // A local-storage read failure shouldn't crash the app or spam the console;
+      // worst case the gate simply doesn't fire this mount.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [session, profile, router]);
 
   return <AppTabs />;
