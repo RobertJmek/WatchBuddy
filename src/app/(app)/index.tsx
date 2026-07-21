@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -23,6 +23,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getLibrary, LIBRARY_STATUSES, type LibraryEntry } from '@/lib/library';
 import { getUnreadCount, subscribeToNotifications } from '@/lib/notifications';
+import { subscribeTabReset } from '@/lib/tab-reset';
 
 function toPosterItem(e: LibraryEntry): PosterItem | null {
   if (!e.title) return null;
@@ -87,6 +88,23 @@ export default function LibraryScreen() {
     if (searching) setQuery('');
     setSearching(!searching);
   }
+
+  const focused = useIsFocused();
+  const listRef = useRef<ScrollView>(null);
+
+  // Re-tapping the active Library tab closes the (optional) inline search and
+  // scrolls the shelves back to the top. Guarded by focus so a plain tab switch
+  // leaves state alone.
+  useEffect(() => {
+    return subscribeTabReset('index', () => {
+      if (!focused) return;
+      if (searching) {
+        setSearching(false);
+        setQuery('');
+      }
+      listRef.current?.scrollTo({ y: 0, animated: true });
+    });
+  }, [focused, searching]);
 
   // Refresh when the tab regains focus (e.g. after adding from Search).
   useFocusEffect(
@@ -201,6 +219,7 @@ export default function LibraryScreen() {
           </ScrollView>
         ) : (
           <ScrollView
+            ref={listRef}
             contentContainerStyle={styles.list}
             refreshControl={
               <RefreshControl

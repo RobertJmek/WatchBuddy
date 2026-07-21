@@ -2,6 +2,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { emitTabReset } from '@/lib/tab-reset';
 
 export default function AppTabs() {
   const scheme = useColorScheme();
@@ -13,7 +14,9 @@ export default function AppTabs() {
       tintColor={colors.tint}
       iconColor={colors.textSecondary}
       indicatorColor={colors.backgroundElement}>
-      <NativeTabs.Trigger name="index">
+      <NativeTabs.Trigger
+        name="index"
+        listeners={{ tabPress: () => emitTabReset('index') }}>
         <NativeTabs.Trigger.Label>Library</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/home.png')}
@@ -21,7 +24,9 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="explore">
+      <NativeTabs.Trigger
+        name="explore"
+        listeners={{ tabPress: () => emitTabReset('explore') }}>
         <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/explore.png')}
