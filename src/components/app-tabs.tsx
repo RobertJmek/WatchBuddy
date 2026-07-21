@@ -15,8 +15,8 @@ export default function AppTabs() {
       iconColor={colors.textSecondary}
       indicatorColor={colors.backgroundElement}>
       <NativeTabs.Trigger
-        name="index"
-        listeners={{ tabPress: () => emitTabReset('index') }}>
+        name="(library)"
+        listeners={{ tabPress: () => emitTabReset('library') }}>
         <NativeTabs.Trigger.Label>Library</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('@/assets/images/tabIcons/home.png')}

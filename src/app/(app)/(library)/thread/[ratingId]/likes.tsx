@@ -2,8 +2,9 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { ReviewLikes } from '@/components/review-likes';
 
-// Root "Liked by" screen — twin of /thread/[ratingId]/likes (see ADR 0005).
-export default function ReviewLikesScreen() {
+// Library-nested "Liked by" — keeps the tab bar. Root twin:
+// /review/[ratingId]/likes. See ADR 0005.
+export default function LibraryThreadLikesScreen() {
   const { ratingId } = useLocalSearchParams<{ ratingId: string }>();
   return <ReviewLikes ratingId={ratingId} />;
 }
