@@ -7,12 +7,14 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing, Type } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 
 export default function SignInScreen() {
   const { sendCode, verifyCode, signInWithProvider } = useAuth();
   const c = useTheme();
+  const isDark = useColorScheme() === 'dark';
 
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -54,7 +56,17 @@ export default function SignInScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <Image
-          style={styles.logo}
+          style={[
+            styles.logo,
+            { borderColor: c.border },
+            // Light: a physical drop shadow lifts the tile off warm paper. Dark:
+            // the near-black tile vanishes into the near-black theater, so we lift
+            // it with a warm amber "projector glow" halo instead — on-brand, and
+            // it's what actually defines the icon on this background.
+            isDark
+              ? { shadowColor: c.glow, shadowOpacity: 0.32, shadowRadius: 28 }
+              : { shadowColor: '#1A1714', shadowOpacity: 0.18, shadowRadius: 24 },
+          ]}
           source={require('@/assets/images/icon.png')}
           contentFit="contain"
         />
@@ -145,12 +157,19 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
   },
+  // The ticket is the hero — sized like a real app icon and lifted off the warm
+  // paper with a soft ambient shadow so the black tile reads as an object resting
+  // on the page, not a sticker floating on it.
   logo: {
-    width: 88,
-    height: 88,
-    borderRadius: 20,
+    width: 148,
+    height: 148,
+    borderRadius: 34,
+    borderWidth: 1,
     alignSelf: 'center',
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.three,
+    // Shadow color/opacity/radius are set inline (theme-aware); offset stays fixed.
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
   },
   brand: { textAlign: 'center' },
   tagline: { textAlign: 'center', marginBottom: Spacing.three },
