@@ -230,11 +230,11 @@ export default function ReviewThreadScreen() {
                 {review.review ? (
                   <ThemedText style={styles.text}>{review.review}</ThemedText>
                 ) : null}
-                <View style={styles.reviewFooter}>
-                  {review.isMine ? (
-                    // Own review: display-only counter (no self-likes); long-press
-                    // opens the Liked-by list.
-                    likes > 0 ? (
+                {review.isMine ? (
+                  // Own review: display-only counter (no self-likes); long-press
+                  // opens the Liked-by list. Hidden entirely when there are none.
+                  likes > 0 ? (
+                    <View style={styles.reviewFooter}>
                       <Pressable
                         onLongPress={openLikers}
                         hitSlop={10}
@@ -244,8 +244,10 @@ export default function ReviewThreadScreen() {
                           {likes}
                         </ThemedText>
                       </Pressable>
-                    ) : null
-                  ) : (
+                    </View>
+                  ) : null
+                ) : (
+                  <View style={styles.reviewFooter}>
                     <Pressable
                       onPress={toggleLike}
                       onLongPress={openLikers}
@@ -264,8 +266,8 @@ export default function ReviewThreadScreen() {
                         </ThemedText>
                       )}
                     </Pressable>
-                  )}
-                </View>
+                  </View>
+                )}
               </View>
             }
             ListEmptyComponent={
@@ -418,7 +420,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   text: { lineHeight: 21 },
-  reviewFooter: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.half },
+  reviewFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: Spacing.half,
+  },
   likeBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
   empty: { textAlign: 'center', marginTop: Spacing.four },
   reply: { flexDirection: 'row', gap: Spacing.two },
