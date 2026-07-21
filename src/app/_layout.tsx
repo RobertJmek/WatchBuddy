@@ -63,6 +63,7 @@ function RootNavigator() {
       <Stack.Screen name="auth-callback" />
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="title/[id]" />
         <Stack.Screen name="title/[id]/reviews" />
         <Stack.Screen name="review/[ratingId]" />
