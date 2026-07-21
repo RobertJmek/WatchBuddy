@@ -101,13 +101,16 @@ export default function SignInScreen() {
           </>
         ) : (
           <>
-            <ThemedText style={[styles.hint, { color: c.textSecondary }]}>
-              We emailed a sign-in code to {email}.
+            <ThemedText type="meta" style={[styles.hint, { color: c.textSecondary }]}>
+              We emailed a sign-in code to
+            </ThemedText>
+            <ThemedText style={[styles.email, { color: c.text }]}>
+              {email}
             </ThemedText>
             <TextInput
-              style={inputStyle}
-              placeholder="Enter code"
-              placeholderTextColor={c.textSecondary}
+              style={[styles.codeInput, { color: c.text, backgroundColor: c.backgroundElement }]}
+              placeholder="········"
+              placeholderTextColor={c.border}
               keyboardType="number-pad"
               maxLength={8}
               value={code}
@@ -169,6 +172,24 @@ const styles = StyleSheet.create({
   },
   googleIcon: { width: 18, height: 18 },
   or: { textAlign: 'center' },
-  hint: { textAlign: 'center' },
+  // Two-part sender line: quiet label, then the address it was sent to standing
+  // on its own at full text contrast so it can't get lost in the muted copy.
+  hint: { textAlign: 'center', marginBottom: -Spacing.two },
+  email: {
+    textAlign: 'center',
+    fontFamily: Type.semibold,
+    fontSize: 17,
+  },
+  // The code reads like a ticket number: centered, widely tracked, larger than a
+  // plain field — the one distinctive touch on this screen.
+  codeInput: {
+    fontFamily: Type.medium,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    fontSize: 26,
+    textAlign: 'center',
+    letterSpacing: 8,
+  },
   link: { textAlign: 'center' },
 });
