@@ -1,10 +1,11 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useIsFocused, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +26,7 @@ import { Danger, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { searchUsers } from '@/lib/social';
+import { subscribeTabReset } from '@/lib/tab-reset';
 import {
   getTrending,
   imageUrl,
@@ -98,9 +100,26 @@ function ResultRow({
 export default function SearchScreen() {
   const router = useRouter();
   const c = useTheme();
+  const focused = useIsFocused();
 
   const [query, setQuery] = useState('');
   const trimmed = query.trim();
+
+  const inputRef = useRef<TextInput>(null);
+  const trendingRef = useRef<ScrollView>(null);
+
+  // Re-tapping the active Search tab clears the query (back to trending), drops
+  // the keyboard, and scrolls to the top. Guarded by focus so a plain tab switch
+  // doesn't reset anything.
+  useEffect(() => {
+    return subscribeTabReset('explore', () => {
+      if (!focused) return;
+      setQuery('');
+      inputRef.current?.blur();
+      Keyboard.dismiss();
+      trendingRef.current?.scrollTo({ y: 0, animated: true });
+    });
+  }, [focused]);
 
   // A leading '@' switches to people-search; the '@' is the trigger only and
   // the rest is the username/name query.
@@ -163,6 +182,7 @@ export default function SearchScreen() {
         </ThemedText>
         <View style={styles.inputRow}>
           <TextInput
+            ref={inputRef}
             style={[styles.input, { color: c.text, backgroundColor: c.backgroundElement }]}
             placeholder="Movies, TV, or @username"
             placeholderTextColor={c.textSecondary}
@@ -262,6 +282,7 @@ export default function SearchScreen() {
             />
           ) : (
             <ScrollView
+              ref={trendingRef}
               contentContainerStyle={styles.list}
               keyboardShouldPersistTaps="handled">
               {trending.error != null && (
