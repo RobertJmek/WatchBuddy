@@ -96,7 +96,7 @@ export default function LibraryScreen() {
   // scrolls the shelves back to the top. Guarded by focus so a plain tab switch
   // leaves state alone.
   useEffect(() => {
-    return subscribeTabReset('index', () => {
+    return subscribeTabReset('library', () => {
       if (!focused) return;
       if (searching) {
         setSearching(false);

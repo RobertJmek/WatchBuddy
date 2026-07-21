@@ -87,9 +87,11 @@ export default function NotificationsScreen() {
                 { backgroundColor: c.backgroundElement },
                 item.unread && { backgroundColor: c.backgroundSelected },
               ]}
+              // Stay inside the Library stack so the tab bar remains visible on
+              // the thread (one tap to any tab, no double Back) — see ADR 0005.
               onPress={() =>
                 router.push({
-                  pathname: '/review/[ratingId]',
+                  pathname: '/thread/[ratingId]',
                   params: { ratingId: item.ratingId },
                 })
               }>

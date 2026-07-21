@@ -66,9 +66,11 @@ function RootNavigator() {
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="title/[id]" />
         <Stack.Screen name="title/[id]/reviews" />
+        {/* Root twins of the Library-nested thread — reached from a title's
+            review list, they cover the tab bar. Notifications + the nested
+            /thread/[ratingId] live inside the Library stack instead. */}
         <Stack.Screen name="review/[ratingId]" />
         <Stack.Screen name="review/[ratingId]/likes" />
-        <Stack.Screen name="notifications" />
         <Stack.Screen name="season" />
         <Stack.Screen name="diary" />
         <Stack.Screen name="edit-profile" />
