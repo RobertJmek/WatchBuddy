@@ -29,6 +29,12 @@ export type ReviewThread = {
     value: number;
     review: string;
     updated_at: string;
+    /** Likes received on the written review. */
+    likeCount: number;
+    /** Whether the viewer has liked it (always false on your own review). */
+    likedByMe: boolean;
+    /** The review is the viewer's own — no self-like, display-only counter. */
+    isMine: boolean;
   };
   replies: ReplyItem[];
 };
@@ -41,7 +47,7 @@ export type ReviewThread = {
 export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
   const viewerId = await currentViewer();
 
-  const [ratingRes, repliesRes] = await Promise.all([
+  const [ratingRes, repliesRes, likesRes] = await Promise.all([
     supabase
       .from('ratings')
       .select('id, user_id, value, review, updated_at')
@@ -52,11 +58,14 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
       .select('id, user_id, body, created_at, parent_reply_id, deleted_at')
       .eq('rating_id', ratingId)
       .order('created_at'),
+    supabase.from('review_likes').select('user_id').eq('rating_id', ratingId),
   ]);
   if (ratingRes.error) throw ratingRes.error;
   if (repliesRes.error) throw repliesRes.error;
+  if (likesRes.error) throw likesRes.error;
   const rating = ratingRes.data as any;
   const rows = (repliesRes.data ?? []) as any[];
+  const likeRows = (likesRes.data ?? []) as { user_id: string }[];
 
   const userIds = [...new Set([rating.user_id, ...rows.map((r) => r.user_id)])];
   const { data: profiles, error: profErr } = await supabase
@@ -110,6 +119,7 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
   }
 
   const rp = profileById.get(rating.user_id);
+  const isMine = rating.user_id === viewerId;
   return {
     review: {
       ratingId: rating.id,
@@ -120,6 +130,10 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
       value: rating.value,
       review: (rating.review ?? '').trim(),
       updated_at: rating.updated_at,
+      likeCount: likeRows.length,
+      // Never mark your own review as liked (self-likes don't exist / RLS-blocked).
+      likedByMe: !isMine && likeRows.some((l) => l.user_id === viewerId),
+      isMine,
     },
     replies,
   };

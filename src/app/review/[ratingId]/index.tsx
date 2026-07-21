@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import {
   ActionSheetIOS,
@@ -29,6 +29,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { likeReview, unlikeReview } from '@/lib/ratings';
 import {
   addReply,
   deleteReply,
@@ -140,6 +141,40 @@ export default function ReviewThreadScreen() {
   }
 
   const review = data?.review;
+
+  // Optimistic like state on the review card, seeded from (and re-synced to) the
+  // server truth whenever the thread refetches — mirrors ReviewRow.
+  const [liked, setLiked] = useState(false);
+  const [likes, setLikes] = useState(0);
+  useEffect(() => {
+    if (review) {
+      setLiked(review.likedByMe);
+      setLikes(review.likeCount);
+    }
+  }, [review?.likedByMe, review?.likeCount]);
+
+  function openLikers() {
+    if (likes === 0) return;
+    router.push({
+      pathname: '/review/[ratingId]/likes',
+      params: { ratingId },
+    });
+  }
+
+  async function toggleLike() {
+    const next = !liked;
+    setLiked(next);
+    setLikes((n) => n + (next ? 1 : -1));
+    try {
+      if (next) await likeReview(ratingId);
+      else await unlikeReview(ratingId);
+      queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+    } catch {
+      setLiked(!next);
+      setLikes((n) => n + (next ? -1 : 1));
+    }
+  }
+
   // The composer sticks above the keyboard; the list gets matching bottom
   // padding so the last replies can still scroll into view.
   const keyboard = useKeyboardState();
@@ -192,7 +227,45 @@ export default function ReviewThreadScreen() {
                     </ThemedText>
                   </View>
                 </Pressable>
-                <ThemedText style={styles.text}>{review.review}</ThemedText>
+                {review.review ? (
+                  <ThemedText style={styles.text}>{review.review}</ThemedText>
+                ) : null}
+                <View style={styles.reviewFooter}>
+                  {review.isMine ? (
+                    // Own review: display-only counter (no self-likes); long-press
+                    // opens the Liked-by list.
+                    likes > 0 ? (
+                      <Pressable
+                        onLongPress={openLikers}
+                        hitSlop={10}
+                        style={styles.likeBtn}>
+                        <IconSymbol name="heart" size={16} tintColor={c.textSecondary} />
+                        <ThemedText type="small" style={{ color: c.textSecondary }}>
+                          {likes}
+                        </ThemedText>
+                      </Pressable>
+                    ) : null
+                  ) : (
+                    <Pressable
+                      onPress={toggleLike}
+                      onLongPress={openLikers}
+                      hitSlop={10}
+                      style={styles.likeBtn}>
+                      <IconSymbol
+                        name="heart"
+                        size={16}
+                        tintColor={liked ? Accent : c.textSecondary}
+                      />
+                      {likes > 0 && (
+                        <ThemedText
+                          type="small"
+                          style={{ color: liked ? Accent : c.textSecondary }}>
+                          {likes}
+                        </ThemedText>
+                      )}
+                    </Pressable>
+                  )}
+                </View>
               </View>
             }
             ListEmptyComponent={
@@ -345,6 +418,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   text: { lineHeight: 21 },
+  reviewFooter: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.half },
+  likeBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
   empty: { textAlign: 'center', marginTop: Spacing.four },
   reply: { flexDirection: 'row', gap: Spacing.two },
   replyNested: { marginLeft: Spacing.five + Spacing.two },
