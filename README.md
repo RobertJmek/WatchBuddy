@@ -57,6 +57,13 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Breakdowns** — genre, decade, language, movie/TV split, library status, and top networks.
 
 ### Social & community
+- **Activity feed** (its own tab) — a reverse-chronological stream of what the people you
+  follow do: watches, ratings, reviews, follows, and review likes/replies (binge episodes
+  collapse into one "watched N episodes" row). It doubles as an **inbox**: your own
+  notifications (likes/replies on your reviews) pin to the top, friends' activity shows
+  unseen-first and ages out after ~24h.
+- **In-app notifications** — likes and replies on your reviews, delivered live over Supabase
+  Realtime; surfaced pinned atop the feed with an unread badge on the tab.
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
 - **Public profiles** (`/user/[id]`) — avatar, bio, follower counts, a compact stats summary,
   a **taste summary** (top genres + favorite directors), and **Watching now / Favorites /
@@ -100,7 +107,7 @@ signed-in user (public-diary model); writes stay owner-only.
 ```
 src/
   app/                     Expo Router routes
-    (app)/                 Authenticated tabs: Library, Search, Stats, Profile
+    (app)/                 Authenticated tabs: Feed, Library, Search, Stats, Profile
     title/[id]/            Title detail (index) + community reviews
     user/[id]/             Public profile (index) + followers / following
     season, diary, edit-profile, library-section, sign-in
@@ -112,7 +119,8 @@ scripts/                   TV Time importer (import_tvtime.py + docs) and app-ic
 supabase/
   migrations/              SQL schema + RLS, applied in order (0001 init, 0002 favorites,
                            0003 avatars, 0004 follows + public reads, 0005 episode cache,
-                           0006 review likes, 0007 review replies, 0008 notifications)
+                           0006 review likes, 0007 review replies, 0008 notifications,
+                           0009 activity feed, 0010 feed seen-watermark)
   functions/               Edge Functions (tmdb-proxy)
 ```
 
@@ -145,7 +153,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 - Apply the migrations in `supabase/migrations/` **in order** (Supabase SQL Editor or CLI):
   `0001_init` → `0002_favorites` → `0003_avatars` → `0004_follows` →
   `0005_episodes_cached_at` → `0006_review_likes` → `0007_review_replies` →
-  `0008_notifications`.
+  `0008_notifications` → `0009_feed` → `0010_feed_seen`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
@@ -220,8 +228,9 @@ npx expo export --platform ios   # bundle without a device
 The personal core is complete — tracking, library/diary search, editable watch dates, a full
 statistics tab, offline read cache, and email + Google auth — on a teal light/dark design.
 The **social layer** is live: user search, follows, rich public profiles (taste summary +
-shelves), community ratings/reviews per title, **threaded review replies**, and **realtime
-in-app notifications** (reply + like activity, delivered over Supabase Realtime). The
+shelves), community ratings/reviews per title, **threaded review replies**, **realtime
+in-app notifications** (reply + like activity, delivered over Supabase Realtime), and a
+**following activity feed** that folds those notifications into an inbox on its own tab. The
 **TV Time importer** has shipped. Title screens serve from a **read-through Postgres cache**
 with stale fallbacks and request timeouts, so browsing stays fast and keeps working even when
 TMDB is down.
