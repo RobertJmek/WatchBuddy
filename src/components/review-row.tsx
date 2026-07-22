@@ -26,9 +26,15 @@ function formatDate(iso: string) {
 export function ReviewRow({
   review,
   showThreadAction = true,
+  titleName,
+  onTitlePress,
 }: {
   review: ReviewItem;
   showThreadAction?: boolean;
+  /** Shown next to the author in feed context, where the card has no title. */
+  titleName?: string;
+  /** Makes the title tappable (navigates to the title) in feed context. */
+  onTitlePress?: () => void;
 }) {
   const router = useRouter();
   const c = useTheme();
@@ -55,6 +61,8 @@ export function ReviewRow({
       if (next) await likeReview(review.ratingId);
       else await unlikeReview(review.ratingId);
       queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+      // Keep the feed's copy of this review's heart in sync (no-op off-feed).
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
     } catch {
       setLiked(!next);
       setLikes((n) => n + (next ? -1 : 1));
@@ -85,9 +93,21 @@ export function ReviewRow({
           </View>
         )}
         <View style={styles.who}>
-          <ThemedText type="smallBold" numberOfLines={1}>
-            {name}
-          </ThemedText>
+          <View style={styles.nameLine}>
+            <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
+              {name}
+            </ThemedText>
+            {titleName ? (
+              <Pressable onPress={onTitlePress} hitSlop={6} disabled={!onTitlePress}>
+                <ThemedText type="small" numberOfLines={1}>
+                  <ThemedText type="small" style={{ color: c.textSecondary }}>
+                    on{' '}
+                  </ThemedText>
+                  <ThemedText type="smallBold">{titleName}</ThemedText>
+                </ThemedText>
+              </Pressable>
+            ) : null}
+          </View>
           <ThemedText type="small" style={{ color: c.textSecondary }}>
             {review.username ? `@${review.username}` : ''}
             {review.isMine ? ' · You' : review.is_following ? ' · Following' : ''}
@@ -175,6 +195,8 @@ const styles = StyleSheet.create({
   },
   avatarInitial: { color: AccentText, fontSize: 15, lineHeight: 19, fontWeight: '700' },
   who: { flex: 1 },
+  nameLine: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.one },
+  name: { flexShrink: 1 },
   score: {
     width: 34,
     height: 34,

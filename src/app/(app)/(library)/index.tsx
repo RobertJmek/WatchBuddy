@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -20,9 +20,7 @@ import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/lib/auth-context';
 import { getLibrary, LIBRARY_STATUSES, type LibraryEntry } from '@/lib/library';
-import { getUnreadCount, subscribeToNotifications } from '@/lib/notifications';
 import { subscribeTabReset } from '@/lib/tab-reset';
 
 function toPosterItem(e: LibraryEntry): PosterItem | null {
@@ -55,23 +53,6 @@ export default function LibraryScreen() {
     error,
     refetch,
   } = useQuery({ queryKey: ['library'], queryFn: getLibrary });
-
-  const { session } = useAuth();
-  const queryClient = useQueryClient();
-  const unreadQ = useQuery({
-    queryKey: ['notifUnread'],
-    queryFn: getUnreadCount,
-  });
-
-  // Live badge: any change to my notifications refreshes the counts.
-  useEffect(() => {
-    const uid = session?.user.id;
-    if (!uid) return;
-    return subscribeToNotifications(uid, () => {
-      queryClient.invalidateQueries({ queryKey: ['notifUnread'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    });
-  }, [session?.user.id, queryClient]);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -168,15 +149,6 @@ export default function LibraryScreen() {
             Library
           </ThemedText>
           <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/notifications')}
-              hitSlop={8}
-              style={styles.searchBtn}>
-              <IconSymbol name="bell" size={22} tintColor={c.textSecondary} />
-              {(unreadQ.data ?? 0) > 0 && (
-                <View style={[styles.unreadDot, { backgroundColor: c.tint }]} />
-              )}
-            </Pressable>
             <Pressable onPress={toggleSearch} hitSlop={8} style={styles.searchBtn}>
               <IconSymbol
                 name="magnifyingglass"
@@ -282,14 +254,6 @@ const styles = StyleSheet.create({
   heading: { marginTop: Spacing.half, marginBottom: Spacing.two },
   searchBtn: { padding: Spacing.half },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  unreadDot: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-  },
   inputRow: { justifyContent: 'center', marginBottom: Spacing.two },
   input: {
     borderRadius: Spacing.three,
