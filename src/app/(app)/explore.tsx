@@ -12,7 +12,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { EmptyState } from '@/components/empty-state';
@@ -21,6 +20,7 @@ import { PressScale } from '@/components/press-scale';
 import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TopSafeAreaView } from '@/components/top-safe-area';
 import { UserRow } from '@/components/user-row';
 import { Danger, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -176,7 +176,7 @@ export default function SearchScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <TopSafeAreaView style={styles.safeArea}>
         <ThemedText type="title" style={styles.heading}>
           Search
         </ThemedText>
@@ -310,7 +310,7 @@ export default function SearchScreen() {
               />
             </ScrollView>
           ))}
-      </SafeAreaView>
+      </TopSafeAreaView>
     </ThemedView>
   );
 }

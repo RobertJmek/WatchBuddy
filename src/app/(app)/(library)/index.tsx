@@ -9,7 +9,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
@@ -17,6 +16,7 @@ import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
@@ -156,7 +156,7 @@ export default function LibraryScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <TopSafeAreaView style={styles.safeArea}>
         <ThemedText type="meta" style={[styles.eyebrow, { color: c.textSecondary }]}>
           {(() => {
             const n = entries.filter((e) => e.title).length;
@@ -265,7 +265,7 @@ export default function LibraryScreen() {
             )}
           </ScrollView>
         )}
-      </SafeAreaView>
+      </TopSafeAreaView>
     </ThemedView>
   );
 }
