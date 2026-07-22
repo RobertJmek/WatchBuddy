@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Accent, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getStats } from '@/lib/stats';
@@ -143,7 +143,7 @@ export default function StatsScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <TopSafeAreaView style={styles.safeArea}>
           <ThemedText type="title" style={styles.heading}>
             Statistics
           </ThemedText>
@@ -156,7 +156,7 @@ export default function StatsScreen() {
             </View>
             <Skeleton style={{ height: 90, borderRadius: 12 }} />
           </View>
-        </SafeAreaView>
+        </TopSafeAreaView>
       </ThemedView>
     );
   }
@@ -170,7 +170,7 @@ export default function StatsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <TopSafeAreaView style={styles.safeArea}>
         <ThemedText type="title" style={styles.heading}>
           Statistics
         </ThemedText>
@@ -382,7 +382,7 @@ export default function StatsScreen() {
           </Section>
         )}
         </ScrollView>
-      </SafeAreaView>
+      </TopSafeAreaView>
     </ThemedView>
   );
 }

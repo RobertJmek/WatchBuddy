@@ -3,12 +3,12 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
@@ -50,7 +50,7 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <TopSafeAreaView style={styles.safeArea}>
         <ThemedText type="title" style={styles.heading}>
           Profile
         </ThemedText>
@@ -148,7 +148,7 @@ export default function ProfileScreen() {
           style={{ marginTop: Spacing.two }}
           onPress={signOut}
         />
-      </SafeAreaView>
+      </TopSafeAreaView>
     </ThemedView>
   );
 }
