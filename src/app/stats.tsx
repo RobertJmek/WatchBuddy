@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Accent, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getStats } from '@/lib/stats';
@@ -143,20 +142,16 @@ export default function StatsScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.container}>
-        <TopSafeAreaView style={styles.safeArea}>
-          <ThemedText type="title" style={styles.heading}>
-            Statistics
-          </ThemedText>
-          <View style={{ gap: Spacing.two, marginTop: Spacing.two }}>
-            <Skeleton style={{ height: 160, borderRadius: 12 }} />
-            <View style={{ flexDirection: 'row', gap: Spacing.two }}>
-              <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
-              <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
-              <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
-            </View>
-            <Skeleton style={{ height: 90, borderRadius: 12 }} />
+        <Stack.Screen options={{ headerShown: true, headerTitle: 'Statistics' }} />
+        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+          <Skeleton style={{ height: 160, borderRadius: 12 }} />
+          <View style={{ flexDirection: 'row', gap: Spacing.two }}>
+            <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
+            <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
+            <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
           </View>
-        </TopSafeAreaView>
+          <Skeleton style={{ height: 90, borderRadius: 12 }} />
+        </View>
       </ThemedView>
     );
   }
@@ -170,11 +165,8 @@ export default function StatsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <TopSafeAreaView style={styles.safeArea}>
-        <ThemedText type="title" style={styles.heading}>
-          Statistics
-        </ThemedText>
-        <ScrollView contentContainerStyle={styles.content}>
+      <Stack.Screen options={{ headerShown: true, headerTitle: 'Statistics' }} />
+      <ScrollView contentContainerStyle={styles.content}>
           <ThemedView type="backgroundElement" style={styles.hero}>
             <ThemedText style={styles.heroValue}>
               {formatDuration(stats.totalMinutes)}
@@ -381,16 +373,13 @@ export default function StatsScreen() {
             ))}
           </Section>
         )}
-        </ScrollView>
-      </TopSafeAreaView>
+      </ScrollView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1 },
-  heading: { marginTop: Spacing.three, paddingHorizontal: Spacing.three },
   content: { padding: Spacing.three, gap: Spacing.three },
   hero: {
     borderRadius: Spacing.three,

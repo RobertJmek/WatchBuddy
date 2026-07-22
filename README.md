@@ -48,7 +48,7 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   existing status/period filters.
 - **10-point ratings with optional reviews** for movies and shows.
 
-### Statistics (its own tab)
+### Statistics (from your profile)
 - Hero totals — total time watched, this-year totals, titles / movies / episodes.
 - **Trends** — last-12-months activity and watch **patterns** (busiest weekday, biggest day,
   current & longest streaks, busiest month).
@@ -107,10 +107,10 @@ signed-in user (public-diary model); writes stay owner-only.
 ```
 src/
   app/                     Expo Router routes
-    (app)/                 Authenticated tabs: Feed, Library, Search, Stats, Profile
+    (app)/                 Authenticated tabs: Feed, Library, Search, Profile
     title/[id]/            Title detail (index) + community reviews
     user/[id]/             Public profile (index) + followers / following
-    season, diary, edit-profile, library-section, sign-in
+    season, diary, stats, edit-profile, library-section, sign-in
   components/              Reusable UI (poster shelf, watch bars, rating/review rows,
                            follow button, user row, …)
   lib/                     supabase client, query client, TMDB client, and data modules

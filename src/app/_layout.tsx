@@ -73,6 +73,7 @@ function RootNavigator() {
         <Stack.Screen name="review/[ratingId]/likes" />
         <Stack.Screen name="season" />
         <Stack.Screen name="diary" />
+        <Stack.Screen name="stats" />
         <Stack.Screen name="edit-profile" />
         <Stack.Screen name="library-section" />
         <Stack.Screen name="user/[id]" />

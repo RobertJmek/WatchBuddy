@@ -130,6 +130,10 @@ export default function ProfileScreen() {
           <ThemedText type="subtitle">View my profile</ThemedText>
           <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
         </Pressable>
+        <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={() => router.push('/stats')}>
+          <ThemedText type="subtitle">Statistics</ThemedText>
+          <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+        </Pressable>
         <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={() => router.push('/diary')}>
           <ThemedText type="subtitle">Diary</ThemedText>
           <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
