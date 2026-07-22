@@ -16,13 +16,19 @@ export type NotificationItem = {
   unread: boolean;
 };
 
-/** The viewer's notifications, newest first, with actor + title context. */
+/**
+ * The viewer's notifications, newest first, with actor + title context. Since
+ * notifications now live pinned atop the Feed (not a dedicated screen), read
+ * ones are dropped 48h after they were seen; unread ones always stay.
+ */
 export async function getNotifications(): Promise<NotificationItem[]> {
   const uid = await requireViewer();
+  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('notifications')
     .select('id, type, actor_id, rating_id, reply_id, like_count, created_at, read_at')
     .eq('user_id', uid)
+    .or(`read_at.is.null,read_at.gte.${cutoff}`)
     .order('created_at', { ascending: false })
     .limit(100);
   if (error) throw error;
@@ -114,13 +120,18 @@ export async function markAllRead() {
   if (error) throw error;
 }
 
+// Each subscriber needs its own channel topic: Supabase reuses a channel by
+// name, and adding `.on()` to an already-subscribed channel throws. Multiple
+// callers (the Feed screen + the tab badge) subscribe at once, so make it unique.
+let channelSeq = 0;
+
 /**
  * Live updates: any change to the viewer's notifications fires `onChange`.
  * Returns an unsubscribe function.
  */
 export function subscribeToNotifications(uid: string, onChange: () => void) {
   const channel = supabase
-    .channel(`notifications:${uid}`)
+    .channel(`notifications:${uid}:${channelSeq++}`)
     .on(
       'postgres_changes',
       {

@@ -1,7 +1,7 @@
 {
   "name": "watchbuddy",
   "main": "expo-router/entry",
-  "version": "1.9.3",
+  "version": "1.9.4",
   "dependencies": {
     "@expo-google-fonts/archivo": "^0.4.2",
     "@expo-google-fonts/bodoni-moda": "^0.4.2",
