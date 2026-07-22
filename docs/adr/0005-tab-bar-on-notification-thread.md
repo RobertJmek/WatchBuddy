@@ -1,6 +1,14 @@
 # ADR 0005 — Keep the tab bar on the notification → thread flow (dual-route thread)
 
-**Status:** accepted · 2026-07-22
+**Status:** superseded by [ADR 0006](0006-activity-feed-notifications-inbox.md) · 2026-07-22
+
+> **Superseded (2026-07-23):** notifications no longer live behind a Library-header
+> bell / `/notifications` screen — they moved into the top-level **Feed** tab
+> (ADR 0006), so the notification → thread flow this ADR optimised no longer
+> exists. A notification now taps through to the **root** `/review/[ratingId]`
+> (covering the tab bar, like every other feed tap). The Library-nested
+> `/thread/[ratingId]` route still exists but is no longer reached from a
+> notification. The rest of this ADR is kept for historical context.
 
 ## Context
 
