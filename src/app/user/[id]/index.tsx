@@ -13,7 +13,7 @@ import {
 
 import { FollowButton } from '@/components/follow-button';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
-import { RowSkeleton } from '@/components/skeleton';
+import { RowSkeleton, Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
@@ -199,15 +199,25 @@ export default function UserProfileScreen() {
         />
       ) : null}
 
-      <View style={styles.statRow}>
-        <StatCard value={String(stats?.distinctTitles ?? 0)} label="Titles" />
-        <StatCard value={String(stats?.totalMovieWatches ?? 0)} label="Movies" />
-        <StatCard value={String(stats?.totalEpisodeWatches ?? 0)} label="Episodes" />
-        <StatCard
-          value={String(Math.round((stats?.totalMinutes ?? 0) / 60))}
-          label="Hours"
-        />
-      </View>
+      {/* First load has no cached stats yet — show placeholders instead of a
+          row of zeros (misreads as "this person watched nothing"). */}
+      {statsQ.isLoading ? (
+        <View style={styles.statRow}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} style={styles.statSkeleton} />
+          ))}
+        </View>
+      ) : (
+        <View style={styles.statRow}>
+          <StatCard value={String(stats?.distinctTitles ?? 0)} label="Titles" />
+          <StatCard value={String(stats?.totalMovieWatches ?? 0)} label="Movies" />
+          <StatCard value={String(stats?.totalEpisodeWatches ?? 0)} label="Episodes" />
+          <StatCard
+            value={String(Math.round((stats?.totalMinutes ?? 0) / 60))}
+            label="Hours"
+          />
+        </View>
+      )}
 
       {/* Taste — what this person actually watches. Open, airy layout in the
           app's eyebrow style rather than a boxed card. */}
@@ -361,6 +371,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.half,
   },
+  statSkeleton: { flex: 1, height: 80, borderRadius: Spacing.three },
   statValue: { fontSize: 22, fontWeight: '800', color: Accent },
   recentHeading: { alignSelf: 'flex-start', marginTop: Spacing.three },
   taste: {
