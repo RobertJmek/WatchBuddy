@@ -64,9 +64,9 @@ Two design axes had real trade-offs:
 - **No Realtime for friends' activity** (pull-to-refresh + focus refetch). Live
   push pairs naturally with the deferred materialised-table design, not with the
   read-time `UNION`. Personal notifications keep their existing Realtime.
-- **The watermark is approximate.** "Lingers ~24h" is measured from when an event
-  was *posted*, not from the exact moment it was seen — an intentional
-  simplification, since a single timestamp can't record per-event seen times.
+- **The watermark is approximate.** A single timestamp can't record per-event
+  seen times. (The exact aging rule was refined on 2026-07-23 — see the Update
+  below.)
 - **ADR 0005 is superseded** — the notification → thread flow it optimised no
   longer exists; notifications tap through to the root `/review/[ratingId]`.
 - **Privacy:** the feed never shows the viewer's own actions or events whose
@@ -74,3 +74,21 @@ Two design axes had real trade-offs:
   are notifications). No per-user privacy toggle yet.
 - Native tab behaviour differs across iOS/Android, so the tab (icon, badge) and
   the inbox aging must be device-tested on both.
+
+## Update — 2026-07-23: window anchored to the watermark (migration 0011)
+
+The original filter `least(feed_seen_at, now() - 24h)` ages a seen row 24h from
+when it was **posted**, so viewing didn't start the clock (an item created 20h
+ago vanished ~4h after you saw it). `0011_feed_seen_window.sql` changes it to:
+
+```sql
+and e.created_at > s.feed_seen_at - interval '24 hours'
+```
+
+Now **unseen items (newer than the watermark) never expire before you see
+them**, and a seen item drops once the watermark (your last Feed exit) moves 24h
+past it — still self-clearing, with no resurfacing of old rows. The
+single-watermark limitation stands: an item already old when first seen doesn't
+get a fresh 24h from the exact viewing moment; a faithful per-item timer would
+need a per-event seen-log table, judged too costly. Notifications (48h post-read)
+are unchanged.
