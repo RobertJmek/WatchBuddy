@@ -189,6 +189,9 @@ export function ReviewThread({
     setSavingReview(true);
     try {
       await setRating(review.entityType, review.entityId, review.value, text);
+      // Refresh the thread + community lists so the new/empty text shows even if
+      // this screen is revisited from a cached notification tap.
+      refresh();
       queryClient.invalidateQueries({ queryKey: ['feed'] });
       // Emptying the text removes the review (score kept) — nothing left to show.
       if (!text) {
@@ -196,7 +199,6 @@ export function ReviewThread({
         return;
       }
       setEditing(false);
-      refresh();
     } catch {
       Alert.alert('Could not save your review. Try again.');
     } finally {
@@ -217,7 +219,10 @@ export function ReviewThread({
             if (!review) return;
             try {
               await setRating(review.entityType, review.entityId, review.value, '');
-              queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+              // Invalidate the thread cache too, or a later notification tap
+              // reopens this screen showing the deleted text (refresh = thread +
+              // titleRatings).
+              refresh();
               queryClient.invalidateQueries({ queryKey: ['feed'] });
               router.back();
             } catch {
