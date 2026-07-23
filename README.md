@@ -46,7 +46,8 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   custom range**, with **editable watch dates** (grouped episode entries move together).
 - **Search inside Library and Diary** — a toggleable title search that composes with the
   existing status/period filters.
-- **10-point ratings with optional reviews** for movies and shows.
+- **10-point ratings with optional reviews** for movies and shows — **edit or delete your own
+  review** anytime from its page (deleting keeps your score, just clears the text).
 
 ### Statistics (from your profile)
 - Hero totals — total time watched, this-year totals, titles / movies / episodes.
