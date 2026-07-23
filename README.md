@@ -60,8 +60,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Activity feed** (its own tab) — a reverse-chronological stream of what the people you
   follow do: watches, ratings, reviews, follows, and review likes/replies (binge episodes
   collapse into one "watched N episodes" row). It doubles as an **inbox**: your own
-  notifications (likes/replies on your reviews) pin to the top, friends' activity shows
-  unseen-first and ages out after ~24h.
+  notifications (likes/replies on your reviews) pin to the top, and friends' activity shows
+  unseen-first — unseen items stay until you've seen them, then age out ~24h after you've
+  seen them.
 - **In-app notifications** — likes and replies on your reviews, delivered live over Supabase
   Realtime; surfaced pinned atop the feed with an unread badge on the tab.
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
