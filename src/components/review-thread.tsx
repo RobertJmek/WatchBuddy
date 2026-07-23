@@ -29,7 +29,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { likeReview, unlikeReview } from '@/lib/ratings';
+import { likeReview, setRating, unlikeReview } from '@/lib/ratings';
 import {
   addReply,
   deleteReply,
@@ -40,6 +40,9 @@ import {
 function nameOf(r: { display_name: string | null; username: string | null }) {
   return r.display_name?.trim() || (r.username ? `@${r.username}` : 'User');
 }
+
+/** One row in the ⋯ menu — shared by reply rows and the review card. */
+type MenuAction = { label: string; destructive?: boolean; run: () => void };
 
 function Avatar({ uri, name }: { uri: string | null; name: string }) {
   const initial = (name.replace('@', '') || '?').charAt(0).toUpperCase();
@@ -80,7 +83,13 @@ export function ReviewThread({
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<ReplyItem | null>(null);
   const [sending, setSending] = useState(false);
-  const [menuFor, setMenuFor] = useState<ReplyItem | null>(null);
+  // Android ⋯ menu: the action list currently shown in the bottom sheet.
+  const [menuActions, setMenuActions] = useState<MenuAction[] | null>(null);
+
+  // Inline review editing (own review only).
+  const [editing, setEditing] = useState(false);
+  const [reviewDraft, setReviewDraft] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
 
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ['reviewThread', ratingId] });
@@ -105,8 +114,8 @@ export function ReviewThread({
 
   // ⋯ menu on each reply: Reply / Copy / Delete (own). Native action sheet on
   // iOS, themed bottom-sheet Modal on Android.
-  function actionsFor(item: ReplyItem) {
-    const actions: { label: string; destructive?: boolean; run: () => void }[] = [
+  function actionsFor(item: ReplyItem): MenuAction[] {
+    const actions: MenuAction[] = [
       { label: 'Reply', run: () => setReplyTo(item) },
       { label: 'Copy text', run: () => void Clipboard.setStringAsync(item.body) },
     ];
@@ -120,21 +129,24 @@ export function ReviewThread({
     return actions;
   }
 
-  function openReplyMenu(item: ReplyItem) {
+  // Native action sheet on iOS, themed bottom-sheet Modal on Android.
+  function openMenu(actions: MenuAction[]) {
     if (Platform.OS === 'ios') {
-      const actions = actionsFor(item);
+      const di = actions.findIndex((a) => a.destructive);
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options: [...actions.map((a) => a.label), 'Cancel'],
           cancelButtonIndex: actions.length,
-          destructiveButtonIndex: item.isMine ? actions.length - 1 : undefined,
+          destructiveButtonIndex: di >= 0 ? di : undefined,
         },
         (i) => actions[i]?.run(),
       );
     } else {
-      setMenuFor(item);
+      setMenuActions(actions);
     }
   }
+
+  const openReplyMenu = (item: ReplyItem) => openMenu(actionsFor(item));
 
   function confirmDelete(item: ReplyItem) {
     Alert.alert('Delete this reply?', 'A "[deleted comment]" placeholder remains.', [
@@ -155,6 +167,67 @@ export function ReviewThread({
   }
 
   const review = data?.review;
+
+  // Own-review actions (⋯ menu on the review card). Edit is text-only; the score
+  // is changed from the title page. Delete clears the text but keeps the row
+  // (score, and likes that revive if text returns) — see CONTEXT.md / ADR 0007.
+  function startEditing() {
+    setReviewDraft(review?.review ?? '');
+    setEditing(true);
+  }
+
+  function openReviewMenu() {
+    openMenu([
+      { label: 'Edit', run: startEditing },
+      { label: 'Delete', destructive: true, run: confirmDeleteReview },
+    ]);
+  }
+
+  async function saveReview() {
+    if (!review || savingReview) return;
+    const text = reviewDraft.trim();
+    setSavingReview(true);
+    try {
+      await setRating(review.entityType, review.entityId, review.value, text);
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      // Emptying the text removes the review (score kept) — nothing left to show.
+      if (!text) {
+        router.back();
+        return;
+      }
+      setEditing(false);
+      refresh();
+    } catch {
+      Alert.alert('Could not save your review. Try again.');
+    } finally {
+      setSavingReview(false);
+    }
+  }
+
+  function confirmDeleteReview() {
+    Alert.alert(
+      'Delete your review?',
+      'Your score stays — only the written review is removed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!review) return;
+            try {
+              await setRating(review.entityType, review.entityId, review.value, '');
+              queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+              queryClient.invalidateQueries({ queryKey: ['feed'] });
+              router.back();
+            } catch {
+              Alert.alert('Could not delete your review.');
+            }
+          },
+        },
+      ],
+    );
+  }
 
   // Optimistic like state on the review card, seeded from (and re-synced to) the
   // server truth whenever the thread refetches — mirrors ReviewRow.
@@ -226,32 +299,75 @@ export function ReviewThread({
             ListHeaderComponent={
               <View
                 style={[styles.reviewCard, { backgroundColor: c.backgroundElement }]}>
-                <Pressable
-                  style={styles.top}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/user/[id]',
-                      params: { id: review.userId },
-                    })
-                  }>
-                  <Avatar uri={review.avatar_url} name={nameOf(review)} />
-                  <View style={styles.who}>
-                    <ThemedText type="smallBold" numberOfLines={1}>
-                      {nameOf(review)}
-                    </ThemedText>
-                    {review.username && (
-                      <ThemedText type="small" style={{ color: c.textSecondary }}>
-                        @{review.username}
+                <View style={styles.top}>
+                  <Pressable
+                    style={styles.topProfile}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/user/[id]',
+                        params: { id: review.userId },
+                      })
+                    }>
+                    <Avatar uri={review.avatar_url} name={nameOf(review)} />
+                    <View style={styles.who}>
+                      <ThemedText type="smallBold" numberOfLines={1}>
+                        {nameOf(review)}
                       </ThemedText>
-                    )}
-                  </View>
+                      {review.username && (
+                        <ThemedText type="small" style={{ color: c.textSecondary }}>
+                          @{review.username}
+                        </ThemedText>
+                      )}
+                    </View>
+                  </Pressable>
                   <View style={[styles.score, { borderColor: c.glow }]}>
                     <ThemedText type="smallBold" style={{ color: c.glow }}>
                       {review.value}
                     </ThemedText>
                   </View>
-                </Pressable>
-                {review.review ? (
+                  {review.isMine && !editing && (
+                    <Pressable hitSlop={10} onPress={openReviewMenu}>
+                      <IconSymbol
+                        name="ellipsis"
+                        size={18}
+                        tintColor={c.textSecondary}
+                      />
+                    </Pressable>
+                  )}
+                </View>
+                {editing ? (
+                  <View style={styles.editWrap}>
+                    <TextInput
+                      style={[
+                        styles.editInput,
+                        { color: c.text, backgroundColor: c.background },
+                      ]}
+                      value={reviewDraft}
+                      onChangeText={setReviewDraft}
+                      placeholder="Write your review…"
+                      placeholderTextColor={c.textSecondary}
+                      multiline
+                      autoFocus
+                    />
+                    <View style={styles.editActions}>
+                      <Pressable
+                        hitSlop={8}
+                        disabled={savingReview}
+                        onPress={() => setEditing(false)}>
+                        <ThemedText type="smallBold" style={{ color: c.textSecondary }}>
+                          Cancel
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable hitSlop={8} disabled={savingReview} onPress={saveReview}>
+                        <ThemedText
+                          type="smallBold"
+                          style={{ color: savingReview ? c.textSecondary : Accent }}>
+                          Save
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : review.review ? (
                   <ThemedText style={styles.text}>{review.review}</ThemedText>
                 ) : null}
                 {review.isMine ? (
@@ -342,6 +458,7 @@ export function ReviewThread({
           />
         )}
 
+        {!editing && (
         <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
         <SafeAreaView edges={['bottom']}>
           {replyTo && (
@@ -378,43 +495,43 @@ export function ReviewThread({
           </View>
         </SafeAreaView>
         </KeyboardStickyView>
+        )}
       </View>
 
       {/* Android ⋯ menu: bottom sheet, dismissed by backdrop tap or Cancel. */}
       <Modal
-        visible={menuFor != null}
+        visible={menuActions != null}
         transparent
         animationType="fade"
-        onRequestClose={() => setMenuFor(null)}>
-        <Pressable style={styles.backdrop} onPress={() => setMenuFor(null)}>
+        onRequestClose={() => setMenuActions(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setMenuActions(null)}>
           <Pressable
             style={[styles.sheet, { backgroundColor: c.backgroundElement }]}
             onPress={(e) => e.stopPropagation()}>
-            {menuFor &&
-              actionsFor(menuFor).map((a) => (
-                <Pressable
-                  key={a.label}
-                  style={({ pressed }) => [
-                    styles.sheetRow,
-                    pressed && { backgroundColor: c.backgroundSelected },
-                  ]}
-                  onPress={() => {
-                    setMenuFor(null);
-                    a.run();
-                  }}>
-                  <ThemedText
-                    style={a.destructive ? styles.sheetDestructive : undefined}>
-                    {a.label}
-                  </ThemedText>
-                </Pressable>
-              ))}
+            {menuActions?.map((a) => (
+              <Pressable
+                key={a.label}
+                style={({ pressed }) => [
+                  styles.sheetRow,
+                  pressed && { backgroundColor: c.backgroundSelected },
+                ]}
+                onPress={() => {
+                  setMenuActions(null);
+                  a.run();
+                }}>
+                <ThemedText
+                  style={a.destructive ? styles.sheetDestructive : undefined}>
+                  {a.label}
+                </ThemedText>
+              </Pressable>
+            ))}
             <View style={[styles.sheetDivider, { backgroundColor: c.border }]} />
             <Pressable
               style={({ pressed }) => [
                 styles.sheetRow,
                 pressed && { backgroundColor: c.backgroundSelected },
               ]}
-              onPress={() => setMenuFor(null)}>
+              onPress={() => setMenuActions(null)}>
               <ThemedText style={{ color: c.textSecondary }}>Cancel</ThemedText>
             </Pressable>
           </Pressable>
@@ -434,7 +551,29 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  topProfile: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   who: { flex: 1 },
+  editWrap: { gap: Spacing.two },
+  editInput: {
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
+    fontSize: 16,
+    lineHeight: 21,
+    minHeight: 80,
+    maxHeight: 160,
+  },
+  editActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: Spacing.four,
+  },
   score: {
     width: 34,
     height: 34,

@@ -1,3 +1,4 @@
+import type { RatingEntityType } from '@/lib/ratings';
 import { supabase } from '@/lib/supabase';
 import { currentViewer, requireViewer } from '@/lib/viewer';
 
@@ -26,6 +27,9 @@ export type ReviewThread = {
     username: string | null;
     display_name: string | null;
     avatar_url: string | null;
+    /** The rated entity, for owner writes via setRating. */
+    entityType: RatingEntityType;
+    entityId: string;
     value: number;
     review: string;
     updated_at: string;
@@ -50,7 +54,7 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
   const [ratingRes, repliesRes, likeCountRes, myLikeRes] = await Promise.all([
     supabase
       .from('ratings')
-      .select('id, user_id, value, review, updated_at')
+      .select('id, user_id, entity_type, entity_id, value, review, updated_at')
       .eq('id', ratingId)
       .single(),
     supabase
@@ -140,6 +144,8 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
       username: rp?.username ?? null,
       display_name: rp?.display_name ?? null,
       avatar_url: rp?.avatar_url ?? null,
+      entityType: rating.entity_type as RatingEntityType,
+      entityId: rating.entity_id as string,
       value: rating.value,
       review: (rating.review ?? '').trim(),
       updated_at: rating.updated_at,
