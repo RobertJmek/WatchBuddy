@@ -121,7 +121,8 @@ supabase/
   migrations/              SQL schema + RLS, applied in order (0001 init, 0002 favorites,
                            0003 avatars, 0004 follows + public reads, 0005 episode cache,
                            0006 review likes, 0007 review replies, 0008 notifications,
-                           0009 activity feed, 0010 feed seen-watermark)
+                           0009 activity feed, 0010 feed seen-watermark,
+                           0011 feed seen-window)
   functions/               Edge Functions (tmdb-proxy)
 ```
 
@@ -154,7 +155,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 - Apply the migrations in `supabase/migrations/` **in order** (Supabase SQL Editor or CLI):
   `0001_init` → `0002_favorites` → `0003_avatars` → `0004_follows` →
   `0005_episodes_cached_at` → `0006_review_likes` → `0007_review_replies` →
-  `0008_notifications` → `0009_feed` → `0010_feed_seen`.
+  `0008_notifications` → `0009_feed` → `0010_feed_seen` → `0011_feed_seen_window`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
