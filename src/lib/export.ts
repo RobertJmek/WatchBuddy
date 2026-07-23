@@ -8,12 +8,15 @@ import { requireViewer, selectMine } from '@/lib/viewer';
 
 const PAGE = 1000;
 
+// makeQuery resolves to `{ q: builder }` — the same wrapper trick as
+// selectMine. Resolving to a bare builder would let `await` collapse
+// (execute) it and hand back `{ data, error }` instead of the chainable.
 async function allPages<T>(
-  makeQuery: () => Promise<any> | any,
+  makeQuery: () => Promise<{ q: any }>,
 ): Promise<T[]> {
   const rows: T[] = [];
   for (let page = 0; ; page++) {
-    const q = await makeQuery();
+    const { q } = await makeQuery();
     const { data, error } = await q.range(page * PAGE, (page + 1) * PAGE - 1);
     if (error) throw error;
     rows.push(...((data ?? []) as T[]));
@@ -23,7 +26,7 @@ async function allPages<T>(
 }
 
 const allMine = <T>(table: string, columns: string) =>
-  allPages<T>(async () => (await selectMine(table, columns)).q);
+  allPages<T>(() => selectMine(table, columns));
 
 /** Every row the user owns, plus lookups for the catalog ids they reference. */
 export async function buildExport(): Promise<Record<string, unknown>> {
@@ -49,12 +52,12 @@ export async function buildExport(): Promise<Record<string, unknown>> {
     allMine<any>('review_likes', '*'),
     allMine<any>('review_replies', '*'),
     allMine<any>('notifications', '*'),
-    allPages<any>(() =>
-      supabase.from('follows').select('*').eq('follower_id', uid),
-    ),
-    allPages<any>(() =>
-      supabase.from('follows').select('*').eq('followee_id', uid),
-    ),
+    allPages<any>(async () => ({
+      q: supabase.from('follows').select('*').eq('follower_id', uid),
+    })),
+    allPages<any>(async () => ({
+      q: supabase.from('follows').select('*').eq('followee_id', uid),
+    })),
   ]);
   if (profile.error) throw profile.error;
 
