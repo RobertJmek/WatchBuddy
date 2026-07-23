@@ -91,6 +91,21 @@ export function searchTitles(q: string) {
   );
 }
 
+/**
+ * Look a title up by an external id (TV Time exports carry TVDB ids).
+ * Returns TV matches first, then movie matches — usually 0 or 1 results.
+ */
+export function findByExternalId(
+  externalId: string,
+  externalSource: 'tvdb_id' | 'imdb_id' = 'tvdb_id',
+) {
+  return invoke<{ results: SearchResult[] }>({
+    action: 'find',
+    external_id: externalId,
+    external_source: externalSource,
+  }).then((d) => d.results);
+}
+
 export type TrendingFeed = { movies: SearchResult[]; tv: SearchResult[] };
 
 export function getTrending() {
