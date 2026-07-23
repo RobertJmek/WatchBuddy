@@ -94,6 +94,8 @@ export default function EditProfileScreen() {
         Paths.cache,
         `watchbuddy-export-${new Date().toISOString().slice(0, 10)}.json`,
       );
+      // Overwrite a leftover file from an earlier export the same day.
+      file.create({ overwrite: true, intermediates: true });
       file.write(JSON.stringify(data, null, 2));
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(file.uri, {
@@ -103,8 +105,12 @@ export default function EditProfileScreen() {
       } else {
         Alert.alert('Export saved', `Your data was written to:\n${file.uri}`);
       }
-    } catch {
-      Alert.alert('Export failed', 'Could not export your data. Try again.');
+    } catch (e) {
+      console.error('export:', e);
+      Alert.alert(
+        'Export failed',
+        e instanceof Error ? e.message : 'Could not export your data. Try again.',
+      );
     } finally {
       setExporting(false);
     }
