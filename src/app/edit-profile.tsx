@@ -1,7 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,12 +15,14 @@ import {
   View,
 } from 'react-native';
 
+import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Danger, PlaceholderBg, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { buildExport } from '@/lib/export';
 import {
   getMyProfile,
   updateProfile,
@@ -77,7 +81,34 @@ export default function EditProfileScreen() {
     null,
   );
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // GDPR-style export: one JSON with everything the account stores, handed to
+  // the share sheet (save to Files, AirDrop, email, …).
+  async function exportMyData() {
+    setExporting(true);
+    try {
+      const data = await buildExport();
+      const file = new File(
+        Paths.cache,
+        `watchbuddy-export-${new Date().toISOString().slice(0, 10)}.json`,
+      );
+      file.write(JSON.stringify(data, null, 2));
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'application/json',
+          dialogTitle: 'Your WatchBuddy data',
+        });
+      } else {
+        Alert.alert('Export saved', `Your data was written to:\n${file.uri}`);
+      }
+    } catch {
+      Alert.alert('Export failed', 'Could not export your data. Try again.');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   // Seed the form once the profile loads.
   useEffect(() => {
@@ -221,6 +252,35 @@ export default function EditProfileScreen() {
             </ThemedText>
           </Pressable>
 
+          <View style={styles.dataSection}>
+            <Pressable
+              style={[styles.link, { borderBottomColor: c.border }]}
+              disabled={saving || exporting}
+              onPress={() => router.push('/import-tvtime')}>
+              <ThemedText type="subtitle">Import TV Time data</ThemedText>
+              <IconSymbol
+                name="chevron.right"
+                size={18}
+                tintColor={c.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              style={[styles.link, { borderBottomColor: c.border }]}
+              disabled={saving || exporting}
+              onPress={exportMyData}>
+              <ThemedText type="subtitle">Export your data</ThemedText>
+              {exporting ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <IconSymbol
+                  name="chevron.right"
+                  size={18}
+                  tintColor={c.textSecondary}
+                />
+              )}
+            </Pressable>
+          </View>
+
           <Pressable
             onPress={confirmDeleteAccount}
             disabled={saving}
@@ -265,6 +325,14 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   busy: { opacity: 0.6 },
+  dataSection: { marginTop: Spacing.four },
+  link: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.three,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   deleteRow: { alignItems: 'center', marginTop: Spacing.five },
   saveText: { color: AccentText, fontWeight: '700', fontSize: 16 },
 });
