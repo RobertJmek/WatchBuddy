@@ -80,6 +80,10 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **First-run onboarding** — new accounts are gently prompted to set a username and photo so
   friends can find and follow them; skippable and shown once.
 - **Editable profile** — display name, unique username, bio, and avatar upload.
+- **Import & export your data** — bring your **TV Time** history in-app (pick your GDPR export
+  ZIP and it fills in shows, episode/movie watches, rewatches and favorites with their original
+  dates), and **export everything** your account stores as one JSON file. Both live at the
+  bottom of Edit Profile.
 - **Appearance** — light / dark / system theme toggle (persisted), teal accent throughout.
 - **Offline** — read data (Library / Diary / Stats / profiles) is cached and persisted, so the
   app cold-opens and browses offline.
@@ -112,12 +116,13 @@ src/
     (app)/                 Authenticated tabs: Feed, Library, Search, Profile
     title/[id]/            Title detail (index) + community reviews
     user/[id]/             Public profile (index) + followers / following
-    season, diary, stats, edit-profile, library-section, sign-in
+    season, diary, stats, edit-profile, library-section, import-tvtime, sign-in
   components/              Reusable UI (poster shelf, watch bars, rating/review rows,
                            follow button, user row, …)
   lib/                     supabase client, query client, TMDB client, and data modules
-                           (library, watches, ratings, stats, social, profile, …)
-scripts/                   TV Time importer (import_tvtime.py + docs) and app-icon generator
+                           (library, watches, ratings, stats, social, profile, export, …)
+    tvtime/                In-app TV Time import engine (parse, resolve, status, db, engine)
+scripts/                   TV Time importer CLI (import_tvtime.py + docs) and app-icon generator
 supabase/
   migrations/              SQL schema + RLS, applied in order (0001 init, 0002 favorites,
                            0003 avatars, 0004 follows + public reads, 0005 episode cache,
@@ -210,11 +215,18 @@ npx expo run:ios --configuration Release --device
 
 ## Import your TV Time history
 
-A Python script imports your TV Time GDPR export — followed shows (with inferred statuses),
-every episode watch, rewatches, movie watches, and favorites — matching titles to TMDB and
-skipping anything already imported (safe to re-run). It runs against your own Supabase project
-using `SUPABASE_SERVICE_ROLE_KEY`, `TMDB_API_KEY`, and `WATCHBUDDY_USER_ID` env vars.
-See **[`scripts/import_tvtime.md`](scripts/import_tvtime.md)** for the full walkthrough.
+**In the app (recommended):** open **Edit Profile → Import TV Time data**, pick your TV Time
+GDPR export ZIP, and WatchBuddy fills in your followed shows (with inferred statuses), every
+episode watch, rewatches, movie watches, and favorites — matching titles to TMDB via the
+`tmdb-proxy` Edge Function and skipping anything already imported (safe to re-run). Titles it
+can't match automatically you resolve by hand in the flow. It runs entirely as the signed-in
+user under Row-Level Security — no service-role key involved. Your data can be pulled back out
+any time via **Edit Profile → Export your data** (one JSON with everything your account stores).
+
+**Power-user CLI (legacy):** the original Python script does the same migration offline against
+your own Supabase project using `SUPABASE_SERVICE_ROLE_KEY`, `TMDB_API_KEY`, and
+`WATCHBUDDY_USER_ID` env vars. See **[`scripts/import_tvtime.md`](scripts/import_tvtime.md)**
+for that walkthrough. Both paths are idempotent and interoperate (either can run after the other).
 
 ---
 
@@ -234,9 +246,10 @@ The **social layer** is live: user search, follows, rich public profiles (taste 
 shelves), community ratings/reviews per title, **threaded review replies**, **realtime
 in-app notifications** (reply + like activity, delivered over Supabase Realtime), and a
 **following activity feed** that folds those notifications into an inbox on its own tab. The
-**TV Time importer** has shipped. Title screens serve from a **read-through Postgres cache**
-with stale fallbacks and request timeouts, so browsing stays fast and keeps working even when
-TMDB is down.
+**TV Time importer** now runs **in the app** (pick your GDPR ZIP; matches through the Edge
+Function, manual-match UI for the rest), alongside a **GDPR-style data export**. Title screens
+serve from a **read-through Postgres cache** with stale fallbacks and request timeouts, so
+browsing stays fast and keeps working even when TMDB is down.
 
 **Distribution:** Android ships as a free sideload APK (GitHub releases) and is in **Google Play
 closed testing**; iOS ships via **TestFlight**.
