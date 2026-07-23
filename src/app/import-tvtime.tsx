@@ -275,12 +275,6 @@ export default function ImportTvTimeScreen() {
         {state.step === 'idle' && (
           <>
             <ThemedText type="subtitle">Bring your TV Time history</ThemedText>
-            <ThemedText style={{ color: c.textSecondary }}>
-              1. In TV Time, go to Profile → Settings → Privacy and tap “Request
-              my data”.{'\n'}
-              2. TV Time emails you a ZIP within a few hours.{'\n'}
-              3. Save it to your phone, then pick it below.
-            </ThemedText>
             <ThemedText type="small" style={{ color: c.textSecondary }}>
               Your shows, episodes, rewatches, movies and favorites are imported
               with their original watch dates. Running the import twice never
