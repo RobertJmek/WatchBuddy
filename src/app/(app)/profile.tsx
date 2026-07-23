@@ -138,6 +138,10 @@ export default function ProfileScreen() {
           <ThemedText type="subtitle">Diary</ThemedText>
           <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
         </Pressable>
+        <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={() => router.push('/import-tvtime')}>
+          <ThemedText type="subtitle">Import TV Time</ThemedText>
+          <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+        </Pressable>
         <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={cycle}>
           <ThemedText type="subtitle">Theme</ThemedText>
           <ThemedView style={styles.value}>

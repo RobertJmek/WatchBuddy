@@ -55,3 +55,8 @@ AGENTS.md
 CLAUDE.md
 CONTEXT.md
 __pycache__/
+
+# TV Time import artifacts (CLI output + local GDPR exports — never commit)
+unresolved_shows.csv
+*.fileloc
+gdpr-data/
