@@ -5,8 +5,9 @@
 // user's library. Requires a valid Supabase JWT (verify_jwt stays on), so only
 // authenticated app users can call it.
 //
-// POST body: { action: 'search' | 'title' | 'season', ...params }
+// POST body: { action: 'search' | 'find' | 'title' | 'season', ...params }
 //   search: { q: string }
+//   find:   { external_id: string, external_source: 'tvdb_id' | 'imdb_id' }
 //   title:  { tmdb_id: number, media_type: 'movie' | 'tv' }
 //   season: { tmdb_id: number, season_number: number }
 
@@ -93,6 +94,24 @@ async function handleSearch(q: string) {
       release_date: r.release_date ?? r.first_air_date ?? null,
       vote_average: r.vote_average ?? null,
     }));
+  return json({ results });
+}
+
+// --- find (lookup by external id, e.g. TVDB) ----------------------------
+const FIND_SOURCES = ['tvdb_id', 'imdb_id'];
+
+async function handleFind(externalId: string, externalSource: string) {
+  if (!externalId || !FIND_SOURCES.includes(externalSource)) {
+    return json({ error: 'find requires external_id and a valid external_source' }, 400);
+  }
+  const data = await tmdb(`/find/${encodeURIComponent(externalId)}`, {
+    external_source: externalSource,
+  });
+  // No catalog writes here — a subsequent 'title' action does the caching.
+  const results = [
+    ...mapResults(data.tv_results, 'tv'),
+    ...mapResults(data.movie_results, 'movie'),
+  ];
   return json({ results });
 }
 
@@ -369,10 +388,13 @@ Deno.serve(async (req) => {
     return json({ error: 'TMDB_API_KEY not configured' }, 500);
   }
   try {
-    const { action, q, tmdb_id, media_type, season_number } = await req.json();
+    const { action, q, external_id, external_source, tmdb_id, media_type, season_number } =
+      await req.json();
     switch (action) {
       case 'search':
         return await handleSearch(q);
+      case 'find':
+        return await handleFind(external_id, external_source);
       case 'trending':
         return await handleTrending();
       case 'title':
