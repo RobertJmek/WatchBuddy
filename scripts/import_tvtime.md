@@ -1,5 +1,11 @@
 # Import TV Time history into WatchBuddy
 
+> **There is now an in-app importer.** Open **Edit Profile → Import TV Time data**
+> in the app, pick your GDPR export ZIP, and it does everything below (with a
+> manual-match step for titles it can't place) as the signed-in user — no
+> service-role key needed. See ADR 0008. This CLI remains as the offline /
+> power-user path; both are idempotent and interoperate.
+
 A one-time migration script that reads your TV Time GDPR data export and
 writes your watch history, rewatch counts, and library statuses into
 WatchBuddy's Supabase backend.
