@@ -2,7 +2,7 @@
   "expo": {
     "name": "WatchBuddy",
     "slug": "watchbuddy",
-    "version": "1.9.5",
+    "version": "1.9.6",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "watchbuddy",
@@ -18,12 +18,11 @@
       "adaptiveIcon": {
         "backgroundColor": "#0D9488",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundImage": "./assets/images/android-icon-background.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.robertjmek.watchbuddy",
-      "versionCode": 33
+      "versionCode": 34
     },
     "web": {
       "output": "static",
