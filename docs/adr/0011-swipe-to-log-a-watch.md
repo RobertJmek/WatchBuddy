@@ -41,8 +41,11 @@ the design:
   to `completed` (overwriting the prior status). The swipe reads the pre-log
   `library_items.status` first and restores it on undo (or `removeFromLibrary`
   if there was none) — a true reverse.
-- **Feedback is a session checkmark, not a history badge.** After a swipe-right
-  the Search row shows a teal ✓ meaning "I just logged this from here"; tapping it
+- **Feedback is an optimistic session checkmark, not a history badge.** A
+  swipe-right shows the teal ✓ **instantly** (meaning "I just logged this from
+  here") while the DB write runs in the background — dimmed until it lands, and
+  an undo tapped during that window cancels the write (which then rolls itself
+  back, so no orphan rows); on write failure the ✓ is removed. Tapping the ✓
   undoes. It is **not** a "watched-ever" mark — that would need a per-result query
   on a live search list and is incoherent for a series (is a show "watched" if you
   saw some episodes?).
@@ -58,7 +61,8 @@ the design:
   `removeEpisodeWatchesByIds` is new. Everything else (title resolution via
   `getTitle`, `fetchAllEpisodes`, the log/remove calls) is reused as-is.
 - **Logging a series from Search is slow** (fetch all seasons + a large insert),
-  so the row shows a spinner while in flight; the checkmark appears on success.
+  but the optimistic ✓ hides that latency — it shows immediately (dimmed) and
+  solidifies once the write lands.
 - **The checkmark is ephemeral.** Leaving Search forgets it, though the watches
   persist in Diary/Stats. This is deliberate — it tracks the *gesture*, not
   watch history.
