@@ -24,10 +24,12 @@ the design:
 ## Decision
 
 - **Auto-commit swipe, no tap-buttons.** `SwipeToLogRow`
-  (`src/components/swipe-to-log-row.tsx`, wrapping `ReanimatedSwipeable` from
-  `react-native-gesture-handler`) fires once past a drag threshold and snaps
-  back, revealing a colored icon+label underneath. `GestureHandlerRootView` is
-  mounted at the app root (`_layout.tsx`).
+  (`src/components/swipe-to-log-row.tsx`, wrapping the classic `Swipeable` from
+  the **main** `react-native-gesture-handler` entry) fires once past a drag
+  threshold and snaps back, revealing a colored icon+label underneath.
+  `GestureHandlerRootView` is mounted at the app root (`_layout.tsx`). We use the
+  main-entry `Swipeable`, **not** the `…/ReanimatedSwipeable` subpath — see the
+  crash note in Consequences.
 - **A series needs a long swipe.** Movie/episode commit at ~28% of row width; a
   series (the heavy action) at ~60%. The long, deliberate swipe *is* the
   confirmation — no modal.
@@ -64,6 +66,15 @@ the design:
   must be rebuilt (native module). The rest of the feature is pure JS.
 - **On-device tuning expected.** Thresholds are window-width fractions; the
   emulator misreports gestures, so the feel is validated on Robert's devices.
+- **Startup-crash gotcha (fixed in v1.12.1).** v1.12.0 first shipped importing
+  `ReanimatedSwipeable` from the `react-native-gesture-handler/ReanimatedSwipeable`
+  subpath. That loaded a **second copy** of the `RNGestureHandlerButton` native
+  component into the bundle (the main entry, already loaded by react-navigation,
+  registers it too) → `Tried to register two views with the same name
+  RNGestureHandlerButton` at launch. `expo export` builds fine (runtime, not
+  bundle error); only an on-device run catches it. Fix: import `Swipeable` from
+  the **main** entry only, so RNGH is loaded once. **Never mix the RNGH subpath
+  imports with the main entry.**
 
 ## Layout
 

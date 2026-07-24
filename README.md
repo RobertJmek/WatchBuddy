@@ -42,6 +42,8 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Favorites** — heart any movie or show; dedicated favorite shelves for movies and TV.
 - **Episode-level check-off**, with **rewatch logging per episode, per season, and per series**.
 - **Movie watch logging** (rewatches included).
+- **Swipe to log** — swipe a Search result (or a season's episode) **right** to log a watch,
+  **left** to undo; a movie logs one watch, a whole series logs with a longer swipe.
 - A dated **Diary** of everything you've watched, filterable by **day / week / month / year /
   custom range**, with **editable watch dates** (grouped episode entries move together).
 - **Search inside Library and Diary** — a toggleable title search that composes with the

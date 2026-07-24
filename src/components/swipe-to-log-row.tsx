@@ -1,10 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useRef } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import ReanimatedSwipeable, {
-  SwipeDirection,
-  type SwipeableMethods,
-} from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { Swipeable } from 'react-native-gesture-handler';
 
 import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
@@ -29,7 +26,13 @@ type Props = {
 /**
  * Auto-commit swipe row: no tap-buttons. Dragging past a threshold fires the
  * action once and snaps back, with a colored icon+label revealed underneath so
- * the gesture is self-explanatory. Wraps `ReanimatedSwipeable`; the app's
+ * the gesture is self-explanatory.
+ *
+ * Uses `Swipeable` from the package's *main* entry (the same module react-navigation
+ * already loads) rather than the `react-native-gesture-handler/ReanimatedSwipeable`
+ * subpath — mixing the subpath with the main entry pulls a second copy of the
+ * `RNGestureHandlerButton` native component into the bundle and crashes at startup
+ * ("Tried to register two views with the same name"). The app's
  * `GestureHandlerRootView` (in `_layout.tsx`) must be mounted for it to work.
  */
 export function SwipeToLogRow({
@@ -39,25 +42,23 @@ export function SwipeToLogRow({
   onUndo,
   longLog,
 }: Props) {
-  const ref = useRef<SwipeableMethods>(null);
+  const ref = useRef<Swipeable>(null);
   const { width } = useWindowDimensions();
   // Thresholds are drag distances in points. A series needs most of the row's
   // width; a movie/episode a short flick. Tunable on-device.
   const logThreshold = width * (longLog ? 0.6 : 0.28);
   const undoThreshold = width * 0.28;
 
-  function handleWillOpen(
-    direction: SwipeDirection.LEFT | SwipeDirection.RIGHT,
-  ) {
+  function handleWillOpen(direction: 'left' | 'right') {
     // Left actions open when swiping *right* → log. Right actions → undo.
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    if (direction === SwipeDirection.LEFT) onLog();
+    if (direction === 'left') onLog();
     else onUndo?.();
     ref.current?.close();
   }
 
   return (
-    <ReanimatedSwipeable
+    <Swipeable
       ref={ref}
       friction={2}
       leftThreshold={logThreshold}
@@ -82,7 +83,7 @@ export function SwipeToLogRow({
           : undefined
       }>
       {children}
-    </ReanimatedSwipeable>
+    </Swipeable>
   );
 }
 

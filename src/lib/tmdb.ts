@@ -87,7 +87,18 @@ async function invoke<T>(body: Record<string, unknown>): Promise<T> {
 
 export function searchTitles(q: string) {
   return invoke<{ results: SearchResult[] }>({ action: 'search', q }).then(
-    (d) => d.results,
+    // TMDB multi-search occasionally returns the same title twice; dedupe on
+    // the (media_type, tmdb_id) key the list renders by, so React doesn't get
+    // duplicate keys. Keep first occurrence (TMDB's relevance order).
+    (d) => {
+      const seen = new Set<string>();
+      return d.results.filter((r) => {
+        const key = `${r.media_type}-${r.tmdb_id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    },
   );
 }
 
