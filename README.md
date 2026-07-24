@@ -2,8 +2,8 @@
 
 A cross-platform mobile app to track the movies and TV series you watch, turn that
 history into rich statistics, and follow what your friends are watching and rating.
-Built personal-core-first on a social-ready foundation, with a ready-to-use importer
-for your TV Time history.
+Built personal-core-first on a social-ready foundation, with ready-to-use importers
+for your TV Time history and for WatchBuddy export files.
 
 > React Native + Expo + Supabase. iOS and Android from one codebase.
 
@@ -80,10 +80,11 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **First-run onboarding** — new accounts are gently prompted to set a username and photo so
   friends can find and follow them; skippable and shown once.
 - **Editable profile** — display name, unique username, bio, and avatar upload.
-- **Import & export your data** — bring your **TV Time** history in-app (pick your GDPR export
-  ZIP and it fills in shows, episode/movie watches, rewatches and favorites with their original
-  dates), and **export everything** your account stores as one JSON file. Both live at the
-  bottom of Edit Profile.
+- **Import & export your data** — one **Import your data** hub (bottom of Edit Profile) brings in
+  your **TV Time** history (pick your GDPR export ZIP → shows, episode/movie watches, rewatches
+  and favorites with their original dates) or the **watch history from a WatchBuddy export JSON**
+  — including someone else's, adopting it as your own. You can **export everything** your account
+  stores as one JSON file the same way.
 - **Appearance** — light / dark / system theme toggle (persisted), teal accent throughout.
 - **Offline** — read data (Library / Diary / Stats / profiles) is cached and persisted, so the
   app cold-opens and browses offline.
@@ -116,12 +117,14 @@ src/
     (app)/                 Authenticated tabs: Feed, Library, Search, Profile
     title/[id]/            Title detail (index) + community reviews
     user/[id]/             Public profile (index) + followers / following
-    season, diary, stats, edit-profile, library-section, import-tvtime, sign-in
+    season, diary, stats, edit-profile, library-section, sign-in
+    import-data (chooser) → import-tvtime / import-watchbuddy
   components/              Reusable UI (poster shelf, watch bars, rating/review rows,
                            follow button, user row, …)
   lib/                     supabase client, query client, TMDB client, and data modules
                            (library, watches, ratings, stats, social, profile, export, …)
     tvtime/                In-app TV Time import engine (parse, resolve, status, db, engine)
+    wb-import/             WatchBuddy-export import engine (parse, resolve, db, engine)
 scripts/                   TV Time importer CLI (import_tvtime.py + docs) and app-icon generator
 supabase/
   migrations/              SQL schema + RLS, applied in order (0001 init, 0002 favorites,
@@ -213,15 +216,24 @@ npx expo run:ios --configuration Release --device
 
 ---
 
-## Import your TV Time history
+## Import & export your data
 
-**In the app (recommended):** open **Edit Profile → Import TV Time data**, pick your TV Time
-GDPR export ZIP, and WatchBuddy fills in your followed shows (with inferred statuses), every
-episode watch, rewatches, movie watches, and favorites — matching titles to TMDB via the
-`tmdb-proxy` Edge Function and skipping anything already imported (safe to re-run). Titles it
-can't match automatically you resolve by hand in the flow. It runs entirely as the signed-in
-user under Row-Level Security — no service-role key involved. Your data can be pulled back out
-any time via **Edit Profile → Export your data** (one JSON with everything your account stores).
+Everything lives under **Edit Profile → Import your data**, a chooser between two sources.
+
+**From TV Time:** pick your TV Time GDPR export ZIP and WatchBuddy fills in your followed shows
+(with inferred statuses), every episode watch, rewatches, movie watches, and favorites — matching
+titles to TMDB via the `tmdb-proxy` Edge Function and skipping anything already imported (safe to
+re-run). Titles it can't match automatically you resolve by hand in the flow.
+
+**From a WatchBuddy export:** pick a WatchBuddy export JSON — including one produced by another
+user — and its **watch history** (episode + movie watches, with original dates) is added to your
+account as your own. Titles are re-matched through TMDB, so the shared catalog fills in on demand;
+it never changes your library or ratings, and re-running never duplicates.
+
+Both import paths run entirely as the signed-in user under Row-Level Security — no service-role key
+involved. Your data can be pulled back out any time via **Edit Profile → Export your data** (one
+JSON with everything your account stores; carries a `schema_version` so the WatchBuddy importer can
+read it back).
 
 **Power-user CLI (legacy):** the original Python script does the same migration offline against
 your own Supabase project using `SUPABASE_SERVICE_ROLE_KEY`, `TMDB_API_KEY`, and
@@ -247,9 +259,11 @@ shelves), community ratings/reviews per title, **threaded review replies**, **re
 in-app notifications** (reply + like activity, delivered over Supabase Realtime), and a
 **following activity feed** that folds those notifications into an inbox on its own tab. The
 **TV Time importer** now runs **in the app** (pick your GDPR ZIP; matches through the Edge
-Function, manual-match UI for the rest), alongside a **GDPR-style data export**. Title screens
-serve from a **read-through Postgres cache** with stale fallbacks and request timeouts, so
-browsing stays fast and keeps working even when TMDB is down.
+Function, manual-match UI for the rest), alongside a **WatchBuddy-export importer** (ingest an
+export JSON — even another user's — as your own watch history) and a **GDPR-style data export**,
+all under one "Import your data" hub. Title screens serve from a **read-through Postgres cache**
+with stale fallbacks and request timeouts, so browsing stays fast and keeps working even when
+TMDB is down.
 
 **Distribution:** Android ships as a free sideload APK (GitHub releases) and is in **Google Play
 closed testing**; iOS ships via **TestFlight**.
