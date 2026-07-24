@@ -30,9 +30,10 @@ the design:
   `GestureHandlerRootView` is mounted at the app root (`_layout.tsx`). We use the
   main-entry `Swipeable`, **not** the `…/ReanimatedSwipeable` subpath — see the
   crash note in Consequences.
-- **A series needs a long swipe.** Movie/episode commit at ~28% of row width; a
-  series (the heavy action) at ~60%. The long, deliberate swipe *is* the
-  confirmation — no modal.
+- **A series needs a long swipe.** Movie/episode commit at ~22% of row width; a
+  series (the heavy action) at ~45%. The longer, deliberate swipe *is* the
+  confirmation — no modal. (Tuned on-device from an initial 28%/60% + friction 2,
+  which made the series swipe unreachable — see On-device tuning below.)
 - **Undo = session-scoped, exact-rows.** A swipe-right records the precise ids it
   inserted (1 movie / N episodes) in in-memory Search state; undo deletes exactly
   those (`removeMovieWatch` / new `removeEpisodeWatchesByIds`). Undo is a no-op
@@ -41,8 +42,11 @@ the design:
   to `completed` (overwriting the prior status). The swipe reads the pre-log
   `library_items.status` first and restores it on undo (or `removeFromLibrary`
   if there was none) — a true reverse.
-- **Feedback is a session checkmark, not a history badge.** After a swipe-right
-  the Search row shows a teal ✓ meaning "I just logged this from here"; tapping it
+- **Feedback is an optimistic session checkmark, not a history badge.** A
+  swipe-right shows the teal ✓ **instantly** (meaning "I just logged this from
+  here") while the DB write runs in the background — dimmed until it lands, and
+  an undo tapped during that window cancels the write (which then rolls itself
+  back, so no orphan rows); on write failure the ✓ is removed. Tapping the ✓
   undoes. It is **not** a "watched-ever" mark — that would need a per-result query
   on a live search list and is incoherent for a series (is a show "watched" if you
   saw some episodes?).
@@ -58,14 +62,18 @@ the design:
   `removeEpisodeWatchesByIds` is new. Everything else (title resolution via
   `getTitle`, `fetchAllEpisodes`, the log/remove calls) is reused as-is.
 - **Logging a series from Search is slow** (fetch all seasons + a large insert),
-  so the row shows a spinner while in flight; the checkmark appears on success.
+  but the optimistic ✓ hides that latency — it shows immediately (dimmed) and
+  solidifies once the write lands.
 - **The checkmark is ephemeral.** Leaving Search forgets it, though the watches
   persist in Diary/Stats. This is deliberate — it tracks the *gesture*, not
   watch history.
 - **`expo-haptics`** was added for a light impact on commit → the shipped build
   must be rebuilt (native module). The rest of the feature is pure JS.
-- **On-device tuning expected.** Thresholds are window-width fractions; the
-  emulator misreports gestures, so the feel is validated on Robert's devices.
+- **On-device tuning was needed.** Thresholds are window-width fractions and the
+  emulator misreports gestures, so the feel was validated on-device: the series
+  swipe was initially *impossible* (threshold 60% + `friction: 2` doubling finger
+  travel + `overshoot` off capping the drag). Fix: `friction` 1 (1:1 tracking),
+  overshoot on (drag not capped), thresholds 45%/22%.
 - **Startup-crash gotcha (fixed in v1.12.1).** v1.12.0 first shipped importing
   `ReanimatedSwipeable` from the `react-native-gesture-handler/ReanimatedSwipeable`
   subpath. That loaded a **second copy** of the `RNGestureHandlerButton` native
