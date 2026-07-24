@@ -205,13 +205,52 @@ export function fetchSeason(tmdbId: number, seasonNumber: number) {
   }).then((d) => d.episodes);
 }
 
-/** Fetch (and cache) every episode across the given season numbers. */
+/**
+ * Fetch (and cache) every episode across the given season numbers.
+ *
+ * Read-through like getTitle: serve seasons straight from the Postgres cache when
+ * fresh (one PostgREST read for the whole show — no per-season edge-function
+ * round-trips), and only invoke the tmdb-proxy for the seasons that are missing or
+ * stale. Revisiting a cached show collapses N edge calls into a single query.
+ */
 export async function fetchAllEpisodes(
   tmdbId: number,
   seasonNumbers: number[],
 ): Promise<EpisodeRow[]> {
-  const perSeason = await Promise.all(
-    seasonNumbers.map((n) => fetchSeason(tmdbId, n)),
-  );
-  return perSeason.flat();
+  if (seasonNumbers.length === 0) return [];
+
+  const freshBySeason = new Map<number, EpisodeRow[]>();
+  const { data: title } = await supabase
+    .from('titles')
+    .select('id')
+    .eq('tmdb_id', tmdbId)
+    .eq('media_type', 'tv')
+    .maybeSingle();
+
+  if (title) {
+    const { data: cached } = await supabase
+      .from('episodes')
+      .select('*')
+      .eq('title_id', title.id)
+      .in('season_number', seasonNumbers)
+      .order('episode_number');
+    const bySeason = new Map<number, any[]>();
+    for (const ep of cached ?? []) {
+      const arr = bySeason.get(ep.season_number);
+      if (arr) arr.push(ep);
+      else bySeason.set(ep.season_number, [ep]);
+    }
+    // Same freshness rule as the edge function: a season is served from cache when
+    // its newest episode row is within the TTL window.
+    for (const [season, eps] of bySeason) {
+      const newest = Math.max(
+        ...eps.map((e) => new Date(e.cached_at ?? 0).getTime()),
+      );
+      if (Date.now() - newest < TITLE_CACHE_TTL_MS) freshBySeason.set(season, eps);
+    }
+  }
+
+  const missing = seasonNumbers.filter((n) => !freshBySeason.has(n));
+  const fetched = await Promise.all(missing.map((n) => fetchSeason(tmdbId, n)));
+  return [...freshBySeason.values(), ...fetched].flat();
 }
