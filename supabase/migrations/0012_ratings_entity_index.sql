@@ -1,0 +1,13 @@
+-- Index the community-ratings lookup on a title.
+--
+-- getTitleRatings() (the "community rating" section on every title screen) reads
+-- `ratings` filtered by (entity_type, entity_id) across ALL users — reads are
+-- world-open, so it is deliberately not user-scoped. The only indexes on `ratings`
+-- are the PK on id, the unique on (user_id, entity_type, entity_id), and an index
+-- on (user_id). None has (entity_type, entity_id) as a usable prefix, so that
+-- filter falls back to a sequential scan whose cost grows with the total number of
+-- ratings in the app (not per user) — every title page pays it.
+--
+-- A composite index on (entity_type, entity_id) turns it into an index scan. This
+-- also covers removeRating()'s (entity_type, entity_id) delete filter.
+create index ratings_entity_idx on public.ratings (entity_type, entity_id);
