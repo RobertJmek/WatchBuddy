@@ -30,9 +30,10 @@ the design:
   `GestureHandlerRootView` is mounted at the app root (`_layout.tsx`). We use the
   main-entry `Swipeable`, **not** the `…/ReanimatedSwipeable` subpath — see the
   crash note in Consequences.
-- **A series needs a long swipe.** Movie/episode commit at ~28% of row width; a
-  series (the heavy action) at ~60%. The long, deliberate swipe *is* the
-  confirmation — no modal.
+- **A series needs a long swipe.** Movie/episode commit at ~22% of row width; a
+  series (the heavy action) at ~45%. The longer, deliberate swipe *is* the
+  confirmation — no modal. (Tuned on-device from an initial 28%/60% + friction 2,
+  which made the series swipe unreachable — see On-device tuning below.)
 - **Undo = session-scoped, exact-rows.** A swipe-right records the precise ids it
   inserted (1 movie / N episodes) in in-memory Search state; undo deletes exactly
   those (`removeMovieWatch` / new `removeEpisodeWatchesByIds`). Undo is a no-op
@@ -68,8 +69,11 @@ the design:
   watch history.
 - **`expo-haptics`** was added for a light impact on commit → the shipped build
   must be rebuilt (native module). The rest of the feature is pure JS.
-- **On-device tuning expected.** Thresholds are window-width fractions; the
-  emulator misreports gestures, so the feel is validated on Robert's devices.
+- **On-device tuning was needed.** Thresholds are window-width fractions and the
+  emulator misreports gestures, so the feel was validated on-device: the series
+  swipe was initially *impossible* (threshold 60% + `friction: 2` doubling finger
+  travel + `overshoot` off capping the drag). Fix: `friction` 1 (1:1 tracking),
+  overshoot on (drag not capped), thresholds 45%/22%.
 - **Startup-crash gotcha (fixed in v1.12.1).** v1.12.0 first shipped importing
   `ReanimatedSwipeable` from the `react-native-gesture-handler/ReanimatedSwipeable`
   subpath. That loaded a **second copy** of the `RNGestureHandlerButton` native
