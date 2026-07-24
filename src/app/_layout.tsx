@@ -14,6 +14,7 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -97,18 +98,22 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{ persister: asyncStoragePersister }}>
-      <ThemePreferenceProvider>
-        <AuthProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <KeyboardProvider>
-              <RootNavigator />
-            </KeyboardProvider>
-          </ThemeProvider>
-        </AuthProvider>
-      </ThemePreferenceProvider>
-    </PersistQueryClientProvider>
+    // Outermost: gesture handling for the whole app (swipe-to-log lives here).
+    // Without this root view, gestures are silently ignored on device.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{ persister: asyncStoragePersister }}>
+        <ThemePreferenceProvider>
+          <AuthProvider>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <KeyboardProvider>
+                <RootNavigator />
+              </KeyboardProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </ThemePreferenceProvider>
+      </PersistQueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

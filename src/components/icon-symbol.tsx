@@ -16,6 +16,8 @@ const GLYPHS = {
   ellipsis: 'more-horizontal',
   bell: 'bell',
   'paperplane.fill': 'send',
+  checkmark: 'check',
+  'arrow.uturn': 'rotate-ccw',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

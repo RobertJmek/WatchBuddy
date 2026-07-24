@@ -28,6 +28,17 @@ export async function logEpisodeWatch(episodeId: string, titleId: string) {
   if (error) throw error;
 }
 
+/** Delete specific episode-watch rows by id (owner-scoped by RLS). Used by the
+ *  Search swipe-to-log undo to reverse *exactly* the rows a swipe inserted. */
+export async function removeEpisodeWatchesByIds(ids: string[]) {
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from('episode_watches')
+    .delete()
+    .in('id', ids);
+  if (error) throw error;
+}
+
 /** Remove the user's most recent single watch of an episode. */
 export async function removeOneEpisodeWatch(episodeId: string) {
   const { q } = await selectMine('episode_watches', 'id');
@@ -45,36 +56,46 @@ export async function removeOneEpisodeWatch(episodeId: string) {
   if (delErr) throw delErr;
 }
 
-/** Log one watch for every episode given (a whole-season or whole-series watch). */
+/**
+ * Log one watch for every episode given (a whole-season or whole-series watch).
+ * Returns the ids of the inserted rows so a caller can undo exactly this batch.
+ */
 export async function logManyEpisodeWatches(
   episodes: { id: string; title_id: string }[],
-) {
-  if (episodes.length === 0) return;
+): Promise<string[]> {
+  if (episodes.length === 0) return [];
   const uid = await requireViewer();
   const rows = episodes.map((e) => ({
     user_id: uid,
     episode_id: e.id,
     title_id: e.title_id,
   }));
-  const { error } = await supabase.from('episode_watches').insert(rows);
+  const { data, error } = await supabase
+    .from('episode_watches')
+    .insert(rows)
+    .select('id');
   if (error) throw error;
+  return (data ?? []).map((r) => r.id as string);
 }
 
 // --- movies -------------------------------------------------------------
 
 export type MovieWatch = { id: string; watched_at: string };
 
-/** Log a (re)watch of a movie — a dated diary entry. */
-export async function logMovieWatch(titleId: string) {
+/** Log a (re)watch of a movie — a dated diary entry. Returns the inserted row id. */
+export async function logMovieWatch(titleId: string): Promise<string> {
   const uid = await requireViewer();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('movie_watches')
-    .insert({ user_id: uid, title_id: titleId });
+    .insert({ user_id: uid, title_id: titleId })
+    .select('id')
+    .single();
   if (error) throw error;
   // Logging a movie watch means you've seen it: promote the library entry to
   // Completed, creating it if this title wasn't tracked yet. Upsert overwrites
   // any earlier status (watchlist, on hold, …) since a watch is proof it's done.
   await setLibraryStatus(titleId, 'completed');
+  return data.id as string;
 }
 
 export async function getMovieWatches(titleId: string): Promise<MovieWatch[]> {
