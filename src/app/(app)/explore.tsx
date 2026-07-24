@@ -18,22 +18,37 @@ import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { ShelfSkeleton } from '@/components/skeleton';
+import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
 import { UserRow } from '@/components/user-row';
-import { Danger, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Danger, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
+import {
+  getLibraryStatus,
+  removeFromLibrary,
+  setLibraryStatus,
+  type LibraryStatus,
+} from '@/lib/library';
 import { searchUsers } from '@/lib/social';
 import { subscribeTabReset } from '@/lib/tab-reset';
 import {
+  fetchAllEpisodes,
+  getTitle,
   getTrending,
   imageUrl,
   searchTitles,
   titleQueryOptions,
   type SearchResult,
 } from '@/lib/tmdb';
+import {
+  logManyEpisodeWatches,
+  logMovieWatch,
+  removeEpisodeWatchesByIds,
+  removeMovieWatch,
+} from '@/lib/watches';
 
 const MIN_CHARS = 3;
 const DEBOUNCE_MS = 500;
@@ -52,14 +67,35 @@ function toPosterItem(r: SearchResult): PosterItem {
   };
 }
 
+/**
+ * One swipe-logged Search row, remembered for the session. Holds exactly the
+ * rows the swipe inserted so undo reverses them precisely — and, for movies, the
+ * pre-log Library status so undo can restore it (logMovieWatch forces Completed).
+ */
+type LoggedEntry = {
+  kind: 'movie' | 'tv';
+  titleId: string;
+  watchIds: string[];
+  priorStatus: LibraryStatus | null;
+};
+
 function ResultRow({
   item,
   bg,
   router,
+  logged,
+  busy,
+  onUndoTap,
 }: {
   item: SearchResult;
   bg: string;
   router: ReturnType<typeof useRouter>;
+  /** True while this row is marked logged from a swipe this session. */
+  logged: boolean;
+  /** True while a swipe-log/undo for this row is in flight (series can be slow). */
+  busy: boolean;
+  /** Tapping the checkmark undoes the session log (same as swipe-left). */
+  onUndoTap: () => void;
 }) {
   const queryClient = useQueryClient();
   return (
@@ -93,6 +129,15 @@ function ResultRow({
           {item.media_type === 'tv' ? 'TV' : 'Movie'} · {year(item)}
         </ThemedText>
       </ThemedView>
+      {busy ? (
+        <ActivityIndicator style={styles.trailing} />
+      ) : logged ? (
+        // Its own Pressable captures the touch, so tapping the check undoes
+        // instead of opening the title (RN doesn't bubble to the parent).
+        <Pressable style={styles.check} hitSlop={8} onPress={onUndoTap}>
+          <IconSymbol name="checkmark" size={18} tintColor={AccentText} />
+        </Pressable>
+      ) : null}
     </PressScale>
   );
 }
@@ -172,6 +217,107 @@ export default function SearchScreen() {
         name: item.title,
       },
     });
+  }
+
+  // --- swipe-to-log (session-scoped) --------------------------------------
+  const queryClient = useQueryClient();
+  const [logged, setLogged] = useState<Map<string, LoggedEntry>>(new Map());
+  const [busyKeys, setBusyKeys] = useState<Set<string>>(new Set());
+
+  const itemKey = (r: SearchResult) => `${r.media_type}-${r.tmdb_id}`;
+
+  function setBusy(key: string, on: boolean) {
+    setBusyKeys((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
+  function invalidateWatchData(titleId?: string) {
+    queryClient.invalidateQueries({ queryKey: ['diary'] });
+    queryClient.invalidateQueries({ queryKey: ['stats'] });
+    if (titleId) {
+      // A movie log/undo also moves its Library status → refresh those views.
+      queryClient.invalidateQueries({ queryKey: ['library'] });
+      queryClient.invalidateQueries({ queryKey: ['libraryStatus', titleId] });
+    }
+  }
+
+  async function logItem(item: SearchResult) {
+    const key = itemKey(item);
+    if (logged.has(key) || busyKeys.has(key)) return;
+    setBusy(key, true);
+    try {
+      // Same read-through the row already prefetches onPressIn → usually warm.
+      const { title, seasons } = await getTitle(item.tmdb_id, item.media_type);
+      if (item.media_type === 'tv') {
+        const seasonNumbers = seasons
+          .map((s) => s.season_number)
+          .filter((n) => n >= 1) // exclude Specials (season 0)
+          .sort((a, b) => a - b);
+        const episodes = await fetchAllEpisodes(item.tmdb_id, seasonNumbers);
+        const ids = await logManyEpisodeWatches(
+          episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
+        );
+        setLogged((prev) =>
+          new Map(prev).set(key, {
+            kind: 'tv',
+            titleId: title.id,
+            watchIds: ids,
+            priorStatus: null,
+          }),
+        );
+        invalidateWatchData();
+      } else {
+        const priorStatus = await getLibraryStatus(title.id);
+        const watchId = await logMovieWatch(title.id);
+        setLogged((prev) =>
+          new Map(prev).set(key, {
+            kind: 'movie',
+            titleId: title.id,
+            watchIds: [watchId],
+            priorStatus,
+          }),
+        );
+        invalidateWatchData(title.id);
+      }
+    } catch {
+      // Leave the row unmarked on failure; the user can just swipe again.
+    } finally {
+      setBusy(key, false);
+    }
+  }
+
+  async function undoItem(item: SearchResult) {
+    const key = itemKey(item);
+    const entry = logged.get(key);
+    if (!entry || busyKeys.has(key)) return;
+    setBusy(key, true);
+    try {
+      if (entry.kind === 'movie') {
+        await removeMovieWatch(entry.watchIds[0]);
+        // Restore the pre-log status exactly; if there was none, drop the entry
+        // the log implicitly created.
+        if (entry.priorStatus)
+          await setLibraryStatus(entry.titleId, entry.priorStatus);
+        else await removeFromLibrary(entry.titleId);
+        invalidateWatchData(entry.titleId);
+      } else {
+        await removeEpisodeWatchesByIds(entry.watchIds);
+        invalidateWatchData();
+      }
+      setLogged((prev) => {
+        const next = new Map(prev);
+        next.delete(key);
+        return next;
+      });
+    } catch {
+      // Keep the checkmark on failure so the undo can be retried.
+    } finally {
+      setBusy(key, false);
+    }
   }
 
   return (
@@ -262,9 +408,28 @@ export default function SearchScreen() {
                 />
               ) : null
             }
-            renderItem={({ item }) => (
-              <ResultRow item={item} bg={c.backgroundElement} router={router} />
-            )}
+            renderItem={({ item }) => {
+              const key = itemKey(item);
+              const isLogged = logged.has(key);
+              return (
+                <SwipeToLogRow
+                  onLog={() => logItem(item)}
+                  logLabel={
+                    item.media_type === 'tv' ? 'Log whole series' : 'Log watch'
+                  }
+                  longLog={item.media_type === 'tv'}
+                  onUndo={isLogged ? () => undoItem(item) : undefined}>
+                  <ResultRow
+                    item={item}
+                    bg={c.backgroundElement}
+                    router={router}
+                    logged={isLogged}
+                    busy={busyKeys.has(key)}
+                    onUndoTap={() => undoItem(item)}
+                  />
+                </SwipeToLogRow>
+              );
+            }}
           />
         )}
 
@@ -348,6 +513,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.35)',
   },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
+  check: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trailing: { width: 28, alignItems: 'center' },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   error: { color: Danger, marginTop: Spacing.three },
 });

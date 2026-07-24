@@ -10,9 +10,11 @@ import {
 } from 'react-native';
 
 import { RowSkeleton } from '@/components/skeleton';
+import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
 import {
   getEpisodeWatchCounts,
@@ -31,6 +33,7 @@ export default function SeasonScreen() {
   }>();
 
   const queryClient = useQueryClient();
+  const c = useTheme();
   const [episodes, setEpisodes] = useState<EpisodeRow[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
 
@@ -150,32 +153,40 @@ export default function SeasonScreen() {
           renderItem={({ item }) => {
             const n = counts[item.id] ?? 0;
             return (
-              <View style={styles.row}>
-                <Pressable
-                  style={[styles.check, n > 0 && styles.checkOn]}
-                  onPress={() => addWatch(item)}>
-                  <ThemedText style={n > 0 ? styles.badgeOn : styles.badgeOff}>
-                    {n === 0 ? '' : n === 1 ? '✓' : `×${n}`}
-                  </ThemedText>
-                </Pressable>
-                <ThemedView style={styles.rowText}>
-                  <ThemedText type="smallBold" numberOfLines={2}>
-                    {item.episode_number}. {item.name ?? 'Episode'}
-                  </ThemedText>
-                  <ThemedText type="small">
-                    {item.air_date ?? ''}
-                    {item.runtime ? ` · ${item.runtime} min` : ''}
-                  </ThemedText>
-                </ThemedView>
-                {n > 0 && (
+              // Swipe mirrors the +/− buttons: right → log this episode, left →
+              // remove the most recent watch. Both affordances stay. An opaque
+              // row background keeps the reveal from bleeding through.
+              <SwipeToLogRow
+                onLog={() => addWatch(item)}
+                logLabel="Log episode"
+                onUndo={n > 0 ? () => removeWatch(item) : undefined}>
+                <View style={[styles.row, { backgroundColor: c.background }]}>
                   <Pressable
-                    style={styles.minus}
-                    onPress={() => removeWatch(item)}
-                    hitSlop={8}>
-                    <ThemedText style={styles.minusText}>−</ThemedText>
+                    style={[styles.check, n > 0 && styles.checkOn]}
+                    onPress={() => addWatch(item)}>
+                    <ThemedText style={n > 0 ? styles.badgeOn : styles.badgeOff}>
+                      {n === 0 ? '' : n === 1 ? '✓' : `×${n}`}
+                    </ThemedText>
                   </Pressable>
-                )}
-              </View>
+                  <ThemedView style={styles.rowText}>
+                    <ThemedText type="smallBold" numberOfLines={2}>
+                      {item.episode_number}. {item.name ?? 'Episode'}
+                    </ThemedText>
+                    <ThemedText type="small">
+                      {item.air_date ?? ''}
+                      {item.runtime ? ` · ${item.runtime} min` : ''}
+                    </ThemedText>
+                  </ThemedView>
+                  {n > 0 && (
+                    <Pressable
+                      style={styles.minus}
+                      onPress={() => removeWatch(item)}
+                      hitSlop={8}>
+                      <ThemedText style={styles.minusText}>−</ThemedText>
+                    </Pressable>
+                  )}
+                </View>
+              </SwipeToLogRow>
             );
           }}
         />
