@@ -77,6 +77,8 @@ type LoggedEntry = {
   titleId: string;
   watchIds: string[];
   priorStatus: LibraryStatus | null;
+  /** True while the optimistic ✓ is shown but the DB write hasn't landed yet. */
+  pending: boolean;
 };
 
 function ResultRow({
@@ -84,7 +86,7 @@ function ResultRow({
   bg,
   router,
   logged,
-  busy,
+  pending,
   onUndoTap,
 }: {
   item: SearchResult;
@@ -92,8 +94,8 @@ function ResultRow({
   router: ReturnType<typeof useRouter>;
   /** True while this row is marked logged from a swipe this session. */
   logged: boolean;
-  /** True while a swipe-log/undo for this row is in flight (series can be slow). */
-  busy: boolean;
+  /** True while the DB write behind the optimistic ✓ hasn't landed yet. */
+  pending: boolean;
   /** Tapping the checkmark undoes the session log (same as swipe-left). */
   onUndoTap: () => void;
 }) {
@@ -129,12 +131,14 @@ function ResultRow({
           {item.media_type === 'tv' ? 'TV' : 'Movie'} · {year(item)}
         </ThemedText>
       </ThemedView>
-      {busy ? (
-        <ActivityIndicator style={styles.trailing} />
-      ) : logged ? (
+      {logged ? (
         // Its own Pressable captures the touch, so tapping the check undoes
         // instead of opening the title (RN doesn't bubble to the parent).
-        <Pressable style={styles.check} hitSlop={8} onPress={onUndoTap}>
+        // Shown instantly on swipe (optimistic); dimmed until the write lands.
+        <Pressable
+          style={[styles.check, pending && styles.checkPending]}
+          hitSlop={8}
+          onPress={onUndoTap}>
           <IconSymbol name="checkmark" size={18} tintColor={AccentText} />
         </Pressable>
       ) : null}
@@ -219,21 +223,14 @@ export default function SearchScreen() {
     });
   }
 
-  // --- swipe-to-log (session-scoped) --------------------------------------
+  // --- swipe-to-log (session-scoped, optimistic) --------------------------
   const queryClient = useQueryClient();
   const [logged, setLogged] = useState<Map<string, LoggedEntry>>(new Map());
-  const [busyKeys, setBusyKeys] = useState<Set<string>>(new Set());
+  // Cancel tokens for in-flight logs, so an undo tapped *before* the DB write
+  // finishes can cancel it — the write, once done, rolls itself back.
+  const inflight = useRef(new Map<string, { cancelled: boolean }>());
 
   const itemKey = (r: SearchResult) => `${r.media_type}-${r.tmdb_id}`;
-
-  function setBusy(key: string, on: boolean) {
-    setBusyKeys((prev) => {
-      const next = new Set(prev);
-      if (on) next.add(key);
-      else next.delete(key);
-      return next;
-    });
-  }
 
   function invalidateWatchData(titleId?: string) {
     queryClient.invalidateQueries({ queryKey: ['diary'] });
@@ -245,79 +242,107 @@ export default function SearchScreen() {
     }
   }
 
-  async function logItem(item: SearchResult) {
+  /** Delete exactly the rows an entry inserted (+ restore a movie's status). */
+  async function reverseEntry(entry: LoggedEntry) {
+    if (entry.kind === 'movie') {
+      await removeMovieWatch(entry.watchIds[0]);
+      if (entry.priorStatus)
+        await setLibraryStatus(entry.titleId, entry.priorStatus);
+      else await removeFromLibrary(entry.titleId);
+      invalidateWatchData(entry.titleId);
+    } else {
+      await removeEpisodeWatchesByIds(entry.watchIds);
+      invalidateWatchData();
+    }
+  }
+
+  function logItem(item: SearchResult) {
     const key = itemKey(item);
-    if (logged.has(key) || busyKeys.has(key)) return;
-    setBusy(key, true);
-    try {
-      // Same read-through the row already prefetches onPressIn → usually warm.
-      const { title, seasons } = await getTitle(item.tmdb_id, item.media_type);
-      if (item.media_type === 'tv') {
-        const seasonNumbers = seasons
-          .map((s) => s.season_number)
-          .filter((n) => n >= 1) // exclude Specials (season 0)
-          .sort((a, b) => a - b);
-        const episodes = await fetchAllEpisodes(item.tmdb_id, seasonNumbers);
-        const ids = await logManyEpisodeWatches(
-          episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
-        );
-        setLogged((prev) =>
-          new Map(prev).set(key, {
+    if (logged.has(key)) return;
+    const kind: LoggedEntry['kind'] = item.media_type === 'tv' ? 'tv' : 'movie';
+    // Optimistic: show the ✓ instantly; the DB write runs in the background.
+    setLogged((prev) =>
+      new Map(prev).set(key, {
+        kind,
+        titleId: '',
+        watchIds: [],
+        priorStatus: null,
+        pending: true,
+      }),
+    );
+    const token = { cancelled: false };
+    inflight.current.set(key, token);
+    void (async () => {
+      try {
+        // Same read-through the row already prefetches onPressIn → usually warm.
+        const { title, seasons } = await getTitle(item.tmdb_id, item.media_type);
+        let entry: LoggedEntry;
+        if (item.media_type === 'tv') {
+          const seasonNumbers = seasons
+            .map((s) => s.season_number)
+            .filter((n) => n >= 1) // exclude Specials (season 0)
+            .sort((a, b) => a - b);
+          const episodes = await fetchAllEpisodes(item.tmdb_id, seasonNumbers);
+          const ids = await logManyEpisodeWatches(
+            episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
+          );
+          entry = {
             kind: 'tv',
             titleId: title.id,
             watchIds: ids,
             priorStatus: null,
-          }),
-        );
-        invalidateWatchData();
-      } else {
-        const priorStatus = await getLibraryStatus(title.id);
-        const watchId = await logMovieWatch(title.id);
-        setLogged((prev) =>
-          new Map(prev).set(key, {
+            pending: false,
+          };
+        } else {
+          const priorStatus = await getLibraryStatus(title.id);
+          const watchId = await logMovieWatch(title.id);
+          entry = {
             kind: 'movie',
             titleId: title.id,
             watchIds: [watchId],
             priorStatus,
-          }),
-        );
-        invalidateWatchData(title.id);
+            pending: false,
+          };
+        }
+        inflight.current.delete(key);
+        if (token.cancelled) {
+          // Undone while the write was in flight → roll it straight back.
+          await reverseEntry(entry);
+          return;
+        }
+        // Swap the pending entry for the resolved one (with real ids for undo).
+        setLogged((prev) => (prev.has(key) ? new Map(prev).set(key, entry) : prev));
+        invalidateWatchData(entry.kind === 'movie' ? entry.titleId : undefined);
+      } catch {
+        inflight.current.delete(key);
+        // Roll the optimistic ✓ back on failure.
+        setLogged((prev) => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
       }
-    } catch {
-      // Leave the row unmarked on failure; the user can just swipe again.
-    } finally {
-      setBusy(key, false);
-    }
+    })();
   }
 
-  async function undoItem(item: SearchResult) {
+  function undoItem(item: SearchResult) {
     const key = itemKey(item);
     const entry = logged.get(key);
-    if (!entry || busyKeys.has(key)) return;
-    setBusy(key, true);
-    try {
-      if (entry.kind === 'movie') {
-        await removeMovieWatch(entry.watchIds[0]);
-        // Restore the pre-log status exactly; if there was none, drop the entry
-        // the log implicitly created.
-        if (entry.priorStatus)
-          await setLibraryStatus(entry.titleId, entry.priorStatus);
-        else await removeFromLibrary(entry.titleId);
-        invalidateWatchData(entry.titleId);
-      } else {
-        await removeEpisodeWatchesByIds(entry.watchIds);
-        invalidateWatchData();
-      }
-      setLogged((prev) => {
-        const next = new Map(prev);
-        next.delete(key);
-        return next;
-      });
-    } catch {
-      // Keep the checkmark on failure so the undo can be retried.
-    } finally {
-      setBusy(key, false);
+    if (!entry) return;
+    // Optimistic: drop the ✓ instantly.
+    setLogged((prev) => {
+      const next = new Map(prev);
+      next.delete(key);
+      return next;
+    });
+    const token = inflight.current.get(key);
+    if (token) {
+      // Still writing — cancel; the log's completion handler rolls it back.
+      token.cancelled = true;
+      return;
     }
+    // Resolved entry → delete its rows now.
+    void reverseEntry(entry).catch(() => {});
   }
 
   return (
@@ -424,7 +449,7 @@ export default function SearchScreen() {
                     bg={c.backgroundElement}
                     router={router}
                     logged={isLogged}
-                    busy={busyKeys.has(key)}
+                    pending={logged.get(key)?.pending ?? false}
                     onUndoTap={() => undoItem(item)}
                   />
                 </SwipeToLogRow>
@@ -521,7 +546,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  trailing: { width: 28, alignItems: 'center' },
+  checkPending: { opacity: 0.55 },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   error: { color: Danger, marginTop: Spacing.three },
 });
