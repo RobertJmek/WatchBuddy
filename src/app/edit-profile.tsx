@@ -262,8 +262,8 @@ export default function EditProfileScreen() {
             <Pressable
               style={[styles.link, { borderBottomColor: c.border }]}
               disabled={saving || exporting}
-              onPress={() => router.push('/import-tvtime')}>
-              <ThemedText type="subtitle">Import TV Time data</ThemedText>
+              onPress={() => router.push('/import-data')}>
+              <ThemedText type="subtitle">Import your data</ThemedText>
               <IconSymbol
                 name="chevron.right"
                 size={18}

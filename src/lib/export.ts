@@ -100,6 +100,9 @@ export async function buildExport(): Promise<Record<string, unknown>> {
   return {
     exported_at: new Date().toISOString(),
     app: 'WatchBuddy',
+    // Bumped when the export shape changes; the WatchBuddy importer validates it.
+    // Legacy exports predating this field are treated as v0 (same shape).
+    schema_version: 1,
     user_id: uid,
     profile: profile.data,
     library_items: libraryItems,
