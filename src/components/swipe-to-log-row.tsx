@@ -44,10 +44,11 @@ export function SwipeToLogRow({
 }: Props) {
   const ref = useRef<Swipeable>(null);
   const { width } = useWindowDimensions();
-  // Thresholds are drag distances in points. A series needs most of the row's
-  // width; a movie/episode a short flick. Tunable on-device.
-  const logThreshold = width * (longLog ? 0.6 : 0.28);
-  const undoThreshold = width * 0.28;
+  // Thresholds are drag distances in points. A series takes a clearly longer,
+  // deliberate swipe than a movie/episode's short flick — but still reachable
+  // (overshoot is on below, so the drag isn't capped at the action width).
+  const logThreshold = width * (longLog ? 0.45 : 0.22);
+  const undoThreshold = width * 0.22;
 
   function handleWillOpen(direction: 'left' | 'right') {
     // Left actions open when swiping *right* → log. Right actions → undo.
@@ -60,11 +61,8 @@ export function SwipeToLogRow({
   return (
     <Swipeable
       ref={ref}
-      friction={2}
       leftThreshold={logThreshold}
       rightThreshold={undoThreshold}
-      overshootLeft={false}
-      overshootRight={false}
       onSwipeableWillOpen={handleWillOpen}
       renderLeftActions={() => (
         <View style={[styles.action, styles.logAction]}>
