@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
@@ -17,6 +18,18 @@ import { getFollowCounts } from '@/lib/social';
 import { useThemePreference } from '@/lib/theme-preference';
 
 const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
+
+/**
+ * Read from the build's embedded manifest, so it reports the binary you're
+ * actually running — the whole point is telling "did my install update?" apart
+ * from "did the change not ship?" without a cable or Settings → Apps.
+ */
+const BUILD_LABEL = [
+  Constants.expoConfig?.version,
+  Constants.expoConfig?.android?.versionCode,
+]
+  .filter(Boolean)
+  .join(' · ');
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
@@ -152,6 +165,12 @@ export default function ProfileScreen() {
           style={{ marginTop: Spacing.two }}
           onPress={signOut}
         />
+
+        <ThemedText
+          type="meta"
+          style={[styles.build, { color: c.textSecondary }]}>
+          WatchBuddy {BUILD_LABEL}
+        </ThemedText>
       </TopSafeAreaView>
     </ThemedView>
   );
@@ -165,6 +184,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   heading: { marginTop: Spacing.three },
+  build: { textAlign: 'center', marginTop: Spacing.one },
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: PlaceholderBg },
   avatarFallback: {
