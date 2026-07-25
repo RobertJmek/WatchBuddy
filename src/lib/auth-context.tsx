@@ -98,7 +98,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const { error: exchangeError } =
       await supabase.auth.exchangeCodeForSession(code);
-    return { error: exchangeError?.message ?? null };
+    if (!exchangeError) return { error: null };
+
+    // On Android the OS *also* delivers the redirect to the app as a deep link,
+    // so `auth-callback.tsx` races us to exchange the very same code. A PKCE
+    // code is single-use: whoever loses gets "invalid flow state, no valid flow
+    // state found" even though sign-in succeeded. Only report a failure if no
+    // session actually materialised. (`auth-callback` has the mirror guard.)
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData.session) return { error: null };
+    return { error: exchangeError.message };
   }
 
   async function signOut() {

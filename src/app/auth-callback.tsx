@@ -60,10 +60,21 @@ export default function AuthCallback() {
       const { error: exchangeError } =
         await supabase.auth.exchangeCodeForSession(signInCode);
       if (!active || !exchangeError) return;
-      // The code may already have been spent by the in-app browser path; if a
-      // session landed anyway, the redirect effect above takes over.
-      const { data } = await supabase.auth.getSession();
-      if (active && !data.session) setError(exchangeError.message);
+      // The code may already have been spent by the in-app browser path (a PKCE
+      // code is single-use, and on Android both paths race for it), in which
+      // case the failure is cosmetic. Give the winner's session a moment to
+      // land before believing the error — it may still be persisting.
+      let { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        await new Promise((r) => setTimeout(r, 1500));
+        ({ data } = await supabase.auth.getSession());
+      }
+      // Still nothing: sign-in genuinely failed. Raw GoTrue text ("invalid flow
+      // state, no valid flow state found") means nothing to a user — retrying
+      // is the only useful action anyway.
+      if (active && !data.session) {
+        setError("We couldn't finish signing you in. Please try again.");
+      }
     })();
     return () => {
       active = false;
