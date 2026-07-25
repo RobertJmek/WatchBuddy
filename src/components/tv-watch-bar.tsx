@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { fetchAllEpisodes, type SeasonRow } from '@/lib/tmdb';
 import { logManyEpisodeWatches } from '@/lib/watches';
 
@@ -38,8 +39,12 @@ export function TvWatchBar({
       queryClient.invalidateQueries({ queryKey: ['diary'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       setMessage(`Logged ${episodes.length} episodes`);
+      // Fires on completion, not on tap: a whole series takes seconds to write,
+      // so the buzz *is* the "it's done" signal.
+      hapticSuccess();
     } catch (e) {
       setMessage(`Could not log: ${e}`);
+      hapticFailure();
     } finally {
       setBusy(false);
     }

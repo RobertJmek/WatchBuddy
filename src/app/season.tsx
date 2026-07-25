@@ -15,6 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
 import {
   getEpisodeWatchCounts,
@@ -74,28 +75,33 @@ export default function SeasonScreen() {
 
   async function addWatch(ep: EpisodeRow) {
     bump(ep.id, +1);
+    hapticTick();
     try {
       await logEpisodeWatch(ep.id, ep.title_id);
       invalidateWatchData();
     } catch {
       bump(ep.id, -1);
+      hapticFailure();
     }
   }
 
   async function removeWatch(ep: EpisodeRow) {
     if ((counts[ep.id] ?? 0) === 0) return;
     bump(ep.id, -1);
+    hapticUndo();
     try {
       await removeOneEpisodeWatch(ep.id);
       invalidateWatchData();
     } catch {
       bump(ep.id, +1);
+      hapticFailure();
     }
   }
 
   async function logWholeSeason() {
     if (seasonBusy || episodes.length === 0) return;
     setSeasonBusy(true);
+    hapticSuccess();
     setCounts((c) => {
       const next = { ...c };
       for (const e of episodes) next[e.id] = (next[e.id] ?? 0) + 1;
@@ -112,6 +118,7 @@ export default function SeasonScreen() {
         for (const e of episodes) next[e.id] = Math.max(0, (next[e.id] ?? 0) - 1);
         return next;
       });
+      hapticFailure();
     } finally {
       setSeasonBusy(false);
     }

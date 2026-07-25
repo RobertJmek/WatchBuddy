@@ -8,6 +8,7 @@ import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { likeReview, unlikeReview, type ReviewItem } from '@/lib/ratings';
 
 function formatDate(iso: string) {
@@ -57,6 +58,7 @@ export function ReviewRow({
     const next = !liked;
     setLiked(next);
     setLikes((n) => n + (next ? 1 : -1));
+    hapticToggle(next);
     try {
       if (next) await likeReview(review.ratingId);
       else await unlikeReview(review.ratingId);
@@ -66,6 +68,7 @@ export function ReviewRow({
     } catch {
       setLiked(!next);
       setLikes((n) => n + (next ? -1 : 1));
+      hapticFailure();
     }
   }
   const name =

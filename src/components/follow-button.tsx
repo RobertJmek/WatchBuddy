@@ -5,6 +5,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { follow, unfollow } from '@/lib/social';
 
 /**
@@ -33,6 +34,7 @@ export function FollowButton({
     if (saving) return;
     const next = !following;
     setFollowing(next); // optimistic
+    hapticToggle(next);
     setSaving(true);
     onChange?.(next);
     try {
@@ -43,6 +45,7 @@ export function FollowButton({
     } catch {
       setFollowing(!next); // revert
       onChange?.(!next);
+      hapticFailure();
     } finally {
       setSaving(false);
     }

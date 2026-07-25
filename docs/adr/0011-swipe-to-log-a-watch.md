@@ -69,6 +69,7 @@ the design:
   watch history.
 - **`expo-haptics`** was added for a light impact on commit → the shipped build
   must be rebuilt (native module). The rest of the feature is pure JS.
+- **Haptics later moved out of the swipe row** (see the follow-up below).
 - **On-device tuning was needed.** Thresholds are window-width fractions and the
   emulator misreports gestures, so the feel was validated on-device: the series
   swipe was initially *impossible* (threshold 60% + `friction: 2` doubling finger
@@ -84,9 +85,55 @@ the design:
   the **main** entry only, so RNGH is loaded once. **Never mix the RNGH subpath
   imports with the main entry.**
 
+## Follow-up: haptics app-wide (v1.12.2)
+
+The swipe row was the app's only haptic call site, and it called `expo-haptics`
+directly. Two problems, both fixed by moving to a shared **`src/lib/haptics.ts`**:
+
+- `Haptics.impactAsync(...)` **throws synchronously** when the native module is
+  missing (a dev client older than the prebuild that added it). The old
+  `.catch(() => {})` only handled a rejected promise, so that throw would have
+  propagated out of `handleWillOpen` and swallowed the `onLog()` call — a swipe
+  that logs nothing. Every helper in `haptics.ts` is fire-and-forget and cannot
+  throw.
+- Android's `ImpactFeedbackStyle.Light` is close to imperceptible. The helpers
+  use SDK 56's semantic `performAndroidHapticsAsync` effects (`Confirm`,
+  `Reject`, `Toggle_On/Off`, `Segment_Tick`) on Android and the UIKit generators
+  on iOS.
+
+`SwipeToLogRow` itself **no longer fires haptics**: every caller wires the same
+handler to a tap-button as well, so buzzing in the swipe wrapper double-fired.
+The handler owns the haptic — it also knows whether the action is a tick or a
+full commit. Haptics now cover every data-changing action (watch log/undo,
+episode +/−, library status, favorite, follow, rating, like, review save), fired
+at the optimistic moment with `hapticFailure()` on the rollback path. Navigation
+and plain taps stay silent by design.
+
+**Drag-to-rate** rides on the same helpers: the 1–10 scale in `rating-bar.tsx` is
+now a `Gesture.Pan` surface — drag across it and the number under your finger pops
+(spring scale + lift) with a bubble above the row, one `hapticTick()` per step
+crossed and a `hapticSuccess()` on release. Three things make it behave:
+
+- The row became **ten equal `flex: 1` cells** (was `flexWrap: 'wrap'` with fixed
+  30px circles, which needed 336px and wrapped to two rows on a narrow phone).
+  Equal cells are what make `floor(x / (rowWidth / 10))` land on the number you
+  actually see.
+- `activeOffsetX([-6, 6])` + `failOffsetY([-14, 14])`, because the title screen is
+  a vertical `ScrollView`: a drag that starts on the scale but goes up or down has
+  to scroll the page, not pick a rating.
+- **A drag never clears.** Tapping your current rating still clears it; releasing a
+  drag on it is a no-op. Stopping your finger on the number you already have is far
+  too easy to do by accident to spend a rating on.
+
+The scale also **fills live** while you drag — the circles and the selected ring
+follow `hovered ?? value`, so the bar fills and empties under your finger and the
+release just keeps what you already see.
+
 ## Layout
 
 ```
+src/lib/haptics.ts                    the only importer of expo-haptics
+src/components/rating-bar.tsx         drag-to-rate: pan over the 1–10 scale
 src/components/swipe-to-log-row.tsx   auto-commit swipe wrapper (log / undo)
 src/app/_layout.tsx                   GestureHandlerRootView at the root
 src/app/(app)/explore.tsx             Search: session state, checkmark, log/undo

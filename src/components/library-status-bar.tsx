@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { hapticFailure, hapticTick, hapticUndo } from '@/lib/haptics';
 import {
   getLibraryStatus,
   LIBRARY_STATUSES,
@@ -33,6 +34,8 @@ export function LibraryStatusBar({ titleId }: { titleId: string }) {
     // Tapping the active status again removes the title from the library.
     const remove = next === previous;
     queryClient.setQueryData(STATUS_KEY(titleId), remove ? null : next); // optimistic
+    if (remove) hapticUndo();
+    else hapticTick();
     setSaving(true);
     try {
       if (remove) await removeFromLibrary(titleId);
@@ -40,6 +43,7 @@ export function LibraryStatusBar({ titleId }: { titleId: string }) {
       queryClient.invalidateQueries({ queryKey: ['library'] });
     } catch {
       queryClient.setQueryData(STATUS_KEY(titleId), previous); // revert on failure
+      hapticFailure();
     } finally {
       setSaving(false);
     }

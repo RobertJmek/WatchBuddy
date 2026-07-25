@@ -26,6 +26,7 @@ import { UserRow } from '@/components/user-row';
 import { Accent, AccentText, Danger, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 import {
   getLibraryStatus,
   removeFromLibrary,
@@ -270,6 +271,7 @@ export default function SearchScreen() {
         pending: true,
       }),
     );
+    hapticSuccess();
     const token = { cancelled: false };
     inflight.current.set(key, token);
     void (async () => {
@@ -321,6 +323,7 @@ export default function SearchScreen() {
           next.delete(key);
           return next;
         });
+        hapticFailure();
       }
     })();
   }
@@ -335,6 +338,7 @@ export default function SearchScreen() {
       next.delete(key);
       return next;
     });
+    hapticUndo();
     const token = inflight.current.get(key);
     if (token) {
       // Still writing — cancel; the log's completion handler rolls it back.

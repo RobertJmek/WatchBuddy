@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,11 +8,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import {
   entityTypeFor,
   getRating,
@@ -22,6 +29,58 @@ import {
 
 const ACTIVE = Accent;
 const VALUES = Array.from({ length: 10 }, (_, i) => i + 1);
+
+/** Matches the app's standard press spring (see `press-scale.tsx`). */
+const SPRING = { damping: 20, stiffness: 300 };
+const BUBBLE = 40;
+
+/**
+ * One number on the scale. The whole cell is `flex: 1` so the ten cells divide
+ * the row evenly — that's what makes the drag's x→value math line up with what
+ * you see. The circle inside is capped at 30px so it stays a circle on wide
+ * screens and shrinks on narrow ones instead of wrapping to a second row.
+ */
+function RatingChip({
+  n,
+  on,
+  selected,
+  active,
+  onPress,
+}: {
+  n: number;
+  on: boolean;
+  selected: boolean;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const scale = useSharedValue(1);
+  const lift = useSharedValue(0);
+
+  useEffect(() => {
+    scale.value = withSpring(active ? 1.4 : 1, SPRING);
+    lift.value = withSpring(active ? -6 : 0, SPRING);
+  }, [active, scale, lift]);
+
+  const animated = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }, { translateY: lift.value }],
+  }));
+
+  return (
+    <Pressable style={styles.cell} onPress={onPress}>
+      <Animated.View
+        style={[
+          styles.num,
+          on && styles.numOn,
+          selected && styles.numSelected,
+          animated,
+        ]}>
+        <ThemedText type="small" style={on ? styles.numTextOn : undefined}>
+          {n}
+        </ThemedText>
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export function RatingBar({
   titleId,
@@ -46,6 +105,46 @@ export function RatingBar({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Drag-to-rate: the row's measured width turns a finger's x into a value.
+  const [rowWidth, setRowWidth] = useState(0);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const lastHovered = useRef<number | null>(null);
+  const cellWidth = rowWidth / VALUES.length;
+
+  function valueFromX(x: number) {
+    if (!cellWidth) return null;
+    const i = Math.floor(x / cellWidth);
+    return VALUES[Math.min(VALUES.length - 1, Math.max(0, i))];
+  }
+
+  /** Ticks only when the finger crosses into a new number, not every frame. */
+  function hover(x: number) {
+    const n = valueFromX(x);
+    if (n == null || n === lastHovered.current) return;
+    lastHovered.current = n;
+    setHovered(n);
+    hapticTick();
+  }
+
+  // Horizontal-only: the title screen is a vertical ScrollView, so a drag that
+  // starts on the scale but goes up/down must scroll the page instead.
+  // `runOnJS` keeps the callbacks on the JS thread — there are at most ten state
+  // updates in a full drag, so there's nothing to gain from a worklet.
+  const pan = Gesture.Pan()
+    .activeOffsetX([-6, 6])
+    .failOffsetY([-14, 14])
+    .runOnJS(true)
+    .onStart((e) => hover(e.x))
+    .onUpdate((e) => hover(e.x))
+    .onEnd((e) => {
+      const n = valueFromX(e.x);
+      if (n != null) void choose(n, { fromDrag: true });
+    })
+    .onFinalize(() => {
+      lastHovered.current = null;
+      setHovered(null);
+    });
+
   useEffect(() => {
     let active = true;
     getRating(entityType, titleId)
@@ -63,13 +162,25 @@ export function RatingBar({
     };
   }, [titleId, entityType]);
 
-  async function choose(n: number) {
+  /**
+   * `fromDrag` = the value was released under a finger swiping the scale, not
+   * tapped. A drag never clears: stopping on the number you already have is far
+   * too easy to do by accident, so it's a no-op instead of wiping your rating.
+   * A tap on the current value still clears it.
+   */
+  async function choose(n: number, opts?: { fromDrag?: boolean }) {
+    if (opts?.fromDrag && n === value) return; // nothing to write
     const clear = n === value;
     const previous = value;
     setValue(clear ? null : n); // optimistic
     if (clear) {
       setReview('');
       setEditing(false);
+      hapticUndo();
+    } else if (opts?.fromDrag) {
+      hapticSuccess(); // the drag already ticked its way here; this is the landing
+    } else {
+      hapticTick();
     }
     try {
       if (clear) await removeRating(entityType, titleId);
@@ -78,6 +189,7 @@ export function RatingBar({
       queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
     } catch {
       setValue(previous);
+      hapticFailure();
     }
   }
 
@@ -94,6 +206,9 @@ export function RatingBar({
       setReview(draft.trim());
       setEditing(false);
       queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
+      hapticSuccess();
+    } catch {
+      hapticFailure();
     } finally {
       setSaving(false);
     }
@@ -101,30 +216,42 @@ export function RatingBar({
 
   if (loading) return <ActivityIndicator style={{ alignSelf: 'flex-start' }} />;
 
+  // While dragging, the scale previews the value under the finger: the fill
+  // follows it live instead of waiting for the release to commit.
+  const shown = hovered ?? value;
+
   return (
     <View style={styles.container}>
       <ThemedText type="meta" style={{ color: c.textSecondary }}>
         Your rating
       </ThemedText>
-      <View style={styles.scale}>
-        {VALUES.map((n) => {
-          const on = value != null && n <= value;
-          const selected = n === value;
-          return (
-            <Pressable
-              key={n}
-              onPress={() => choose(n)}
-              style={[
-                styles.num,
-                on && styles.numOn,
-                selected && styles.numSelected,
-              ]}>
-              <ThemedText type="small" style={on ? styles.numTextOn : undefined}>
-                {n}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
+      <View style={styles.scaleWrap}>
+        {hovered != null && cellWidth > 0 && (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.bubble,
+              { left: cellWidth * (hovered - 1) + cellWidth / 2 - BUBBLE / 2 },
+            ]}>
+            <ThemedText style={styles.bubbleText}>{hovered}</ThemedText>
+          </View>
+        )}
+        <GestureDetector gesture={pan}>
+          <View
+            style={styles.scale}
+            onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
+            {VALUES.map((n) => (
+              <RatingChip
+                key={n}
+                n={n}
+                on={shown != null && n <= shown}
+                selected={n === shown}
+                active={n === hovered}
+                onPress={() => choose(n)}
+              />
+            ))}
+          </View>
+        </GestureDetector>
       </View>
 
       {value != null &&
@@ -216,16 +343,39 @@ export function RatingBar({
 
 const styles = StyleSheet.create({
   container: { gap: Spacing.two },
-  scale: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  scaleWrap: { position: 'relative' },
+  // No wrap and no gap: ten equal `flex: 1` cells, so a finger's x maps straight
+  // onto a value. Spacing lives inside the cell, around the circle.
+  scale: { flexDirection: 'row', alignItems: 'center' },
+  cell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.one,
+  },
   num: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: '100%',
+    maxWidth: 30,
+    aspectRatio: 1,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: ACTIVE,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Sits above the row while dragging; absolute so it never shifts the layout.
+  bubble: {
+    position: 'absolute',
+    top: -(BUBBLE + 10),
+    width: BUBBLE,
+    height: BUBBLE,
+    borderRadius: 12,
+    backgroundColor: ACTIVE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  bubbleText: { color: AccentText, fontSize: 20, fontWeight: '700' },
   numOn: { backgroundColor: ACTIVE },
   numSelected: { borderWidth: 2, borderColor: AccentText },
   numTextOn: { color: AccentText },

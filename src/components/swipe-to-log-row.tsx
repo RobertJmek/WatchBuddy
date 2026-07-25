@@ -1,4 +1,3 @@
-import * as Haptics from 'expo-haptics';
 import { useRef } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -52,7 +51,9 @@ export function SwipeToLogRow({
 
   function handleWillOpen(direction: 'left' | 'right') {
     // Left actions open when swiping *right* → log. Right actions → undo.
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    // Haptics deliberately live in `onLog`/`onUndo`, not here: every caller wires
+    // the same handlers to a tap-button too, so buzzing here would double up on
+    // a swipe (and the handler knows whether it's a tick or a full commit).
     if (direction === 'left') onLog();
     else onUndo?.();
     ref.current?.close();

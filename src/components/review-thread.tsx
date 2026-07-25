@@ -29,6 +29,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { likeReview, setRating, unlikeReview } from '@/lib/ratings';
 import {
   addReply,
@@ -193,6 +194,7 @@ export function ReviewThread({
       // this screen is revisited from a cached notification tap.
       refresh();
       queryClient.invalidateQueries({ queryKey: ['feed'] });
+      hapticSuccess();
       // Emptying the text removes the review (score kept) — nothing left to show.
       if (!text) {
         router.back();
@@ -200,6 +202,7 @@ export function ReviewThread({
       }
       setEditing(false);
     } catch {
+      hapticFailure();
       Alert.alert('Could not save your review. Try again.');
     } finally {
       setSavingReview(false);
@@ -267,6 +270,7 @@ export function ReviewThread({
     const next = !liked;
     setLiked(next);
     setLikes((n) => n + (next ? 1 : -1));
+    hapticToggle(next);
     try {
       if (next) await likeReview(ratingId);
       else await unlikeReview(ratingId);
@@ -274,6 +278,7 @@ export function ReviewThread({
     } catch {
       setLiked(!next);
       setLikes((n) => n + (next ? -1 : 1));
+      hapticFailure();
     }
   }
 
