@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { Accent } from '@/constants/theme';
+import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { getFavorite, setFavorite } from '@/lib/library';
 
 /** Heart toggle for the title detail header — filled teal when favorited. */
@@ -27,12 +28,14 @@ export function FavoriteButton({ titleId }: { titleId: string }) {
     if (saving || loading) return;
     const next = !fav;
     setFav(next); // optimistic
+    hapticToggle(next);
     setSaving(true);
     try {
       await setFavorite(titleId, next);
       queryClient.invalidateQueries({ queryKey: ['library'] });
     } catch {
       setFav(!next); // revert
+      hapticFailure();
     } finally {
       setSaving(false);
     }

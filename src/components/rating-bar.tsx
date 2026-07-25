@@ -13,6 +13,7 @@ import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import {
   entityTypeFor,
   getRating,
@@ -70,6 +71,9 @@ export function RatingBar({
     if (clear) {
       setReview('');
       setEditing(false);
+      hapticUndo();
+    } else {
+      hapticTick();
     }
     try {
       if (clear) await removeRating(entityType, titleId);
@@ -78,6 +82,7 @@ export function RatingBar({
       queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
     } catch {
       setValue(previous);
+      hapticFailure();
     }
   }
 
@@ -94,6 +99,9 @@ export function RatingBar({
       setReview(draft.trim());
       setEditing(false);
       queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
+      hapticSuccess();
+    } catch {
+      hapticFailure();
     } finally {
       setSaving(false);
     }

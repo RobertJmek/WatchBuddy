@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 import {
   getMovieWatches,
   logMovieWatch,
@@ -41,6 +42,7 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
   async function log() {
     if (busy) return;
     setBusy(true);
+    hapticSuccess();
     try {
       await logMovieWatch(titleId);
       await load();
@@ -50,6 +52,8 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
       // chips on this screen and the Library list so both reflect it.
       queryClient.invalidateQueries({ queryKey: ['libraryStatus', titleId] });
       queryClient.invalidateQueries({ queryKey: ['library'] });
+    } catch {
+      hapticFailure();
     } finally {
       setBusy(false);
     }
@@ -58,11 +62,14 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
   async function undo() {
     if (busy || watches.length === 0) return;
     setBusy(true);
+    hapticUndo();
     try {
       await removeMovieWatch(watches[0].id);
       await load();
       queryClient.invalidateQueries({ queryKey: ['diary'] });
       queryClient.invalidateQueries({ queryKey: ['stats'] });
+    } catch {
+      hapticFailure();
     } finally {
       setBusy(false);
     }
