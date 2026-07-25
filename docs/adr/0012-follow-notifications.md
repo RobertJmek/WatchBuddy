@@ -29,6 +29,9 @@ Two other things constrained the design:
   still cannot lose their rating.
 - **`like_count` is renamed `actor_count`.** It now counts followers as well as
   likers; a second parallel count column would be worse. Only two files read it.
+  The rename is breaking for installed clients, so migration `0015` re-adds
+  `like_count` as a generated mirror of `actor_count` — a shim to drop once no
+  build older than v1.13.0 is in use.
 - **Follows aggregate per recipient** — a partial unique index on `(user_id)
   where type = 'follow'`. Ten new followers are one row that advances its
   `actor_count`/`actor_id`/`created_at` and clears `read_at`. This is the like
@@ -59,6 +62,12 @@ Two other things constrained the design:
   it means re-deriving the newest surviving actor on every delete.
 - The migration rewrites a constraint on a live table, so it must be applied
   before shipping a client that can render follow rows.
+- **Old clients are only partly protected.** `0015` restores the `like_count`
+  name, but a follow row itself is unrenderable before v1.13.0: `rating_id` is
+  null and the old `getNotifications` passes it into `.in('id', ...)`, which
+  PostgREST rejects as an invalid uuid, failing the whole notifications query.
+  The exposure is narrow — it needs an actual new follow to arrive — and cannot
+  be closed from the database. Upgrade before publicising the feature.
 
 See also: ADR 0003 (triggers + Realtime), ADR 0006 (notifications pinned atop the
 Feed), migration `supabase/migrations/0014_follow_notifications.sql`.
