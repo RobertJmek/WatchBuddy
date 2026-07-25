@@ -3,15 +3,17 @@ import { requireViewer } from '@/lib/viewer';
 
 export type NotificationItem = {
   id: string;
-  type: 'reply' | 'like';
+  type: 'reply' | 'like' | 'follow';
   actorId: string;
   actorName: string;
   actorAvatarUrl: string | null;
-  ratingId: string;
+  /** Null for 'follow', which has no review behind it. */
+  ratingId: string | null;
   /** Set when the reply targeted one of the viewer's replies (not the review). */
   replyToComment: boolean;
   title: string | null;
-  likeCount: number;
+  /** Actors folded into this row: likers for 'like', followers for 'follow'. */
+  count: number;
   created_at: string;
   unread: boolean;
 };
@@ -26,7 +28,7 @@ export async function getNotifications(): Promise<NotificationItem[]> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('notifications')
-    .select('id, type, actor_id, rating_id, reply_id, like_count, created_at, read_at')
+    .select('id, type, actor_id, rating_id, reply_id, actor_count, created_at, read_at')
     .eq('user_id', uid)
     .or(`read_at.is.null,read_at.gte.${cutoff}`)
     .order('created_at', { ascending: false })
@@ -36,7 +38,8 @@ export async function getNotifications(): Promise<NotificationItem[]> {
   if (rows.length === 0) return [];
 
   const actorIds = [...new Set(rows.map((r) => r.actor_id))];
-  const ratingIds = [...new Set(rows.map((r) => r.rating_id))];
+  // 'follow' rows carry no rating, so these can legitimately be empty now.
+  const ratingIds = [...new Set(rows.map((r) => r.rating_id).filter(Boolean))];
   const replyIds = rows.map((r) => r.reply_id).filter(Boolean);
 
   const [actorsRes, ratingsRes, repliesRes] = await Promise.all([
@@ -44,7 +47,9 @@ export async function getNotifications(): Promise<NotificationItem[]> {
       .from('profiles')
       .select('id, username, display_name, avatar_url')
       .in('id', actorIds),
-    supabase.from('ratings').select('id, entity_id').in('id', ratingIds),
+    ratingIds.length
+      ? supabase.from('ratings').select('id, entity_id').in('id', ratingIds)
+      : Promise.resolve({ data: [], error: null } as any),
     replyIds.length
       ? supabase
           .from('review_replies')
@@ -59,10 +64,9 @@ export async function getNotifications(): Promise<NotificationItem[]> {
   const titleIds = [
     ...new Set((ratingsRes.data ?? []).map((r: any) => r.entity_id)),
   ];
-  const { data: titles, error: titlesErr } = await supabase
-    .from('titles')
-    .select('id, title')
-    .in('id', titleIds);
+  const { data: titles, error: titlesErr } = titleIds.length
+    ? await supabase.from('titles').select('id, title').in('id', titleIds)
+    : ({ data: [], error: null } as any);
   if (titlesErr) throw titlesErr;
 
   const actorById = new Map<string, any>(
@@ -92,7 +96,7 @@ export async function getNotifications(): Promise<NotificationItem[]> {
       ratingId: r.rating_id,
       replyToComment: !!(r.reply_id && parentByReply.get(r.reply_id)),
       title: entityId ? (titleById.get(entityId) ?? null) : null,
-      likeCount: r.like_count,
+      count: r.actor_count,
       created_at: r.created_at,
       unread: r.read_at == null,
     };

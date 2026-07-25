@@ -8,12 +8,17 @@ import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { type NotificationItem } from '@/lib/notifications';
 
+/** "and N others" for an aggregated row (likes, follows); '' for a single actor. */
+function others(count: number) {
+  if (count <= 1) return '';
+  return `and ${count - 1} ${count === 2 ? 'other' : 'others'} `;
+}
+
 function copyFor(n: NotificationItem) {
+  if (n.type === 'follow') return `${others(n.count)}followed you`;
   const where = n.title ? ` on ${n.title}` : '';
   if (n.type === 'like') {
-    return n.likeCount > 1
-      ? `and ${n.likeCount - 1} ${n.likeCount === 2 ? 'other' : 'others'} liked your review${where}`
-      : `liked your review${where}`;
+    return `${others(n.count)}liked your review${where}`;
   }
   return n.replyToComment
     ? `replied to your comment${where}`
@@ -21,14 +26,17 @@ function copyFor(n: NotificationItem) {
 }
 
 /**
- * A personal notification (a like/reply on the viewer's own review). Pinned at
- * the top of the Feed. The avatar taps to the actor's profile; the row taps to
- * the review thread (`/review/[ratingId]`, a root route that covers the tab bar,
- * consistent with the Feed's other review taps).
+ * A personal notification: a like/reply on the viewer's own review, or someone
+ * following them. Pinned at the top of the Feed. The avatar always taps to the
+ * actor's profile; the row taps to the review thread (`/review/[ratingId]`, a
+ * root route that covers the tab bar, consistent with the Feed's other review
+ * taps) -- except a follow, which has no review and goes to the profile too.
  */
 export function NotificationRow({ item }: { item: NotificationItem }) {
   const c = useTheme();
   const router = useRouter();
+  const openActor = () =>
+    router.push({ pathname: '/user/[id]', params: { id: item.actorId } });
   return (
     <Pressable
       style={[
@@ -37,16 +45,14 @@ export function NotificationRow({ item }: { item: NotificationItem }) {
         item.unread && { backgroundColor: c.backgroundSelected },
       ]}
       onPress={() =>
-        router.push({
-          pathname: '/review/[ratingId]',
-          params: { ratingId: item.ratingId },
-        })
+        item.ratingId
+          ? router.push({
+              pathname: '/review/[ratingId]',
+              params: { ratingId: item.ratingId },
+            })
+          : openActor()
       }>
-      <Pressable
-        hitSlop={6}
-        onPress={() =>
-          router.push({ pathname: '/user/[id]', params: { id: item.actorId } })
-        }>
+      <Pressable hitSlop={6} onPress={openActor}>
         {item.actorAvatarUrl ? (
           <Image
             style={styles.avatar}
