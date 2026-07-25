@@ -125,6 +125,10 @@ crossed and a `hapticSuccess()` on release. Three things make it behave:
   drag on it is a no-op. Stopping your finger on the number you already have is far
   too easy to do by accident to spend a rating on.
 
+The scale also **fills live** while you drag — the circles and the selected ring
+follow `hovered ?? value`, so the bar fills and empties under your finger and the
+release just keeps what you already see.
+
 ## Layout
 
 ```

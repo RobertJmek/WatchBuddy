@@ -216,6 +216,10 @@ export function RatingBar({
 
   if (loading) return <ActivityIndicator style={{ alignSelf: 'flex-start' }} />;
 
+  // While dragging, the scale previews the value under the finger: the fill
+  // follows it live instead of waiting for the release to commit.
+  const shown = hovered ?? value;
+
   return (
     <View style={styles.container}>
       <ThemedText type="meta" style={{ color: c.textSecondary }}>
@@ -240,8 +244,8 @@ export function RatingBar({
               <RatingChip
                 key={n}
                 n={n}
-                on={value != null && n <= value}
-                selected={n === value}
+                on={shown != null && n <= shown}
+                selected={n === shown}
                 active={n === hovered}
                 onPress={() => choose(n)}
               />
