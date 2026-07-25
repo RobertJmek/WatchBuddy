@@ -109,10 +109,27 @@ episode +/−, library status, favorite, follow, rating, like, review save), fir
 at the optimistic moment with `hapticFailure()` on the rollback path. Navigation
 and plain taps stay silent by design.
 
+**Drag-to-rate** rides on the same helpers: the 1–10 scale in `rating-bar.tsx` is
+now a `Gesture.Pan` surface — drag across it and the number under your finger pops
+(spring scale + lift) with a bubble above the row, one `hapticTick()` per step
+crossed and a `hapticSuccess()` on release. Three things make it behave:
+
+- The row became **ten equal `flex: 1` cells** (was `flexWrap: 'wrap'` with fixed
+  30px circles, which needed 336px and wrapped to two rows on a narrow phone).
+  Equal cells are what make `floor(x / (rowWidth / 10))` land on the number you
+  actually see.
+- `activeOffsetX([-6, 6])` + `failOffsetY([-14, 14])`, because the title screen is
+  a vertical `ScrollView`: a drag that starts on the scale but goes up or down has
+  to scroll the page, not pick a rating.
+- **A drag never clears.** Tapping your current rating still clears it; releasing a
+  drag on it is a no-op. Stopping your finger on the number you already have is far
+  too easy to do by accident to spend a rating on.
+
 ## Layout
 
 ```
 src/lib/haptics.ts                    the only importer of expo-haptics
+src/components/rating-bar.tsx         drag-to-rate: pan over the 1–10 scale
 src/components/swipe-to-log-row.tsx   auto-commit swipe wrapper (log / undo)
 src/app/_layout.tsx                   GestureHandlerRootView at the root
 src/app/(app)/explore.tsx             Search: session state, checkmark, log/undo
