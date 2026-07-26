@@ -77,6 +77,7 @@ function RootNavigator() {
         <Stack.Screen name="stats" />
         <Stack.Screen name="import-tvtime" />
         <Stack.Screen name="edit-profile" />
+        <Stack.Screen name="about" />
         <Stack.Screen name="library-section" />
         <Stack.Screen name="user/[id]" />
         <Stack.Screen name="user/[id]/followers" />

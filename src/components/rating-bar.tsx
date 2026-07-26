@@ -187,6 +187,10 @@ export function RatingBar({
       else await setRating(entityType, titleId, n, review);
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
+      // The library carries the viewer's own rating (it's a filter axis), so a
+      // changed or cleared value has to reach it. Only this path matters —
+      // editing a review's text keeps the value, so it can't move the axis.
+      queryClient.invalidateQueries({ queryKey: ['library'] });
     } catch {
       setValue(previous);
       hapticFailure();

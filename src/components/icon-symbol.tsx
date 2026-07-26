@@ -18,6 +18,8 @@ const GLYPHS = {
   'paperplane.fill': 'send',
   checkmark: 'check',
   'arrow.uturn': 'rotate-ccw',
+  'line.3.horizontal.decrease': 'filter',
+  'info.circle': 'info',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;
