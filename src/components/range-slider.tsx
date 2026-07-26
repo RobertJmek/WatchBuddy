@@ -5,11 +5,16 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticSuccess, hapticTick } from '@/lib/haptics';
+import { hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { normalizeRange, type Range } from '@/lib/library-filter';
 
 const THUMB = 24;
 const TRACK_H = 4;
+
+function sameRange(a: Range | null, b: Range | null) {
+  if (a === null || b === null) return a === b;
+  return a[0] === b[0] && a[1] === b[1];
+}
 
 /**
  * A two-thumb range slider — the shape a price filter has in every online shop.
@@ -20,7 +25,7 @@ const TRACK_H = 4;
  * updates on integers, so there is nothing for a worklet to win, and the code
  * stays readable.
  *
- * Two behaviours worth knowing:
+ * Three behaviours worth knowing:
  *
  * - **A drag has to start horizontally** (`activeOffsetX` / `failOffsetY`).
  *   The sheet this lives in scrolls vertically, and a slider that grabs every
@@ -29,6 +34,12 @@ const TRACK_H = 4;
  * - **`null` means the axis is off** and shows as the full domain. Releasing a
  *   thumb at either extreme hands `null` back up (via `normalizeRange`), which
  *   is what stops "I dragged it back" from counting as a filter.
+ * - **The whole drag is narrated by haptics** (all via `lib/haptics.ts`, never
+ *   `expo-haptics` directly): a tick on pickup, a tick per step crossed — never
+ *   per frame, and never while a thumb is pinned against the other — then one
+ *   of three endings on release. Committing a range confirms, dragging back to
+ *   full span reads as an undo, and putting a thumb back where it was stays
+ *   silent because nothing was committed.
  */
 export function RangeSlider({
   label,
@@ -91,6 +102,12 @@ export function RangeSlider({
     return leftOf(v) + THUMB / 2;
   }
 
+  /**
+   * Move the grabbed thumb, ticking **only when the value actually changes** —
+   * once per step crossed, not once per frame, and not at all while a thumb is
+   * pinned against the other one. Same discipline as `rating-bar`'s `hover`,
+   * which dedupes through a ref for the same reason.
+   */
   function moveTo(x: number) {
     const v = valueAt(x);
     const { lo: curLo, hi: curHi } = live.current;
@@ -126,16 +143,26 @@ export function RangeSlider({
           : Math.abs(e.x - centerOf(curLo)) <= Math.abs(e.x - centerOf(curHi))
             ? 'lo'
             : 'hi';
+      // The pickup tick. A grab usually lands on the thumb's own value, so
+      // `moveTo` has nothing to report and would leave the gesture silent —
+      // yet picking a thumb up is exactly the moment you want confirmed.
+      hapticTick();
       moveTo(e.x);
     })
     .onUpdate((e) => moveTo(e.x))
     .onEnd(() => {
-      const next = normalizeRange(
-        [live.current.lo, live.current.hi],
-        domain,
-      );
+      const next = normalizeRange([live.current.lo, live.current.hi], domain);
+      // Three different endings, three different feels — the same distinction
+      // `rating-bar` draws between landing on a value, clearing one, and a drag
+      // that changed nothing.
+      if (sameRange(next, value)) {
+        // Grabbed a thumb and put it back: nothing was committed, so no buzz.
+      } else if (next === null) {
+        hapticUndo(); // dragged back to full span — the axis just turned off
+      } else {
+        hapticSuccess();
+      }
       onChange(next);
-      hapticSuccess();
     });
 
   // Always reads the live thumbs, so the number tracks the finger instead of
