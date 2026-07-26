@@ -39,7 +39,14 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 ### Track
 - **Library** grouped by status — watchlist / watching / completed / on-hold / dropped —
   laid out as poster shelves, each expandable into a full grid.
-- **Favorites** — heart any movie or show; dedicated favorite shelves for movies and TV.
+- **Filter your library** on four axes — **type** (movies / TV), **genre**, **release year**
+  and **your own rating** — from a sheet behind the filter icon. Genres stack (picking two
+  asks for titles carrying **both**); year and rating are drag-to-set range sliders. Active
+  filters show as chips you can tap off one at a time, the header counts `12 of 340 Titles`,
+  and the filter follows you when you open a shelf into its full grid — where you can adjust
+  it again without disturbing the Library behind you.
+- **Favorites** — heart any movie or show; a Favorites shelf you can narrow by type like any
+  other.
 - **Episode-level check-off**, with **rewatch logging per episode, per season, and per series**.
 - **Movie watch logging** (rewatches included).
 - **Swipe to log** — swipe a Search result (or a season's episode) **right** to log a watch,
@@ -87,6 +94,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   and favorites with their original dates) or the **watch history from a WatchBuddy export JSON**
   — including someone else's, adopting it as your own. You can **export everything** your account
   stores as one JSON file the same way.
+- **About** (the **ⓘ** on Profile) — the exact version and build you're running, tappable to
+  copy for a bug report, plus the privacy policy, support, account-deletion and
+  safety-standards pages, opened in-app.
 - **Appearance** — light / dark / system theme toggle (persisted), teal accent throughout.
 - **Offline** — read data (Library / Diary / Stats / profiles) is cached and persisted, so the
   app cold-opens and browses offline.
@@ -119,12 +129,13 @@ src/
     (app)/                 Authenticated tabs: Feed, Library, Search, Profile
     title/[id]/            Title detail (index) + community reviews
     user/[id]/             Public profile (index) + followers / following
-    season, diary, stats, edit-profile, library-section, sign-in
+    season, diary, stats, edit-profile, library-section, about, sign-in
     import-data (chooser) → import-tvtime / import-watchbuddy
   components/              Reusable UI (poster shelf, watch bars, rating/review rows,
                            follow button, user row, …)
   lib/                     supabase client, query client, TMDB client, and data modules
-                           (library, watches, ratings, stats, social, profile, export, …)
+                           (library, library-filter, watches, ratings, stats, social,
+                           profile, genres, export, …)
     tvtime/                In-app TV Time import engine (parse, resolve, status, db, engine)
     wb-import/             WatchBuddy-export import engine (parse, resolve, db, engine)
 scripts/                   TV Time importer CLI (import_tvtime.py + docs) and app-icon generator
