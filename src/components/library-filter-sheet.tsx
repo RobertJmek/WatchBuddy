@@ -124,14 +124,7 @@ export function LibraryFilterSheet({
 
             {shown.length > 0 && (
               <View style={styles.group}>
-                <View style={styles.labelRow}>
-                  <ThemedText type="smallBold">Genre</ThemedText>
-                  {draft.genreIds.length > 1 && (
-                    <ThemedText type="small" style={{ color: c.textSecondary }}>
-                      has all selected
-                    </ThemedText>
-                  )}
-                </View>
+                <ThemedText type="smallBold">Genre</ThemedText>
                 <View style={styles.chipRow}>
                   {shown.map((g) => (
                     <Chip
@@ -210,11 +203,6 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 0 },
   scrollContent: { gap: Spacing.three, paddingVertical: Spacing.two },
   group: { gap: Spacing.two },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: {
     paddingHorizontal: Spacing.three,
