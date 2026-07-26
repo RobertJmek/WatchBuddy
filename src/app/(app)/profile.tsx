@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
@@ -18,18 +17,6 @@ import { getFollowCounts } from '@/lib/social';
 import { useThemePreference } from '@/lib/theme-preference';
 
 const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
-
-/**
- * Read from the build's embedded manifest, so it reports the binary you're
- * actually running — the whole point is telling "did my install update?" apart
- * from "did the change not ship?" without a cable or Settings → Apps.
- */
-const BUILD_LABEL = [
-  Constants.expoConfig?.version,
-  Constants.expoConfig?.android?.versionCode,
-]
-  .filter(Boolean)
-  .join(' · ');
 
 export default function ProfileScreen() {
   const { session, signOut } = useAuth();
@@ -64,9 +51,15 @@ export default function ProfileScreen() {
   return (
     <ThemedView style={styles.container}>
       <TopSafeAreaView style={styles.safeArea}>
-        <ThemedText type="title" style={styles.heading}>
-          Profile
-        </ThemedText>
+        <View style={styles.headingRow}>
+          <ThemedText type="title">Profile</ThemedText>
+          {/* Version, build and the policy pages. Nothing here is needed while
+              using the app, so it sits behind one tap instead of taking up the
+              bottom of this screen. */}
+          <Pressable onPress={() => router.push('/about')} hitSlop={8}>
+            <IconSymbol name="info.circle" size={22} tintColor={c.textSecondary} />
+          </Pressable>
+        </View>
 
         <View style={styles.identity}>
           {profile?.avatar_url ? (
@@ -165,12 +158,6 @@ export default function ProfileScreen() {
           style={{ marginTop: Spacing.two }}
           onPress={signOut}
         />
-
-        <ThemedText
-          type="meta"
-          style={[styles.build, { color: c.textSecondary }]}>
-          WatchBuddy {BUILD_LABEL}
-        </ThemedText>
       </TopSafeAreaView>
     </ThemedView>
   );
@@ -183,8 +170,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     gap: Spacing.three,
   },
-  heading: { marginTop: Spacing.three },
-  build: { textAlign: 'center', marginTop: Spacing.one },
+  // The top margin lives on the row, not on the title: with it on the child,
+  // `alignItems: center` would measure the title's margin box and sit the ⓘ
+  // above the text it belongs beside.
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.three,
+  },
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: PlaceholderBg },
   avatarFallback: {
