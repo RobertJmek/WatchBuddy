@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 
 import { EmptyState } from '@/components/empty-state';
+import { FilterChips } from '@/components/filter-chips';
 import { IconSymbol } from '@/components/icon-symbol';
+import { LibraryFilterSheet } from '@/components/library-filter-sheet';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
@@ -20,10 +22,18 @@ import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
-import { getLibrary, LIBRARY_STATUSES, type LibraryEntry } from '@/lib/library';
+import { getGenres } from '@/lib/genres';
+import { getLibrary, LIBRARY_STATUSES, type MyLibraryEntry } from '@/lib/library';
+import {
+  applyFilter,
+  EMPTY_FILTER,
+  filterToParams,
+  isActive,
+  yearBounds,
+} from '@/lib/library-filter';
 import { subscribeTabReset } from '@/lib/tab-reset';
 
-function toPosterItem(e: LibraryEntry): PosterItem | null {
+function toPosterItem(e: MyLibraryEntry): PosterItem | null {
   if (!e.title) return null;
   return {
     key: e.id,
@@ -35,8 +45,8 @@ function toPosterItem(e: LibraryEntry): PosterItem | null {
 }
 
 function shelfItems(
-  entries: LibraryEntry[],
-  predicate: (e: LibraryEntry) => boolean,
+  entries: MyLibraryEntry[],
+  predicate: (e: MyLibraryEntry) => boolean,
 ) {
   return entries
     .filter(predicate)
@@ -47,6 +57,12 @@ function shelfItems(
 export default function LibraryScreen() {
   const router = useRouter();
   const c = useTheme();
+  // Deliberately no refetch-on-focus: every write that can change this list
+  // already invalidates ['library'] (explore, movie-watch-bar, favorite-button,
+  // library-status-bar, rating-bar, and a blanket invalidate in both importers),
+  // so a blind refetch per tab focus just re-downloaded the whole library —
+  // twice a visit, since backing out of a category focuses this screen again.
+  // Pull-to-refresh covers "changed on another device".
   const {
     data: entries = [],
     isLoading: loading,
@@ -61,9 +77,19 @@ export default function LibraryScreen() {
     setRefreshing(false);
   }, [refetch]);
 
+  const { data: genres = [] } = useQuery({
+    queryKey: ['genres'],
+    queryFn: getGenres,
+    staleTime: Infinity,
+  });
+
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
   const term = useDebouncedValue(query.trim().toLowerCase(), 250);
+
+  const [filter, setFilter] = useState(EMPTY_FILTER);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filtered = isActive(filter);
 
   function toggleSearch() {
     if (searching) setQuery('');
@@ -73,9 +99,9 @@ export default function LibraryScreen() {
   const focused = useIsFocused();
   const listRef = useRef<ScrollView>(null);
 
-  // Re-tapping the active Library tab closes the (optional) inline search and
-  // scrolls the shelves back to the top. Guarded by focus so a plain tab switch
-  // leaves state alone.
+  // Re-tapping the active Library tab is the screen's reset gesture: it closes
+  // the (optional) inline search, drops any filter, and scrolls the shelves
+  // back to the top. Guarded by focus so a plain tab switch leaves state alone.
   useEffect(() => {
     return subscribeTabReset('library', () => {
       if (!focused) return;
@@ -83,23 +109,21 @@ export default function LibraryScreen() {
         setSearching(false);
         setQuery('');
       }
+      setFilter(EMPTY_FILTER);
       listRef.current?.scrollTo({ y: 0, animated: true });
     });
   }, [focused, searching]);
 
-  // Refresh when the tab regains focus (e.g. after adding from Search).
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-    }, [refetch]),
-  );
-
-  // Search narrows every shelf at once; shelves with no matches self-hide below.
-  const visible = term
+  // Search narrows every shelf at once, then the filter narrows what's left —
+  // the two combine with AND. Shelves with no matches self-hide below.
+  const searched = term
     ? entries.filter((e) => e.title?.title.toLowerCase().includes(term))
     : entries;
+  const visible = applyFilter(searched, filter);
 
-  // One shelf per status (canonical order), then favorites split by media type.
+  // One shelf per status (canonical order), then one for favorites. Favorites
+  // used to be split into Movies/TV shelves; media type is a filter axis now,
+  // which also matches the single Favorites shelf on the public profile.
   const statusShelves = LIBRARY_STATUSES.map(({ value, label }) => ({
     key: `status-${value}`,
     label,
@@ -107,22 +131,22 @@ export default function LibraryScreen() {
     items: shelfItems(visible, (e) => e.status === value),
   }));
 
-  const favoriteShelves = [
-    { key: 'fav-movie', label: 'Favorite Movies', type: 'movie' as const },
-    { key: 'fav-tv', label: 'Favorite TV', type: 'tv' as const },
-  ].map(({ key, label, type }) => ({
-    key,
-    label,
-    params: { favorite: type, label },
-    items: shelfItems(
-      visible,
-      (e) => e.is_favorite && e.title?.media_type === type,
-    ),
-  }));
+  const favoriteShelf = {
+    key: 'favorites',
+    label: 'Favorites',
+    params: { favorite: 'true', label: 'Favorites' },
+    items: shelfItems(visible, (e) => e.is_favorite),
+  };
 
-  const shelves = [...statusShelves, ...favoriteShelves].filter(
+  const shelves = [...statusShelves, favoriteShelf].filter(
     (s) => s.items.length > 0,
   );
+
+  const narrowed = filtered || !!term;
+  const genreNames = new Map(genres.map((g) => [g.id, g.name]));
+  // Only offer genres the library actually contains — a chip that can only ever
+  // return nothing is worse than no chip.
+  const availableGenreIds = new Set(entries.flatMap((e) => e.genreIds));
 
   function openTitle(item: PosterItem) {
     router.push({
@@ -140,8 +164,14 @@ export default function LibraryScreen() {
       <TopSafeAreaView style={styles.safeArea}>
         <ThemedText type="meta" style={[styles.eyebrow, { color: c.textSecondary }]}>
           {(() => {
-            const n = entries.filter((e) => e.title).length;
-            return `${n} ${n === 1 ? 'Title' : 'Titles'}`;
+            const total = entries.filter((e) => e.title).length;
+            const shown = visible.filter((e) => e.title).length;
+            const noun = total === 1 ? 'Title' : 'Titles';
+            // Say so when you're looking at a slice — a vanished shelf is
+            // otherwise indistinguishable from an emptied one.
+            return narrowed && shown !== total
+              ? `${shown} of ${total} ${noun}`
+              : `${total} ${noun}`;
           })()}
         </ThemedText>
         <View style={styles.headingRow}>
@@ -154,6 +184,16 @@ export default function LibraryScreen() {
                 name="magnifyingglass"
                 size={22}
                 tintColor={c.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => setFilterOpen(true)}
+              hitSlop={8}
+              style={styles.searchBtn}>
+              <IconSymbol
+                name="line.3.horizontal.decrease"
+                size={22}
+                tintColor={filtered ? c.tint : c.textSecondary}
               />
             </Pressable>
           </View>
@@ -182,6 +222,22 @@ export default function LibraryScreen() {
             )}
           </View>
         )}
+
+        <FilterChips
+          filter={filter}
+          genreNames={genreNames}
+          onChange={setFilter}
+        />
+
+        <LibraryFilterSheet
+          visible={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          filter={filter}
+          onApply={setFilter}
+          genres={genres}
+          availableGenreIds={availableGenreIds}
+          yearDomain={yearBounds(entries)}
+        />
 
         {loading ? (
           <ScrollView contentContainerStyle={styles.list} scrollEnabled={false}>
@@ -215,6 +271,12 @@ export default function LibraryScreen() {
                   title={`No titles match “${query.trim()}”`}
                   hint="Try a shorter title."
                 />
+              ) : filtered ? (
+                <EmptyState
+                  icon="line.3.horizontal.decrease"
+                  title="No titles match your filter"
+                  hint="Genres stack: a title has to carry every one you pick."
+                />
               ) : (
                 <EmptyState
                   icon="film"
@@ -230,7 +292,12 @@ export default function LibraryScreen() {
                   items={s.items}
                   onPressItem={openTitle}
                   onPressHeader={() =>
-                    router.push({ pathname: '/library-section', params: s.params })
+                    router.push({
+                      pathname: '/library-section',
+                      // The filter travels into the category and is editable
+                      // there, but changes never come back — see library-filter.
+                      params: { ...s.params, ...filterToParams(filter) },
+                    })
                   }
                 />
               ))

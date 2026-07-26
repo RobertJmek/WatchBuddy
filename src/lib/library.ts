@@ -38,15 +38,65 @@ export type LibraryEntry = {
   } | null;
 };
 
+/**
+ * The viewer's own library entry: everything a public one has, plus the two
+ * things only the owner can be told — which genres the title carries and what
+ * *they* rated it. Filtering needs both; nobody else's library does, which is
+ * why this is a separate type from `LibraryEntry` rather than optional fields
+ * that would be null half the time.
+ */
+export type MyLibraryEntry = LibraryEntry & {
+  genreIds: number[];
+  /** 1–10, or null when the viewer hasn't rated this title. */
+  myRating: number | null;
+};
+
 /** All of the current user's library items, newest first, with their titles. */
-export async function getLibrary(): Promise<LibraryEntry[]> {
-  const { q } = await selectMine(
-    'library_items',
-    'id, status, is_favorite, created_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date)',
+export async function getLibrary(): Promise<MyLibraryEntry[]> {
+  const [items, ratings] = await Promise.all([
+    selectMine(
+      'library_items',
+      'id, status, is_favorite, created_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date, title_genres(genre_id))',
+    ).then(({ q }) => q.order('created_at', { ascending: false })),
+    // `ratings.entity_id` is a polymorphic uuid with no FK (it can point at a
+    // title, a season or an episode), so PostgREST can't nest ratings under
+    // library_items — the viewer's title ratings come as their own select and
+    // get paired up by title id below.
+    selectMine('ratings', 'entity_id, value').then(({ q }) =>
+      q.in('entity_type', ['movie', 'show']),
+    ),
+  ]);
+  if (items.error) throw items.error;
+  if (ratings.error) throw ratings.error;
+
+  const byTitle = new Map<string, number>(
+    (ratings.data ?? []).map((r: { entity_id: string; value: number }) => [
+      r.entity_id,
+      r.value,
+    ]),
   );
-  const { data, error } = await q.order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as unknown as LibraryEntry[];
+
+  type Row = LibraryEntry & {
+    title: (NonNullable<LibraryEntry['title']> & {
+      title_genres: { genre_id: number }[] | null;
+    }) | null;
+  };
+
+  return ((items.data ?? []) as unknown as Row[]).map(({ title, ...rest }) => ({
+    ...rest,
+    title: title
+      ? {
+          id: title.id,
+          tmdb_id: title.tmdb_id,
+          media_type: title.media_type,
+          title: title.title,
+          poster_path: title.poster_path,
+          release_date: title.release_date,
+        }
+      : null,
+    genreIds: (title?.title_genres ?? []).map((g) => g.genre_id),
+    myRating: title ? (byTitle.get(title.id) ?? null) : null,
+  }));
 }
 
 /**
