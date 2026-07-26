@@ -46,6 +46,11 @@ function Avatar({ actor, size = 36 }: { actor: FeedActor; size?: number }) {
  * A single feed entry. Review events reuse `ReviewRow` (inline like + tap into
  * the thread); every other event is a compact avatar + sentence that taps
  * through to the relevant title, profile, or review thread.
+ *
+ * Everyone the sentence names is reachable: the avatar and each person's name
+ * open that profile, over and above the row press. Without them the actor was
+ * unreachable from every row -- most visibly on a follow, where the row press
+ * goes to the *target* while the avatar shows the actor.
  */
 export function FeedRow({ item }: { item: FeedItem }) {
   const router = useRouter();
@@ -76,8 +81,16 @@ export function FeedRow({ item }: { item: FeedItem }) {
 
   let onPress: () => void;
   let body: React.ReactNode;
+  // Titles are emphasised but not interactive -- the row press already opens
+  // them. People are, so a row can reach everyone it names, not just whoever the
+  // row press happens to favour.
   const strong = (t: string) => (
     <ThemedText type="smallBold">{t}</ThemedText>
+  );
+  const person = (a: FeedActor) => (
+    <ThemedText type="smallBold" onPress={() => openUser(a.id)}>
+      {actorName(a)}
+    </ThemedText>
   );
 
   switch (item.type) {
@@ -85,7 +98,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       onPress = () => openTitle(item.title);
       body = (
         <ThemedText type="small">
-          {strong(actorName(item.actor))} watched {item.count}{' '}
+          {person(item.actor)} watched {item.count}{' '}
           {item.count === 1 ? 'episode' : 'episodes'} of {strong(item.title.name)}
         </ThemedText>
       );
@@ -94,7 +107,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       onPress = () => openTitle(item.title);
       body = (
         <ThemedText type="small">
-          {strong(actorName(item.actor))} watched {strong(item.title.name)}
+          {person(item.actor)} watched {strong(item.title.name)}
         </ThemedText>
       );
       break;
@@ -102,7 +115,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       onPress = () => openTitle(item.title);
       body = (
         <ThemedText type="small">
-          {strong(actorName(item.actor))} rated {strong(item.title.name)}{' '}
+          {person(item.actor)} rated {strong(item.title.name)}{' '}
           {item.value}/10
         </ThemedText>
       );
@@ -111,7 +124,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       onPress = () => openUser(item.target.id);
       body = (
         <ThemedText type="small">
-          {strong(actorName(item.actor))} followed {strong(actorName(item.target))}
+          {person(item.actor)} followed {person(item.target)}
         </ThemedText>
       );
       break;
@@ -119,7 +132,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       onPress = () => openThread(item.ratingId);
       body = (
         <ThemedText type="small">
-          {strong(actorName(item.actor))} liked a review
+          {person(item.actor)} liked a review
           {item.titleName ? <> of {strong(item.titleName)}</> : null}
         </ThemedText>
       );
@@ -128,7 +141,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       onPress = () => openThread(item.ratingId);
       body = (
         <ThemedText type="small">
-          {strong(actorName(item.actor))} replied to a review
+          {person(item.actor)} replied to a review
           {item.titleName ? <> of {strong(item.titleName)}</> : null}
         </ThemedText>
       );
@@ -139,7 +152,9 @@ export function FeedRow({ item }: { item: FeedItem }) {
     <Pressable
       style={[styles.row, { backgroundColor: c.backgroundElement }]}
       onPress={onPress}>
-      <Avatar actor={item.actor} />
+      <Pressable hitSlop={6} onPress={() => openUser(item.actor.id)}>
+        <Avatar actor={item.actor} />
+      </Pressable>
       <View style={styles.body}>
         {body}
         <ThemedText type="small" style={{ color: c.textSecondary }}>
