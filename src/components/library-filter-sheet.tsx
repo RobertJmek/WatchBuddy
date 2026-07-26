@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Button } from '@/components/button';
+import { IconSymbol } from '@/components/icon-symbol';
 import { RangeSlider } from '@/components/range-slider';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
@@ -104,7 +105,14 @@ export function LibraryFilterSheet({
           <Pressable
             style={[styles.sheet, { backgroundColor: c.background }]}
             onPress={(e) => e.stopPropagation()}>
-            <ThemedText type="subtitle">Filters</ThemedText>
+            <View style={styles.titleRow}>
+              <ThemedText type="subtitle">Filters</ThemedText>
+              {/* Dismisses without applying — the same cancel as a backdrop tap,
+                  just reachable without aiming outside the sheet. */}
+              <Pressable onPress={onClose} hitSlop={10}>
+                <IconSymbol name="xmark" size={20} tintColor={c.textSecondary} />
+              </Pressable>
+            </View>
 
             <ScrollView
               style={styles.scroll}
@@ -201,6 +209,11 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
     maxHeight: '70%',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   scroll: { flexGrow: 0 },
   scrollContent: { gap: Spacing.three, paddingVertical: Spacing.two },
