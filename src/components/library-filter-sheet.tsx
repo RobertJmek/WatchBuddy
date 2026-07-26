@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Button } from '@/components/button';
-import { RangeField } from '@/components/range-field';
+import { RangeSlider } from '@/components/range-slider';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -95,104 +96,105 @@ export function LibraryFilterSheet({
       transparent
       animationType="fade"
       onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={[styles.sheet, { backgroundColor: c.background }]}
-          onPress={(e) => e.stopPropagation()}>
-          <ThemedText type="subtitle">Filters</ThemedText>
+      {/* A Modal renders in its own window, outside the GestureHandlerRootView
+          in _layout.tsx — without one in here the range sliders' pan gestures
+          never fire on Android. */}
+      <GestureHandlerRootView style={styles.root}>
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Pressable
+            style={[styles.sheet, { backgroundColor: c.background }]}
+            onPress={(e) => e.stopPropagation()}>
+            <ThemedText type="subtitle">Filters</ThemedText>
 
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled">
-            <View style={styles.group}>
-              <ThemedText type="smallBold">Type</ThemedText>
-              <View style={styles.chipRow}>
-                {TYPES.map((t) => (
-                  <Chip
-                    key={t.value}
-                    label={t.label}
-                    active={draft.mediaType === t.value}
-                    onPress={() => {
-                      hapticTick();
-                      setDraft({ ...draft, mediaType: t.value });
-                    }}
-                  />
-                ))}
-              </View>
-            </View>
-
-            {shown.length > 0 && (
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.scrollContent}>
               <View style={styles.group}>
-                <ThemedText type="smallBold">Genre</ThemedText>
+                <ThemedText type="smallBold">Type</ThemedText>
                 <View style={styles.chipRow}>
-                  {shown.map((g) => (
+                  {TYPES.map((t) => (
                     <Chip
-                      key={g.id}
-                      label={g.name}
-                      active={draft.genreIds.includes(g.id)}
-                      onPress={() => toggleGenre(g.id)}
+                      key={t.value}
+                      label={t.label}
+                      active={draft.mediaType === t.value}
+                      onPress={() => {
+                        hapticTick();
+                        setDraft({ ...draft, mediaType: t.value });
+                      }}
                     />
                   ))}
                 </View>
               </View>
-            )}
 
-            <RangeField
-              label="Year"
-              domain={yearDomain}
-              value={draft.years}
-              onChange={(years) => setDraft({ ...draft, years })}
-            />
+              {shown.length > 0 && (
+                <View style={styles.group}>
+                  <ThemedText type="smallBold">Genre</ThemedText>
+                  <View style={styles.chipRow}>
+                    {shown.map((g) => (
+                      <Chip
+                        key={g.id}
+                        label={g.name}
+                        active={draft.genreIds.includes(g.id)}
+                        onPress={() => toggleGenre(g.id)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
 
-            <RangeField
-              label="My rating"
-              hint={draft.rating ? 'unrated hidden' : undefined}
-              domain={RATING_DOMAIN}
-              value={draft.rating}
-              onChange={(rating) => setDraft({ ...draft, rating })}
-            />
-          </ScrollView>
+              <RangeSlider
+                label="Year"
+                formatEmpty="All years"
+                domain={yearDomain}
+                value={draft.years}
+                onChange={(years) => setDraft({ ...draft, years })}
+              />
 
-          <View style={styles.footer}>
-            <Pressable
-              hitSlop={8}
-              onPress={() => {
-                hapticToggle(false);
-                setDraft(EMPTY_FILTER);
-              }}>
-              <ThemedText type="small" style={{ color: c.textSecondary }}>
-                Clear
-              </ThemedText>
-            </Pressable>
-            <Button
-              title="Apply"
-              style={styles.apply}
-              onPress={() => {
-                hapticSuccess();
-                onApply(draft);
-                onClose();
-              }}
-            />
-          </View>
+              <RangeSlider
+                label="My rating"
+                formatEmpty="Any"
+                hint={draft.rating ? 'Unrated titles are hidden.' : undefined}
+                domain={RATING_DOMAIN}
+                value={draft.rating}
+                onChange={(rating) => setDraft({ ...draft, rating })}
+              />
+            </ScrollView>
+
+            <View style={styles.footer}>
+              <Pressable
+                hitSlop={8}
+                onPress={() => {
+                  hapticToggle(false);
+                  setDraft(EMPTY_FILTER);
+                }}>
+                <ThemedText type="small" style={{ color: c.textSecondary }}>
+                  Clear
+                </ThemedText>
+              </Pressable>
+              <Button
+                title="Apply"
+                style={styles.apply}
+                onPress={() => {
+                  hapticSuccess();
+                  onApply(draft);
+                  onClose();
+                }}
+              />
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    // Top-anchored, not centered: the Year and My rating fields open a keyboard,
-    // and a keyboard covers the bottom of the screen. Sitting high keeps the
-    // fields visible without measuring anything — `useKeyboardState` can't be
-    // trusted in here anyway, since an RN Modal renders in its own window,
-    // outside the KeyboardProvider mounted in _layout.tsx.
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     padding: Spacing.three,
-    paddingTop: Spacing.six,
   },
   sheet: {
     borderRadius: Spacing.three,
