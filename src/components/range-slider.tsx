@@ -50,7 +50,7 @@ export function RangeSlider({
   const shown = value ?? domain;
   const [lo, setLo] = useState(shown[0]);
   const [hi, setHi] = useState(shown[1]);
-  const [trackW, setTrackW] = useState(0);
+  const [rowW, setRowW] = useState(0);
 
   // Re-sync when the range changes from outside (Clear, or a removed chip).
   useEffect(() => {
@@ -67,15 +67,28 @@ export function RangeSlider({
   live.current = { lo, hi };
   const grabbed = useRef<'lo' | 'hi'>('lo');
 
-  function xOf(v: number) {
-    if (inert || trackW <= 0) return 0;
-    return ((v - domain[0]) / span) * trackW;
+  // A thumb's own travel is the row minus its width, so its `left` runs
+  // 0 → rowW - THUMB and never goes negative. That's what keeps the low thumb
+  // inside the sheet instead of hanging off its left edge. The track is inset by
+  // half a thumb on each side, so track-local x and thumb-local left are the
+  // same coordinate space.
+  const travel = Math.max(0, rowW - THUMB);
+
+  function leftOf(v: number) {
+    if (inert || travel <= 0) return 0;
+    return ((v - domain[0]) / span) * travel;
   }
 
+  /** Value under a finger at `x`, measured from the row's left edge. */
   function valueAt(x: number) {
-    if (inert || trackW <= 0) return domain[0];
-    const t = Math.min(1, Math.max(0, x / trackW));
+    if (inert || travel <= 0) return domain[0];
+    const t = Math.min(1, Math.max(0, (x - THUMB / 2) / travel));
     return Math.round(domain[0] + t * span);
+  }
+
+  /** The visual centre of a thumb, for deciding which one a touch grabs. */
+  function centerOf(v: number) {
+    return leftOf(v) + THUMB / 2;
   }
 
   function moveTo(x: number) {
@@ -107,10 +120,10 @@ export function RangeSlider({
       // again in either direction.
       grabbed.current =
         curLo === curHi
-          ? e.x < xOf(curLo)
+          ? e.x < centerOf(curLo)
             ? 'lo'
             : 'hi'
-          : Math.abs(e.x - xOf(curLo)) <= Math.abs(e.x - xOf(curHi))
+          : Math.abs(e.x - centerOf(curLo)) <= Math.abs(e.x - centerOf(curHi))
             ? 'lo'
             : 'hi';
       moveTo(e.x);
@@ -137,8 +150,8 @@ export function RangeSlider({
         ? String(lo)
         : `${lo} – ${hi}`;
 
-  const fillLeft = xOf(lo);
-  const fillWidth = Math.max(0, xOf(hi) - fillLeft);
+  const loLeft = leftOf(lo);
+  const hiLeft = leftOf(hi);
 
   return (
     <View style={styles.wrap}>
@@ -152,28 +165,34 @@ export function RangeSlider({
       </View>
 
       <GestureDetector gesture={pan}>
-        {/* The thumbs are children of this gutter, not of the 4px track: a child
-            taller than its parent is clipped on Android. The horizontal padding
-            is half a thumb, so a thumb parked at either end still lands fully
-            inside the gutter. */}
-        <View style={styles.gutter}>
-          <View
-            style={[styles.track, { backgroundColor: c.border }]}
-            onLayout={(e) => setTrackW(e.nativeEvent.layout.width)}>
-            <View style={[styles.fill, { left: fillLeft, width: fillWidth }]} />
+        {/* The row is the full width and the measured coordinate space. Thumbs
+            are its children (a child taller than its 4px parent gets clipped on
+            Android) positioned with a non-negative `left`, so neither can hang
+            outside the sheet. The track is inset by half a thumb on each side so
+            its ends line up with where the thumbs can actually reach. */}
+        <View
+          style={styles.row}
+          onLayout={(e) => setRowW(e.nativeEvent.layout.width)}>
+          <View style={[styles.track, { backgroundColor: c.border }]}>
+            <View
+              style={[
+                styles.fill,
+                { left: loLeft, width: Math.max(0, hiLeft - loLeft) },
+              ]}
+            />
           </View>
-          {trackW > 0 && !inert && (
+          {travel > 0 && (
             <>
               <View
                 style={[
                   styles.thumb,
-                  { left: fillLeft - THUMB / 2, borderColor: c.background },
+                  { left: loLeft, borderColor: c.background },
                 ]}
               />
               <View
                 style={[
                   styles.thumb,
-                  { left: xOf(hi) - THUMB / 2, borderColor: c.background },
+                  { left: hiLeft, borderColor: c.background },
                 ]}
               />
             </>
@@ -197,13 +216,16 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
-  gutter: {
+  row: {
     height: THUMB,
     justifyContent: 'center',
-    paddingHorizontal: THUMB / 2,
     marginVertical: Spacing.two,
   },
-  track: { height: TRACK_H, borderRadius: TRACK_H },
+  track: {
+    height: TRACK_H,
+    borderRadius: TRACK_H,
+    marginHorizontal: THUMB / 2,
+  },
   fill: {
     position: 'absolute',
     height: TRACK_H,
