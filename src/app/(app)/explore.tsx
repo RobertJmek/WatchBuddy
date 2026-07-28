@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useIsFocused, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -213,16 +213,48 @@ export default function SearchScreen() {
     staleTime: 1000 * 60 * 60 * 24, // 24h — the weekly feed barely moves.
   });
 
-  function openTitle(item: PosterItem) {
-    router.push({
-      pathname: '/title/[id]',
-      params: {
-        id: String(item.tmdb_id),
-        type: item.media_type,
-        name: item.title,
-      },
-    });
-  }
+  // PosterShelf is memoized, so every prop it takes has to be referentially
+  // stable or the memo buys nothing — the shelves re-render (and re-render
+  // every poster) on each keystroke in the search box otherwise.
+  const openTitle = useCallback(
+    (item: PosterItem) => {
+      router.push({
+        pathname: '/title/[id]',
+        params: {
+          id: String(item.tmdb_id),
+          type: item.media_type,
+          name: item.title,
+        },
+      });
+    },
+    [router],
+  );
+
+  const trendingMovies = useMemo(
+    () => (trending.data?.movies ?? []).map(toPosterItem),
+    [trending.data],
+  );
+  const trendingTv = useMemo(
+    () => (trending.data?.tv ?? []).map(toPosterItem),
+    [trending.data],
+  );
+
+  const openTrendingMovies = useCallback(
+    () =>
+      router.push({
+        pathname: '/trending-section',
+        params: { type: 'movie', label: 'Trending Movies' },
+      }),
+    [router],
+  );
+  const openTrendingTv = useCallback(
+    () =>
+      router.push({
+        pathname: '/trending-section',
+        params: { type: 'tv', label: 'Trending TV' },
+      }),
+    [router],
+  );
 
   // --- swipe-to-log (session-scoped, optimistic) --------------------------
   const queryClient = useQueryClient();
@@ -494,13 +526,17 @@ export default function SearchScreen() {
               </ThemedText>
               <PosterShelf
                 title="Trending Movies"
-                items={(trending.data?.movies ?? []).map(toPosterItem)}
+                items={trendingMovies}
                 onPressItem={openTitle}
+                showCount={false}
+                onPressHeader={openTrendingMovies}
               />
               <PosterShelf
                 title="Trending TV"
-                items={(trending.data?.tv ?? []).map(toPosterItem)}
+                items={trendingTv}
                 onPressItem={openTitle}
+                showCount={false}
+                onPressHeader={openTrendingTv}
               />
             </ScrollView>
           ))}
