@@ -56,9 +56,13 @@ looking when it happened. Only one strip exists at a time; a second swipe
 replaces it, because the first dismissal is already committed. The strip is an
 offer, not a pending state.
 
-**Swipe left only**, red `Dismiss` reveal. Matches the direction convention
-already in the app (`swipe-to-log-row`: right = the positive action, left = undo
-/ destructive) and leaves the right direction free.
+**Swipe right only**, red `Dismiss` reveal. Left was built first, on the grounds
+that it matched the direction convention already in the app (`swipe-to-log-row`:
+right = the positive action, left = undo/destructive). Robert chose right anyway,
+which is the call that stands. The cost is worth naming: the same drag now means
+opposite things on two screens — swiping a search result right *logs* a watch,
+swiping a notification right *removes* it. If that ever reads as wrong, the
+notification is the one to flip; the log row is the older, more-used gesture.
 
 ## Consequences
 

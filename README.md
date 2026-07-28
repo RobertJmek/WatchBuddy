@@ -75,7 +75,7 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   seen them.
 - **In-app notifications** — likes and replies on your reviews, plus new followers, delivered
   live over Supabase Realtime; surfaced pinned atop the feed with an unread badge on the tab.
-  **Swipe one left to dismiss it** (with a few seconds to undo); new activity on a dismissed
+  **Swipe one right to dismiss it** (with a few seconds to undo); new activity on a dismissed
   notification brings it back.
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
 - **Public profiles** (`/user/[id]`) — avatar, bio, follower counts, a compact stats summary,
