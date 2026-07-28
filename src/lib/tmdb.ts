@@ -119,8 +119,34 @@ export function findByExternalId(
 
 export type TrendingFeed = { movies: SearchResult[]; tv: SearchResult[] };
 
+/** Page 1 of both feeds — what the two Search shelves show. */
 export function getTrending() {
   return invoke<TrendingFeed>({ action: 'trending' });
+}
+
+export type TrendingPage = {
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+};
+
+/**
+ * One page of a single trending feed, for the "see all" grid.
+ *
+ * The shelves stop at the ~20 titles page 1 returns; this is the same feed
+ * continued. Deliberately a separate query key from `['trending']` — one is a
+ * whole-feed snapshot, the other an accumulating page list.
+ */
+export function getTrendingPage(mediaType: MediaType, page: number) {
+  return invoke<{ results: SearchResult[]; page: number; total_pages: number }>({
+    action: 'trending',
+    media_type: mediaType,
+    page,
+  }).then((d) => ({
+    results: d.results,
+    page: d.page,
+    totalPages: d.total_pages,
+  }));
 }
 
 export function fetchTitle(tmdbId: number, mediaType: MediaType) {

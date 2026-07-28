@@ -5,11 +5,14 @@
 // user's library. Requires a valid Supabase JWT (verify_jwt stays on), so only
 // authenticated app users can call it.
 //
-// POST body: { action: 'search' | 'find' | 'title' | 'season', ...params }
-//   search: { q: string }
-//   find:   { external_id: string, external_source: 'tvdb_id' | 'imdb_id' }
-//   title:  { tmdb_id: number, media_type: 'movie' | 'tv' }
-//   season: { tmdb_id: number, season_number: number }
+// POST body: { action: 'search' | 'find' | 'trending' | 'title' | 'season', ...params }
+//   search:   { q: string }
+//   find:     { external_id: string, external_source: 'tvdb_id' | 'imdb_id' }
+//   trending: {} -> { movies, tv } (page 1 of both)
+//             { media_type: 'movie' | 'tv', page?: number }
+//               -> { results, page, total_pages }
+//   title:    { tmdb_id: number, media_type: 'movie' | 'tv' }
+//   season:   { tmdb_id: number, season_number: number }
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -128,8 +131,29 @@ function mapResults(results: any[], mediaType: 'movie' | 'tv') {
   }));
 }
 
-async function handleTrending() {
+/**
+ * Two shapes behind one action, on purpose.
+ *
+ * Without `media_type` this returns `{ movies, tv }` — page 1 of both feeds,
+ * exactly what every shipped client through v1.15.0 asks for and parses. That
+ * response must not change shape; renaming/removing a field a released binary
+ * reads breaks it the moment this deploys (see migration 0015's lesson).
+ *
+ * With `media_type` it returns one paginated feed instead, for the "see all"
+ * grid: `{ results, page, total_pages }`. TMDB caps trending at 1000 pages but
+ * the feed is only meaningful for the first few.
+ */
+async function handleTrending(mediaType?: 'movie' | 'tv', page?: number) {
   // Per-type endpoints don't include a media_type field, so we stamp it.
+  if (mediaType) {
+    const p = Math.max(1, Math.floor(page ?? 1));
+    const feed = await tmdb(`/trending/${mediaType}/week`, { page: String(p) });
+    return json({
+      results: mapResults(feed.results, mediaType),
+      page: feed.page ?? p,
+      total_pages: feed.total_pages ?? p,
+    });
+  }
   const [movies, tv] = await Promise.all([
     tmdb('/trending/movie/week'),
     tmdb('/trending/tv/week'),
@@ -388,15 +412,23 @@ Deno.serve(async (req) => {
     return json({ error: 'TMDB_API_KEY not configured' }, 500);
   }
   try {
-    const { action, q, external_id, external_source, tmdb_id, media_type, season_number } =
-      await req.json();
+    const {
+      action,
+      q,
+      external_id,
+      external_source,
+      tmdb_id,
+      media_type,
+      season_number,
+      page,
+    } = await req.json();
     switch (action) {
       case 'search':
         return await handleSearch(q);
       case 'find':
         return await handleFind(external_id, external_source);
       case 'trending':
-        return await handleTrending();
+        return await handleTrending(media_type, page);
       case 'title':
         return await handleTitle(tmdb_id, media_type);
       case 'season':

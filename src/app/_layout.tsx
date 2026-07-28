@@ -79,6 +79,7 @@ function RootNavigator() {
         <Stack.Screen name="edit-profile" />
         <Stack.Screen name="about" />
         <Stack.Screen name="library-section" />
+        <Stack.Screen name="trending-section" />
         <Stack.Screen name="user/[id]" />
         <Stack.Screen name="user/[id]/followers" />
         <Stack.Screen name="user/[id]/following" />

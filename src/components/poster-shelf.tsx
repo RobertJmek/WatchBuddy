@@ -56,11 +56,19 @@ export const PosterShelf = memo(function PosterShelf({
   items,
   onPressItem,
   onPressHeader,
+  showCount = true,
 }: {
   title: string;
   items: PosterItem[];
   onPressItem: (item: PosterItem) => void;
   onPressHeader?: () => void;
+  /**
+   * The count next to the header reads as "how many are behind this". That's
+   * true for a Library section, but a trending shelf holds one page of a feed
+   * that continues past it — there, showing 20 would understate the screen the
+   * header opens, so those shelves turn it off.
+   */
+  showCount?: boolean;
 }) {
   const c = useTheme();
   const queryClient = useQueryClient();
@@ -89,9 +97,11 @@ export const PosterShelf = memo(function PosterShelf({
           onPress={onPressHeader}>
           <ThemedText type="subtitle">{title}</ThemedText>
           <View style={styles.headerRight}>
-            <ThemedText type="meta" style={{ color: c.textSecondary }}>
-              {items.length}
-            </ThemedText>
+            {showCount && (
+              <ThemedText type="meta" style={{ color: c.textSecondary }}>
+                {items.length}
+              </ThemedText>
+            )}
             <IconSymbol name="chevron.right" size={18} tintColor={c.tint} />
           </View>
         </Pressable>
