@@ -1,3 +1,4 @@
+import type { Genre } from '@/lib/genres';
 import type { MyLibraryEntry } from '@/lib/library';
 
 /**
@@ -71,6 +72,36 @@ export function yearBounds(entries: MyLibraryEntry[]): Range {
     return [now, now];
   }
   return [Math.min(...years), Math.max(...years)];
+}
+
+/**
+ * The genres worth offering as chips, **most-used first**.
+ *
+ * Two things are folded in here rather than in the sheet. A genre no title
+ * carries is dropped — a chip that can only ever return nothing is worse than
+ * no chip. And the rest are ordered by how many of *your* titles carry them, so
+ * the handful you actually filter by sit at the top, where the sheet shows them
+ * before the "Show all" fold. Ties break alphabetically, which is what keeps the
+ * long tail (every genre owning one title) in a stable, scannable order.
+ *
+ * The count is over entries, not titles: a title in the library twice would
+ * count twice. It can't be — `library_items` is unique per user+title.
+ */
+export function genreOptions(
+  entries: MyLibraryEntry[],
+  genres: Genre[],
+): Genre[] {
+  const counts = new Map<number, number>();
+  for (const e of entries) {
+    for (const id of e.genreIds) counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return genres
+    .filter((g) => counts.has(g.id))
+    .sort(
+      (a, b) =>
+        (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 /** A range collapsed to null when it covers its whole domain (= axis off). */
