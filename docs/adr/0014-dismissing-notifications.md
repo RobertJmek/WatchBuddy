@@ -51,10 +51,27 @@ unread badge alive, so `dismissNotification` writes `read_at` alongside
 **Undo is an inline strip, for ~4s, in the row's own position.** A gesture that
 makes something vanish needs a way back, and the project has no snackbar
 component — a global one would be more machinery than this earns. `DismissedNotice`
-stands in the dismissed row's index inside the pinned block: it's where you were
-looking when it happened. Only one strip exists at a time; a second swipe
-replaces it, because the first dismissal is already committed. The strip is an
-offer, not a pending state.
+stands where the dismissed row was inside the pinned block: it's where you were
+looking when it happened. The strip is an offer, not a pending state — the write
+is already committed when it appears.
+
+**One strip per dismissal.** The first cut allowed only one at a time, on the
+theory that the newest gesture is the one you'd want back; swiping three
+notifications away then left two of them unrecoverable, with no hint that they
+ever had a way back. Each dismissal now keeps its own strip and its own timer.
+A strip anchors itself **above the id of the row it sat on top of**, not to an
+index: indices shift as neighbours are dismissed and as background refetches
+land. A strip whose anchor is itself dismissed falls to the bottom of the block
+rather than to a wrong position.
+
+**Undo restores optimistically, exactly as dismissal removes optimistically.**
+This is the asymmetry that made undo look broken: the row was dropped from the
+cache on the gesture, but putting it back waited on a refetch — so tapping Undo
+appeared to do nothing until you pulled to refresh. The row now returns to the
+cache before the write, re-sorted by `created_at desc` the way the server sorts,
+with the invalidation kept only as reconciliation. **An optimistic action needs
+an optimistic inverse**; anything less makes the way back feel less real than the
+thing it undoes.
 
 **Swipe right only**, red `Dismiss` reveal. Left was built first, on the grounds
 that it matched the direction convention already in the app (`swipe-to-log-row`:
