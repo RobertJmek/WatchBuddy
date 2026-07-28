@@ -21,7 +21,8 @@ export type NotificationItem = {
 /**
  * The viewer's notifications, newest first, with actor + title context. Since
  * notifications now live pinned atop the Feed (not a dedicated screen), read
- * ones are dropped 48h after they were seen; unread ones always stay.
+ * ones are dropped 48h after they were seen; unread ones always stay — unless
+ * they were dismissed, which drops them at any age (see `dismissNotification`).
  */
 export async function getNotifications(): Promise<NotificationItem[]> {
   const uid = await requireViewer();
@@ -30,6 +31,7 @@ export async function getNotifications(): Promise<NotificationItem[]> {
     .from('notifications')
     .select('id, type, actor_id, rating_id, reply_id, actor_count, created_at, read_at')
     .eq('user_id', uid)
+    .is('dismissed_at', null)
     .or(`read_at.is.null,read_at.gte.${cutoff}`)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -109,9 +111,41 @@ export async function getUnreadCount(): Promise<number> {
     .from('notifications')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', uid)
+    .is('dismissed_at', null)
     .is('read_at', null);
   if (error) throw error;
   return count ?? 0;
+}
+
+/**
+ * Swipe a row away: it stops being listed, at any age, on every device.
+ *
+ * Hides rather than deletes — the row is what the like/follow triggers aggregate
+ * into, and they clear `dismissed_at` when new activity lands (migration 0016),
+ * so dismissing means "done with what this says *now*", not "never tell me about
+ * this review again". `read_at` goes with it: a dismissed row must not keep the
+ * unread badge alive from somewhere you can no longer see.
+ */
+export async function dismissNotification(id: string) {
+  const uid = await requireViewer();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('notifications')
+    .update({ dismissed_at: now, read_at: now })
+    .eq('id', id)
+    .eq('user_id', uid);
+  if (error) throw error;
+}
+
+/** Undo a dismissal. The row returns read, in its old place — `created_at` never moved. */
+export async function undismissNotification(id: string) {
+  const uid = await requireViewer();
+  const { error } = await supabase
+    .from('notifications')
+    .update({ dismissed_at: null })
+    .eq('id', id)
+    .eq('user_id', uid);
+  if (error) throw error;
 }
 
 export async function markAllRead() {
