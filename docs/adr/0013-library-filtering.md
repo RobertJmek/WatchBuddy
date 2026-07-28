@@ -138,3 +138,40 @@ fits in memory.
   negative.
 - **The sheet's exits each mean one thing**: the X and the backdrop cancel (the
   draft is discarded), Apply commits, Clear empties the draft without leaving.
+
+## Follow-up (v1.14.1): the genre fold, and what opening the sheet cost
+
+Shipped as a follow-up to this ADR rather than one of its own — the decisions
+below refine the sheet, they don't replace anything above.
+
+**Every genre at once was the wrong default.** A library spans ~25 genres, the
+chip row wraps, and the sheet is capped at 70% of the screen: both sliders were
+pushed below the fold, so the two axes you cannot discover by scanning were the
+two you had to scroll to reach. The sheet now shows **8 genre chips** — about two
+rows — behind a `Show all (N)` / `Show less` disclosure, which puts Year and
+My rating on the first screen.
+
+Which 8 is the question the fold creates, and the answer is **most-used first**,
+counted over the viewer's own library (`genreOptions`, pure, in
+`library-filter.ts`). Alphabetical was the alternative and was rejected: it gives
+a genre a fixed position (muscle memory) but spends the visible slots on whatever
+starts with A. Ordering by use spends them on the genres this particular library
+is made of. Ties break alphabetically, which keeps the long tail — every genre
+owning a single title — stable between openings.
+
+The fold cannot hide an active selection: opening the sheet with a genre picked
+from below the fold **opens expanded**, because a selected chip you can't see is
+a filter you can't undo from where you'd look for it. `genreOptions` also
+absorbed the "only genres the library contains" rule, which used to be a
+`availableGenreIds: Set` prop the sheet filtered by — the sheet no longer decides
+which genres exist, only how many to show at once.
+
+**The sheet was slow to open, and the genres were not the reason.** Opening it is
+a `setState` on Library, so React re-rendered the whole screen first: `applyFilter`
+over every entry, then all six shelves and every poster in them, since none of it
+was memoized and `PosterShelf` was not a memo component. The sheet only appeared
+after that work. So the derived values (`visible`, `shelves`, the genre and year
+inputs, the header counts) are now `useMemo`d, each shelf carries its own stable
+press handler, and `PosterShelf` is `memo`'d with a stable `renderItem`. The
+category screen got the same treatment for its grid. No behaviour changes; a tap
+on the filter icon just stops re-deriving the library to draw a modal over it.

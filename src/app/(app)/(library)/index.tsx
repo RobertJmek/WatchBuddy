@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useIsFocused, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -28,6 +28,7 @@ import {
   applyFilter,
   EMPTY_FILTER,
   filterToParams,
+  genreOptions,
   isActive,
   yearBounds,
 } from '@/lib/library-filter';
@@ -114,58 +115,90 @@ export default function LibraryScreen() {
     });
   }, [focused, searching]);
 
+  // Everything derived from the library is memoized, and the shelves carry
+  // their own press handler, so `PosterShelf` (memoized too) can skip a render
+  // entirely. That matters because opening the filter sheet is a `setState` on
+  // *this* screen: without it, every tap on the filter icon re-filtered the
+  // whole library and re-rendered every poster before the sheet could appear.
+
   // Search narrows every shelf at once, then the filter narrows what's left —
   // the two combine with AND. Shelves with no matches self-hide below.
-  const searched = term
-    ? entries.filter((e) => e.title?.title.toLowerCase().includes(term))
-    : entries;
-  const visible = applyFilter(searched, filter);
+  const visible = useMemo(() => {
+    const searched = term
+      ? entries.filter((e) => e.title?.title.toLowerCase().includes(term))
+      : entries;
+    return applyFilter(searched, filter);
+  }, [entries, term, filter]);
+
+  const openTitle = useCallback(
+    (item: PosterItem) => {
+      router.push({
+        pathname: '/title/[id]',
+        params: {
+          id: String(item.tmdb_id),
+          type: item.media_type,
+          name: item.title,
+        },
+      });
+    },
+    [router],
+  );
 
   // One shelf per status (canonical order), then one for favorites. Favorites
   // used to be split into Movies/TV shelves; media type is a filter axis now,
   // which also matches the single Favorites shelf on the public profile.
-  const statusShelves = LIBRARY_STATUSES.map(({ value, label }) => ({
-    key: `status-${value}`,
-    label,
-    params: { status: value, label },
-    items: shelfItems(visible, (e) => e.status === value),
-  }));
+  const shelves = useMemo(() => {
+    const open = (params: Record<string, string>) => () =>
+      router.push({
+        pathname: '/library-section',
+        // The filter travels into the category and is editable there, but
+        // changes never come back — see library-filter.
+        params: { ...params, ...filterToParams(filter) },
+      });
 
-  const favoriteShelf = {
-    key: 'favorites',
-    label: 'Favorites',
-    params: { favorite: 'true', label: 'Favorites' },
-    items: shelfItems(visible, (e) => e.is_favorite),
-  };
+    const statusShelves = LIBRARY_STATUSES.map(({ value, label }) => ({
+      key: `status-${value}`,
+      label,
+      open: open({ status: value, label }),
+      items: shelfItems(visible, (e) => e.status === value),
+    }));
 
-  const shelves = [...statusShelves, favoriteShelf].filter(
-    (s) => s.items.length > 0,
-  );
+    const favoriteShelf = {
+      key: 'favorites',
+      label: 'Favorites',
+      open: open({ favorite: 'true', label: 'Favorites' }),
+      items: shelfItems(visible, (e) => e.is_favorite),
+    };
+
+    return [...statusShelves, favoriteShelf].filter((s) => s.items.length > 0);
+  }, [visible, filter, router]);
 
   const narrowed = filtered || !!term;
-  const genreNames = new Map(genres.map((g) => [g.id, g.name]));
-  // Only offer genres the library actually contains — a chip that can only ever
-  // return nothing is worse than no chip.
-  const availableGenreIds = new Set(entries.flatMap((e) => e.genreIds));
-
-  function openTitle(item: PosterItem) {
-    router.push({
-      pathname: '/title/[id]',
-      params: {
-        id: String(item.tmdb_id),
-        type: item.media_type,
-        name: item.title,
-      },
-    });
-  }
+  const genreNames = useMemo(
+    () => new Map(genres.map((g) => [g.id, g.name])),
+    [genres],
+  );
+  // Only the genres the library actually contains, most-used first — a chip
+  // that can only ever return nothing is worse than no chip.
+  const genreChoices = useMemo(
+    () => genreOptions(entries, genres),
+    [entries, genres],
+  );
+  const yearDomain = useMemo(() => yearBounds(entries), [entries]);
+  const counts = useMemo(
+    () => ({
+      total: entries.filter((e) => e.title).length,
+      shown: visible.filter((e) => e.title).length,
+    }),
+    [entries, visible],
+  );
 
   return (
     <ThemedView style={styles.container}>
       <TopSafeAreaView style={styles.safeArea}>
         <ThemedText type="meta" style={[styles.eyebrow, { color: c.textSecondary }]}>
           {(() => {
-            const total = entries.filter((e) => e.title).length;
-            const shown = visible.filter((e) => e.title).length;
+            const { total, shown } = counts;
             const noun = total === 1 ? 'Title' : 'Titles';
             // Say so when you're looking at a slice — a vanished shelf is
             // otherwise indistinguishable from an emptied one.
@@ -234,9 +267,8 @@ export default function LibraryScreen() {
           onClose={() => setFilterOpen(false)}
           filter={filter}
           onApply={setFilter}
-          genres={genres}
-          availableGenreIds={availableGenreIds}
-          yearDomain={yearBounds(entries)}
+          genres={genreChoices}
+          yearDomain={yearDomain}
         />
 
         {loading ? (
@@ -291,14 +323,7 @@ export default function LibraryScreen() {
                   title={s.label}
                   items={s.items}
                   onPressItem={openTitle}
-                  onPressHeader={() =>
-                    router.push({
-                      pathname: '/library-section',
-                      // The filter travels into the category and is editable
-                      // there, but changes never come back — see library-filter.
-                      params: { ...s.params, ...filterToParams(filter) },
-                    })
-                  }
+                  onPressHeader={s.open}
                 />
               ))
             )}

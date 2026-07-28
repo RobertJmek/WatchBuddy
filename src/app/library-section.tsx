@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -20,11 +20,16 @@ import { ThemedView } from '@/components/themed-view';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getGenres } from '@/lib/genres';
-import { getLibrary, type LibraryStatus } from '@/lib/library';
+import {
+  getLibrary,
+  type LibraryStatus,
+  type MyLibraryEntry,
+} from '@/lib/library';
 import {
   applyFilter,
   EMPTY_FILTER,
   filterFromParams,
+  genreOptions,
   isActive,
   yearBounds,
 } from '@/lib/library-filter';
@@ -67,16 +72,61 @@ export default function LibrarySectionScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const filtered = isActive(filter);
 
-  // A section is either a status group or the favorites group.
-  const inSection = entries.filter((e) => {
-    if (!e.title) return false;
-    if (favorite) return e.is_favorite;
-    return e.status === status;
-  });
-  const items = applyFilter(inSection, filter);
+  // A section is either a status group or the favorites group. Memoized for the
+  // same reason as Library's shelves: opening the filter sheet re-renders this
+  // screen, and the grid shouldn't be recomputed to show a modal over it.
+  const inSection = useMemo(
+    () =>
+      entries.filter((e) => {
+        if (!e.title) return false;
+        if (favorite) return e.is_favorite;
+        return e.status === status;
+      }),
+    [entries, favorite, status],
+  );
+  const items = useMemo(() => applyFilter(inSection, filter), [inSection, filter]);
 
-  const genreNames = new Map(genres.map((g) => [g.id, g.name]));
-  const availableGenreIds = new Set(entries.flatMap((e) => e.genreIds));
+  const genreNames = useMemo(
+    () => new Map(genres.map((g) => [g.id, g.name])),
+    [genres],
+  );
+  const genreChoices = useMemo(
+    () => genreOptions(entries, genres),
+    [entries, genres],
+  );
+  const yearDomain = useMemo(() => yearBounds(entries), [entries]);
+
+  const renderItem = useCallback(
+    ({ item }: { item: MyLibraryEntry }) => (
+      <PressScale
+        style={{ width: cardW }}
+        onPress={() =>
+          router.push({
+            pathname: '/title/[id]',
+            params: {
+              id: String(item.title!.tmdb_id),
+              type: item.title!.media_type,
+              name: item.title!.title,
+            },
+          })
+        }>
+        <Image
+          style={{
+            width: cardW,
+            height: cardW * 1.5,
+            borderRadius: 4,
+            backgroundColor: PlaceholderBg,
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.35)',
+          }}
+          source={{ uri: imageUrl(item.title!.poster_path, 'w342') ?? undefined }}
+          contentFit="cover"
+          transition={150}
+        />
+      </PressScale>
+    ),
+    [cardW, router],
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -101,9 +151,8 @@ export default function LibrarySectionScreen() {
         onClose={() => setFilterOpen(false)}
         filter={filter}
         onApply={setFilter}
-        genres={genres}
-        availableGenreIds={availableGenreIds}
-        yearDomain={yearBounds(entries)}
+        genres={genreChoices}
+        yearDomain={yearDomain}
       />
 
       {isLoading ? (
@@ -151,34 +200,7 @@ export default function LibrarySectionScreen() {
               </ThemedText>
             )
           }
-          renderItem={({ item }) => (
-            <PressScale
-              style={{ width: cardW }}
-              onPress={() =>
-                router.push({
-                  pathname: '/title/[id]',
-                  params: {
-                    id: String(item.title!.tmdb_id),
-                    type: item.title!.media_type,
-                    name: item.title!.title,
-                  },
-                })
-              }>
-              <Image
-                style={{
-                  width: cardW,
-                  height: cardW * 1.5,
-                  borderRadius: 4,
-                  backgroundColor: PlaceholderBg,
-                  borderWidth: 1,
-                  borderColor: 'rgba(0,0,0,0.35)',
-                }}
-                source={{ uri: imageUrl(item.title!.poster_path, 'w342') ?? undefined }}
-                contentFit="cover"
-                transition={150}
-              />
-            </PressScale>
-          )}
+          renderItem={renderItem}
         />
       )}
     </ThemedView>
