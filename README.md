@@ -32,7 +32,8 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 ### Discover
 - **Live search-as-you-type** across movies and TV (TMDB), backed by a server-side cache;
   results span multiple TMDB pages for deep matches.
-- **Trending this week** feed shown by default on the Search tab as horizontal poster shelves.
+- **Hot this week** — trending movies and TV shown by default on the Search tab as horizontal
+  poster shelves; tap a shelf header to browse the whole feed as a grid.
 - **People search:** type `@` to find other users by username or name, and follow them.
 - Full **title detail** — poster, overview, TMDB / IMDb / WatchBuddy ratings, and seasons/episodes.
 
