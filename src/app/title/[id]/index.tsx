@@ -5,11 +5,11 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { FavoriteButton } from '@/components/favorite-button';
 import { IconSymbol } from '@/components/icon-symbol';
@@ -25,6 +25,11 @@ import { Accent, Danger, Glow, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import { imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
+
+// Roughly the Save/Cancel row below the review composer, plus breathing room.
+// Without it the keyboard stops flush against the input and swallows the very
+// buttons you opened it to reach.
+const COMPOSER_ACTIONS_HEIGHT = 72;
 
 export default function TitleDetailScreen() {
   const router = useRouter();
@@ -62,7 +67,18 @@ export default function TitleDetailScreen() {
             : undefined,
         }}
       />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      {/*
+        KeyboardAwareScrollView, not a plain ScrollView: RatingBar's review
+        composer is an inline TextInput partway down this page, and on Android
+        edge-to-edge the keyboard simply covers it (adjustResize is broken —
+        see the review thread's KeyboardStickyView for the pinned-composer half
+        of the same problem). This scrolls the focused input above the keyboard
+        instead. `bottomOffset` keeps the Save/Cancel row under the input
+        visible too, rather than lifting only the field itself.
+      */}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scroll}
+        bottomOffset={COMPOSER_ACTIONS_HEIGHT}>
         {loading && (
           <View style={{ gap: Spacing.two }}>
             <Skeleton style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 0 }} />
@@ -252,7 +268,7 @@ export default function TitleDetailScreen() {
             </View>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </ThemedView>
   );
 }
