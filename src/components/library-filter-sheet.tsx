@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -22,6 +22,15 @@ const TYPES: { value: LibraryFilter['mediaType']; label: string }[] = [
   { value: 'movie', label: 'Movies' },
   { value: 'tv', label: 'TV' },
 ];
+
+/**
+ * How many genre chips the sheet shows before the fold — about two rows.
+ * A library spans ~25 genres, and wrapping all of them pushed both sliders out
+ * of a sheet capped at 70% of the screen: you had to scroll to reach an axis you
+ * couldn't see existed. `genreOptions` puts the most-used first, so the short
+ * list is the useful one.
+ */
+const COLLAPSED_GENRES = 8;
 
 function Chip({
   label,
@@ -49,9 +58,9 @@ function Chip({
  * component, same state shape, so the two screens can't drift apart.
  *
  * Edits are held in a draft and only handed up on Apply, which means backing
- * out (backdrop tap) is a real cancel. The genre list is whatever the caller
- * says is actually present in the library, so there are never chips that can
- * only ever return nothing.
+ * out (backdrop tap) is a real cancel. The caller passes the genres it wants
+ * offered, already ordered (see `genreOptions`) — the sheet doesn't decide which
+ * genres exist, only how many of them to show at once.
  */
 export function LibraryFilterSheet({
   visible,
@@ -59,26 +68,41 @@ export function LibraryFilterSheet({
   filter,
   onApply,
   genres,
-  availableGenreIds,
   yearDomain,
 }: {
   visible: boolean;
   onClose: () => void;
   filter: LibraryFilter;
   onApply: (next: LibraryFilter) => void;
+  /** Genres to offer as chips, in display order — most-used first. */
   genres: Genre[];
-  availableGenreIds: Set<number>;
   yearDomain: Range;
 }) {
   const c = useTheme();
   const [draft, setDraft] = useState(filter);
+  const [expanded, setExpanded] = useState(false);
 
-  // Every opening starts from what's actually applied.
+  // Read through a ref so the effect below can see the current genres without
+  // depending on their identity.
+  const genresRef = useRef(genres);
+  genresRef.current = genres;
+
+  // Every opening starts from what's actually applied — including the fold,
+  // which opens flat unless a genre you've already picked sits below it. A
+  // selected chip you can't see is a filter you can't undo from here.
   useEffect(() => {
-    if (visible) setDraft(filter);
+    if (!visible) return;
+    setDraft(filter);
+    setExpanded(
+      genresRef.current
+        .slice(COLLAPSED_GENRES)
+        .some((g) => filter.genreIds.includes(g.id)),
+    );
+    // `genres` is deliberately not a dependency: it's a fresh array on every
+    // parent render, and re-running this would collapse the list under a finger.
   }, [visible, filter]);
 
-  const shown = genres.filter((g) => availableGenreIds.has(g.id));
+  const shown = expanded ? genres : genres.slice(0, COLLAPSED_GENRES);
 
   function toggleGenre(id: number) {
     const on = draft.genreIds.includes(id);
@@ -134,7 +158,7 @@ export function LibraryFilterSheet({
                 </View>
               </View>
 
-              {shown.length > 0 && (
+              {genres.length > 0 && (
                 <View style={styles.group}>
                   <ThemedText type="smallBold">Genre</ThemedText>
                   <View style={styles.chipRow}>
@@ -147,6 +171,18 @@ export function LibraryFilterSheet({
                       />
                     ))}
                   </View>
+                  {/* Silent on purpose: this reveals, it doesn't change the
+                      filter, and haptics here are reserved for edits. */}
+                  {genres.length > COLLAPSED_GENRES && (
+                    <Pressable
+                      onPress={() => setExpanded(!expanded)}
+                      hitSlop={8}
+                      style={styles.disclosure}>
+                      <ThemedText type="smallBold" style={{ color: c.tint }}>
+                        {expanded ? 'Show less' : `Show all (${genres.length})`}
+                      </ThemedText>
+                    </Pressable>
+                  )}
                 </View>
               )}
 
@@ -219,6 +255,7 @@ const styles = StyleSheet.create({
   scrollContent: { gap: Spacing.three, paddingVertical: Spacing.two },
   group: { gap: Spacing.two },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  disclosure: { alignSelf: 'flex-start', paddingVertical: Spacing.half },
   chip: {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,

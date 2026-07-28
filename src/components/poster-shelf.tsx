@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
+import { memo, useCallback } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -43,8 +44,14 @@ export function PosterCard({
  * A titled horizontal row of poster cards. When `onPressHeader` is provided the
  * header becomes a button (label · count · chevron) that, e.g., expands the
  * section; otherwise it's a plain label.
+ *
+ * Memoized: a screen holding several shelves re-renders for reasons that have
+ * nothing to do with them (Library opening its filter sheet is the case that
+ * prompted this), and re-rendering every poster of every shelf was showing up
+ * as a stutter. Callers that want the saving must keep `items` and the two
+ * handlers referentially stable; the ones that don't simply render as before.
  */
-export function PosterShelf({
+export const PosterShelf = memo(function PosterShelf({
   title,
   items,
   onPressItem,
@@ -57,6 +64,21 @@ export function PosterShelf({
 }) {
   const c = useTheme();
   const queryClient = useQueryClient();
+  const renderItem = useCallback(
+    ({ item }: { item: PosterItem }) => (
+      <PosterCard
+        posterPath={item.poster_path}
+        onPress={() => onPressItem(item)}
+        // Warm the detail cache while the finger is still down.
+        onPressIn={() =>
+          queryClient.prefetchQuery(
+            titleQueryOptions(item.tmdb_id, item.media_type),
+          )
+        }
+      />
+    ),
+    [onPressItem, queryClient],
+  );
   if (items.length === 0) return null;
 
   return (
@@ -84,22 +106,11 @@ export function PosterShelf({
         keyExtractor={(i) => i.key}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}
-        renderItem={({ item }) => (
-          <PosterCard
-            posterPath={item.poster_path}
-            onPress={() => onPressItem(item)}
-            // Warm the detail cache while the finger is still down.
-            onPressIn={() =>
-              queryClient.prefetchQuery(
-                titleQueryOptions(item.tmdb_id, item.media_type),
-              )
-            }
-          />
-        )}
+        renderItem={renderItem}
       />
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   shelf: { gap: Spacing.two },
