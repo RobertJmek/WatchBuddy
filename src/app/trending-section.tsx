@@ -35,6 +35,11 @@ const MAX_PAGES = 10;
 /**
  * The whole of one trending feed as a grid — what a Search shelf's header opens.
  *
+ * **The UI calls this "Hot"; the code says trending.** The label is a product
+ * word, `/trending/{type}/week` is the TMDB endpoint the data actually comes
+ * from, and renaming the code away from its source would cost more than the
+ * inconsistency does.
+ *
  * Sibling to `library-section`, not a generalisation of it: that screen filters
  * the `['library']` cache client-side and carries the filter sheet, while this
  * one pages a remote feed and has nothing to filter.
@@ -114,7 +119,7 @@ export default function TrendingSectionScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: label ?? (mediaType === 'tv' ? 'Trending TV' : 'Trending Movies'),
+          title: label ?? (mediaType === 'tv' ? 'Hot TV' : 'Hot Movies'),
         }}
       />
 
@@ -123,7 +128,7 @@ export default function TrendingSectionScreen() {
       ) : error && items.length === 0 ? (
         <EmptyState
           icon="film"
-          title="Couldn't load trending"
+          title="Couldn't load Hot"
           hint="The movie database seems unreachable. Try again in a bit."
         />
       ) : (
@@ -146,7 +151,7 @@ export default function TrendingSectionScreen() {
           }
           ListEmptyComponent={
             <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
-              Nothing trending right now.
+              Nothing hot right now.
             </ThemedText>
           }
           renderItem={renderItem}

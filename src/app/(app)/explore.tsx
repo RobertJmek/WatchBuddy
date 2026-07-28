@@ -243,7 +243,7 @@ export default function SearchScreen() {
     () =>
       router.push({
         pathname: '/trending-section',
-        params: { type: 'movie', label: 'Trending Movies' },
+        params: { type: 'movie', label: 'Hot Movies' },
       }),
     [router],
   );
@@ -251,7 +251,7 @@ export default function SearchScreen() {
     () =>
       router.push({
         pathname: '/trending-section',
-        params: { type: 'tv', label: 'Trending TV' },
+        params: { type: 'tv', label: 'Hot TV' },
       }),
     [router],
   );
@@ -503,7 +503,7 @@ export default function SearchScreen() {
           ) : trending.error && !trending.data ? (
             <EmptyState
               icon="film"
-              title="Couldn't load trending"
+              title="Couldn't load Hot"
               hint="The movie database seems unreachable. Try again in a bit."
             />
           ) : (
@@ -525,14 +525,14 @@ export default function SearchScreen() {
                 username.
               </ThemedText>
               <PosterShelf
-                title="Trending Movies"
+                title="Hot Movies"
                 items={trendingMovies}
                 onPressItem={openTitle}
                 showCount={false}
                 onPressHeader={openTrendingMovies}
               />
               <PosterShelf
-                title="Trending TV"
+                title="Hot TV"
                 items={trendingTv}
                 onPressItem={openTitle}
                 showCount={false}

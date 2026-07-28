@@ -58,6 +58,30 @@ popularity list is a cost with no reader.
 the header; on a trending shelf it would say 20 while the screen it opens holds
 ten times that.
 
+### The feed is called "Hot", and it does not filter
+
+**Naming:** the shelves and the screen read *Hot Movies* / *Hot TV*. Everything
+under the UI — the route, the query keys, the edge function action, this ADR's
+title — stays `trending`, because that is the TMDB endpoint the data comes from.
+A product label should be free to change without a rename reaching the data
+source.
+
+**No filter sheet, unlike `library-section`.** Two of Library's four axes are
+meaningless here to begin with: media type is already fixed per section, and own
+rating asks a question about titles you have by definition mostly not seen (many
+aren't even in the local catalog to carry a rating). Genre and year would work —
+TMDB even ships `genre_ids` in the trending payload, which `mapResults` drops.
+
+What kills it is that this is a *paged remote* feed. `library-section` filters a
+complete list it already holds; a client-side filter here would filter only the
+pages loaded so far, so picking a genre would show one or two titles that grow
+as you scroll — and with genres ANDed (ADR 0013) an empty grid would be the
+normal outcome, not the exception. Filtering properly would mean a `discover`
+action filtering server-side at TMDB, which is a different feature from "see the
+rest of the shelf". A weekly popularity list is also short and disposable by
+nature; slicing it is not obviously worth either cost. Revisit if the "see all"
+screen turns out to be somewhere people linger.
+
 ## Consequences
 
 - `getTrendingPage(mediaType, page)` keys off `['trendingPage', mediaType]` —
