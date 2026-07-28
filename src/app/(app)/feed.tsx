@@ -4,13 +4,15 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { DismissedNotice } from '@/components/dismissed-notice';
 import { EmptyState } from '@/components/empty-state';
 import { FeedRow } from '@/components/feed-row';
 import { NotificationRow } from '@/components/notification-row';
+import { SwipeToDismissRow } from '@/components/swipe-to-dismiss-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
@@ -18,12 +20,19 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getFeed, markFeedSeen } from '@/lib/feed';
+import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 import {
+  dismissNotification,
   getNotifications,
   markAllRead,
   subscribeToNotifications,
+  undismissNotification,
+  type NotificationItem,
 } from '@/lib/notifications';
 import { getFollowCounts } from '@/lib/social';
+
+/** How long the Undo strip stays before the dismissal is just… done. */
+const UNDO_MS = 4000;
 
 export default function FeedScreen() {
   const c = useTheme();
@@ -100,6 +109,80 @@ export default function FeedScreen() {
 
   const followsNobody = (counts?.following ?? 0) === 0;
 
+  // The one row currently showing an Undo strip, and where it used to sit. Only
+  // ever one: a second swipe replaces it, because the first dismissal is already
+  // written — the strip is an offer to undo, not a pending state.
+  const [undo, setUndo] = useState<{ item: NotificationItem; index: number } | null>(
+    null,
+  );
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearUndo = useCallback(() => {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = null;
+    setUndo(null);
+  }, []);
+
+  useEffect(() => clearUndo, [clearUndo]);
+
+  const onDismiss = useCallback(
+    async (item: NotificationItem, index: number) => {
+      // Optimistic: the buzz and the disappearance happen on the gesture, not
+      // when Supabase answers. `hapticUndo` is the taking-something-back verb.
+      hapticUndo();
+      const previous =
+        queryClient.getQueryData<NotificationItem[]>(['notifications']) ?? [];
+      queryClient.setQueryData<NotificationItem[]>(['notifications'], (old) =>
+        (old ?? []).filter((n) => n.id !== item.id),
+      );
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      setUndo({ item, index });
+      undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
+
+      try {
+        await dismissNotification(item.id);
+        // Dismissal writes read_at too, so the badge has to be re-counted.
+        queryClient.invalidateQueries({ queryKey: ['notifUnread'] });
+      } catch {
+        queryClient.setQueryData(['notifications'], previous);
+        clearUndo();
+        hapticFailure();
+      }
+    },
+    [queryClient, clearUndo],
+  );
+
+  const onUndo = useCallback(async () => {
+    const pending = undo;
+    if (!pending) return;
+    hapticSuccess();
+    clearUndo();
+    try {
+      await undismissNotification(pending.item.id);
+    } catch {
+      hapticFailure();
+    }
+    // Refetch either way: on success to bring the row back in its real place, on
+    // failure to show what's actually there.
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['notifUnread'] });
+  }, [undo, clearUndo, queryClient]);
+
+  // The pinned block: every notification as a swipeable row, with the Undo strip
+  // standing in the dismissed row's old position.
+  const notificationRows: React.ReactNode[] = notifications.map((n, i) => (
+    <SwipeToDismissRow key={n.id} onDismiss={() => onDismiss(n, i)}>
+      <NotificationRow item={n} />
+    </SwipeToDismissRow>
+  ));
+  if (undo) {
+    notificationRows.splice(
+      Math.min(undo.index, notificationRows.length),
+      0,
+      <DismissedNotice key={`undo-${undo.item.id}`} onUndo={onUndo} />,
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       <TopSafeAreaView style={styles.safeArea}>
@@ -118,12 +201,8 @@ export default function FeedScreen() {
             if (hasNextPage && !isFetchingNextPage) fetchNextPage();
           }}
           ListHeaderComponent={
-            notifications.length > 0 ? (
-              <View style={styles.notifications}>
-                {notifications.map((n) => (
-                  <NotificationRow key={n.id} item={n} />
-                ))}
-              </View>
+            notificationRows.length > 0 ? (
+              <View style={styles.notifications}>{notificationRows}</View>
             ) : null
           }
           refreshControl={
@@ -135,8 +214,10 @@ export default function FeedScreen() {
             />
           }
           ListEmptyComponent={
-            // Only speak to emptiness when there are no notifications either.
-            isLoading || notifications.length > 0 ? null : followsNobody ? (
+            // Only speak to emptiness when the pinned block is empty too — the
+            // Undo strip counts, or dismissing the last notification would flash
+            // "your feed is empty" next to the way back from it.
+            isLoading || notificationRows.length > 0 ? null : followsNobody ? (
               <View style={styles.emptyWrap}>
                 <EmptyState
                   icon="person.2"

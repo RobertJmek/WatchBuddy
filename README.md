@@ -73,8 +73,10 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   notifications (likes/replies on your reviews) pin to the top, and friends' activity shows
   unseen-first — unseen items stay until you've seen them, then age out ~24h after you've
   seen them.
-- **In-app notifications** — likes and replies on your reviews, delivered live over Supabase
-  Realtime; surfaced pinned atop the feed with an unread badge on the tab.
+- **In-app notifications** — likes and replies on your reviews, plus new followers, delivered
+  live over Supabase Realtime; surfaced pinned atop the feed with an unread badge on the tab.
+  **Swipe one left to dismiss it** (with a few seconds to undo); new activity on a dismissed
+  notification brings it back.
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
 - **Public profiles** (`/user/[id]`) — avatar, bio, follower counts, a compact stats summary,
   a **taste summary** (top genres + favorite directors), and **Watching now / Favorites /
@@ -144,7 +146,10 @@ supabase/
                            0003 avatars, 0004 follows + public reads, 0005 episode cache,
                            0006 review likes, 0007 review replies, 0008 notifications,
                            0009 activity feed, 0010 feed seen-watermark,
-                           0011 feed seen-window)
+                           0011 feed seen-window, 0012 ratings entity index,
+                           0013 get_stats RPC, 0014 follow notifications,
+                           0015 like_count compat shim,
+                           0016 notification dismissal)
   functions/               Edge Functions (tmdb-proxy)
 ```
 
@@ -177,7 +182,9 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 - Apply the migrations in `supabase/migrations/` **in order** (Supabase SQL Editor or CLI):
   `0001_init` → `0002_favorites` → `0003_avatars` → `0004_follows` →
   `0005_episodes_cached_at` → `0006_review_likes` → `0007_review_replies` →
-  `0008_notifications` → `0009_feed` → `0010_feed_seen` → `0011_feed_seen_window`.
+  `0008_notifications` → `0009_feed` → `0010_feed_seen` → `0011_feed_seen_window` →
+  `0012_ratings_entity_index` → `0013_get_stats_rpc` → `0014_follow_notifications` →
+  `0015_like_count_compat` → `0016_notification_dismiss`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
