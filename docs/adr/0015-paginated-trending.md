@@ -73,3 +73,12 @@ ten times that.
   in fact re-rendering on every keystroke in the search box; this fixes that too.
 - Nothing here is server state or a migration — the edge function change is a
   deploy, not a `db push`.
+- **`getTrendingPage` refuses a response without a `results` array.** The
+  deploy-before-build ordering has a second edge the first draft missed: a
+  client that asks an *older* proxy for a page gets `{ movies, tv }` back, so
+  `results` is undefined. That page reached the query cache, which `query.ts`
+  persists to AsyncStorage (`gcTime` 7 days, and here `staleTime` 24h), so a
+  single mistimed fetch crashed the screen on every cold open and would not
+  refetch its way out. Validating at the seam turns it into the error state the
+  screen already has, and a rejected response never persists. Caught on device
+  during review, exactly in the window between building and deploying.

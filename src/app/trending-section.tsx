@@ -52,7 +52,10 @@ export default function TrendingSectionScreen() {
 
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: ['trendingPage', mediaType],
+      // The '1' is the response shape, not the feed. Pages fetched from a proxy
+      // that predated pagination were shapeless and got persisted; orphaning
+      // that key is how an already-poisoned cache recovers without a reinstall.
+      queryKey: ['trendingPage', 1, mediaType],
       queryFn: ({ pageParam }) => getTrendingPage(mediaType, pageParam),
       initialPageParam: 1,
       getNextPageParam: (last) =>

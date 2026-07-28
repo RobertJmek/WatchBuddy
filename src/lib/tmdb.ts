@@ -142,11 +142,17 @@ export function getTrendingPage(mediaType: MediaType, page: number) {
     action: 'trending',
     media_type: mediaType,
     page,
-  }).then((d) => ({
-    results: d.results,
-    page: d.page,
-    totalPages: d.total_pages,
-  }));
+  }).then((d) => {
+    // A tmdb-proxy that predates the paginated shape ignores media_type/page and
+    // answers { movies, tv } — leaving `results` undefined. Unchecked, that page
+    // lands in the query cache, is persisted to AsyncStorage for a week, and
+    // renders as a crash on every cold open. Refuse it here instead: an error is
+    // a state the screen already handles, and a refused response never persists.
+    if (!Array.isArray(d?.results)) {
+      throw new Error('Trending is unavailable right now. Try again later.');
+    }
+    return { results: d.results, page: d.page, totalPages: d.total_pages };
+  });
 }
 
 export function fetchTitle(tmdbId: number, mediaType: MediaType) {
