@@ -212,6 +212,33 @@ been the odd choice:
   useful errors are untouched: `400` for a bad parameter, `409` for
   "not cached yet", `401` for "not authenticated".
 
+### Postscript: the lock 0018 didn't achieve
+
+`0018` shipped with `consume_rate_limit` callable by **anon**, and prod confirmed
+it. `revoke all on function … from public` drops only the implicit grant every
+function is created with; Supabase separately runs `alter default privileges in
+schema public grant all on functions to anon, authenticated, service_role`, so
+the function was created with an **explicit** grant to those roles that a
+PUBLIC-targeted revoke leaves alone. The same migration got the *table* right,
+naming the roles — the inconsistency was the bug.
+
+Because the anon key is embedded in the app and public, anyone could have called
+the RPC directly and drained any bucket (the global `omdb` one included) or
+inserted unbounded rows, since bucket and subject are caller-supplied. It touches
+no table but `rate_limits`, so nothing was exposed; the damage would have been to
+the budget the buckets exist to protect. `0019` revokes by name.
+
+It survived review because the local harness didn't have Supabase's default
+privileges, so the revoke looked sufficient there. **A privilege test is only
+worth the fidelity of the roles it runs against** — the harness now sets the
+same `alter default privileges` the platform does, and reproduces the hole
+before the fix and denies it after.
+
+Probing this without writing to production is worth remembering too: calling the
+RPC with `p_cost = 0` hits the guard clause before any insert, so an authorised
+caller gets the function's own `P0001` and an unauthorised one gets `404`. The
+first check for it was a plain call, which did reach the insert.
+
 ## Consequences
 
 - **Ordering is load-bearing, as always with this stack.** Migrations `0017` and

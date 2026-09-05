@@ -132,5 +132,10 @@ comment on function public.consume_rate_limit(text, uuid, double precision, doub
 
 -- Only the service role calls this. Exposing it to `authenticated` would let a
 -- client drain any bucket, including another user's.
+--
+-- INCOMPLETE ON ITS OWN -- see 0019. `from public` drops only the implicit grant
+-- a function is created with; Supabase's `alter default privileges` also gives
+-- anon and authenticated an EXPLICIT grant, which this does not touch. The
+-- revoke had to name the roles, the way the table's revoke below already does.
 revoke all on function public.consume_rate_limit(text, uuid, double precision, double precision, double precision) from public;
 grant execute on function public.consume_rate_limit(text, uuid, double precision, double precision, double precision) to service_role;
