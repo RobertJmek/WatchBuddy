@@ -264,13 +264,19 @@ request — so the bucket can be exhausted without generating any TMDB traffic.
 
 ## Consequences
 
-- **Ordering is load-bearing, as always with this stack.** Migrations `0017` and
-  `0018` must be applied **before** `tmdb-proxy` is deployed (it writes
+- **Ordering is load-bearing, as always with this stack.** Migrations `0017`
+  through `0019` must be applied **before** `tmdb-proxy` is deployed (it writes
   `imdb_checked_at` and calls `consume_rate_limit`), and the function must be
   deployed **before** the v1.16.1 build ships. **`delete-account` needs a deploy
   of its own** — it is the second function in the diff, and it reads
   `rate_limits`. That one is the forgiving step: out of order it logs the
   failed cleanup and deletes the account anyway.
+
+  **`0019` is not optional and not cosmetic.** Without it the RPC is callable
+  with the app's public anon key and the limiter is bypassable by anyone — a
+  deploy of `tmdb-proxy` onto `0018` alone gives the *appearance* of rate
+  limiting and none of it. It is a plain `revoke`, so it is safe to apply at any
+  time, including after the fact (which is what happened here).
 
   Every step is backward compatible with the step before it, so there is no
   window where a shipped client breaks.

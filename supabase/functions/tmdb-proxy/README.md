@@ -82,6 +82,15 @@ falls into the shared anon bucket rather than being rejected.
 Tuning capacity or refill is a **function deploy**, not a migration — both are
 passed per call.
 
+`consume_rate_limit` is `security definer` and executable by **`service_role`
+only**. That grant is the whole feature: exposed to `anon` or `authenticated` it
+lets any client drain any bucket, and the anon key is embedded in the app.
+Revoking it has to **name the roles** — `revoke ... from public` drops only the
+implicit grant, while Supabase's `alter default privileges` has already handed
+`anon` and `authenticated` an explicit one. Migration `0018` got that wrong and
+`0019` fixes it; if you ever add another server-only function here, copy `0019`,
+not `0018`.
+
 ## Validation
 
 Parameters are validated before they reach a URL or a query: `media_type` must
