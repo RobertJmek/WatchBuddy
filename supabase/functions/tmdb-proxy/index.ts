@@ -13,6 +13,10 @@
 //               -> { results, page, total_pages }
 //   title:    { tmdb_id: number, media_type: 'movie' | 'tv' }
 //   season:   { tmdb_id: number, season_number: number }
+//
+// Every parameter is validated before it reaches a URL or a query, and every
+// call spends from a Postgres-backed token bucket (migration 0018) -- the two
+// upstreams are shared resources and one caller must not be able to drain them.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -26,16 +30,46 @@ const TMDB = 'https://api.themoviedb.org/3';
 const TITLE_CACHE_TTL_MS =
   Number(Deno.env.get('TITLE_CACHE_TTL_HOURS') ?? '168') * 3600_000;
 
+// How long a fruitless OMDb lookup is remembered. Separate from the title TTL
+// because it answers a different question: not "is this metadata stale" but
+// "have we already asked OMDb about this and been told nothing". Without it a
+// title OMDb has no rating for is refetched from TMDB *and* re-asked of OMDb on
+// every single view, forever -- see migration 0017.
+const IMDB_RECHECK_MS =
+  Number(Deno.env.get('IMDB_RECHECK_HOURS') ?? '24') * 3600_000;
+
+// The window for the other case: nobody answered. Our own budget refused, or
+// OMDb was unreachable. A full recheck window would be wrong -- one busy hour
+// would cost a title its rating for a day, and an import of a few hundred cold
+// titles would leave most of them waiting on a bucket that refills far sooner.
+// Not stamping at all would be wrong too: the very next view would come back
+// through a full TMDB refetch, which is the cache-defeating loop the stamp
+// exists to close.
+const IMDB_RETRY_MS =
+  Number(Deno.env.get('IMDB_RETRY_MINUTES') ?? '60') * 60_000;
+
+/**
+ * A value for `imdb_checked_at` that comes due after IMDB_RETRY_MS rather than
+ * IMDB_RECHECK_MS. Both gates (here and the mirror in `src/lib/tmdb.ts`) ask
+ * `now - checked_at > RECHECK`, so back-dating the stamp by the difference
+ * makes it fire early, without a second column or a client that knows about it.
+ */
+function unansweredStamp(): string {
+  return new Date(
+    Date.now() - Math.max(0, IMDB_RECHECK_MS - IMDB_RETRY_MS),
+  ).toISOString();
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
 };
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', ...headers },
   });
 }
 
@@ -43,6 +77,132 @@ const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
+
+// --- caller identity ----------------------------------------------------
+const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The calling user's id, read from the JWT the gateway already verified.
+ *
+ * Deliberately NOT re-verified here: `verify_jwt` is on for this function, so an
+ * unsigned or expired token never reaches us, and re-checking would mean a round
+ * trip to the auth server on every call. The claim is used only to pick a rate
+ * limit bucket -- never to authorise a read or a write, which stay under RLS.
+ *
+ * Null means "no user claim": a caller presenting the publicly-embedded anon key
+ * rather than a session. Those share one tight bucket instead of going unlimited.
+ */
+function callerId(req: Request): string | null {
+  const header = req.headers.get('Authorization') ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const payload = token.split('.')[1];
+  if (!payload) return null;
+  try {
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const bytes = Uint8Array.from(
+      atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)),
+      (c) => c.charCodeAt(0),
+    );
+    const claims = JSON.parse(new TextDecoder().decode(bytes));
+    return typeof claims?.sub === 'string' && UUID_RE.test(claims.sub)
+      ? claims.sub
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+// --- rate limiting ------------------------------------------------------
+type Budget = { capacity: number; refillPerSecond: number };
+
+/**
+ * Per-caller ceiling on upstream TMDB requests.
+ *
+ * Sized off the heaviest legitimate client, the in-app TV Time importer: it
+ * resolves three titles at a time and one resolution costs up to three TMDB
+ * pages, so a real import peaks around 30 upstream requests a second. The limit
+ * therefore sits just above what one honest heavy user needs -- enough to stop a
+ * runaway loop or a scripted flood from monopolising the app's TMDB budget,
+ * not enough for an import to ever feel it.
+ */
+const USER_BUDGET: Budget = { capacity: 300, refillPerSecond: 40 };
+
+/** Callers with no user claim share one bucket, so the anon key buys little. */
+const ANON_BUDGET: Budget = { capacity: 30, refillPerSecond: 1 };
+
+/**
+ * OMDb's free tier is 1,000 requests a DAY for the whole app, not per user, so
+ * this bucket is global (subject = the nil uuid). ~700/day leaves headroom, and
+ * the burst capacity covers an import touching many uncached titles at once.
+ * Running dry degrades gracefully: the title still loads, without its IMDb
+ * rating, and the backfill is retried after IMDB_RECHECK_HOURS.
+ */
+const OMDB_BUDGET: Budget = { capacity: 100, refillPerSecond: 700 / 86400 };
+
+/**
+ * Spend `cost` tokens, or report how long until they exist.
+ *
+ * Fails OPEN: if the limiter itself errors, the request goes through. A broken
+ * accountant must not be able to close the shop -- the upstreams have their own
+ * limits, and the alternative is a database hiccup taking the whole app down.
+ */
+async function spend(
+  bucket: string,
+  subject: string,
+  cost: number,
+  budget: Budget,
+): Promise<{ allowed: boolean; retryAfter: number }> {
+  const { data, error } = await admin.rpc('consume_rate_limit', {
+    p_bucket: bucket,
+    p_subject: subject,
+    p_cost: cost,
+    p_capacity: budget.capacity,
+    p_refill_per_second: budget.refillPerSecond,
+  });
+  if (error) {
+    console.error('rate limit unavailable:', error.message);
+    return { allowed: true, retryAfter: 0 };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (row?.allowed === false) {
+    return {
+      allowed: false,
+      retryAfter: Math.max(1, Math.ceil(row.retry_after_seconds ?? 1)),
+    };
+  }
+  return { allowed: true, retryAfter: 0 };
+}
+
+// --- request validation -------------------------------------------------
+// Every value below reaches either a TMDB URL path/query or a Postgres filter.
+// Unvalidated they were interpolated straight in: `media_type` in particular
+// went into `/${mediaType}/${tmdbId}` with nothing checking it was one of two
+// words.
+const MAX_TMDB_ID = 100_000_000; // TMDB ids are seven digits today
+const MAX_SEASON_NUMBER = 1_000;
+const MAX_TRENDING_PAGE = 500; // TMDB's own ceiling; past it the endpoint errors
+const MAX_QUERY_LENGTH = 200;
+const MAX_EXTERNAL_ID_LENGTH = 64;
+
+function mediaType(value: unknown): 'movie' | 'tv' | null {
+  return value === 'movie' || value === 'tv' ? value : null;
+}
+
+function wholeNumber(value: unknown, min: number, max: number): number | null {
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : NaN;
+  return Number.isInteger(n) && n >= min && n <= max ? n : null;
+}
+
+function badRequest(message: string) {
+  return json({ error: message }, 400);
+}
 
 async function tmdb(path: string, params: Record<string, string> = {}) {
   const url = new URL(`${TMDB}${path}`);
@@ -59,17 +219,41 @@ async function tmdb(path: string, params: Record<string, string> = {}) {
   return res.json();
 }
 
-async function imdbRating(imdbId: string | null): Promise<number | null> {
-  if (!imdbId || !OMDB_API_KEY) return null;
+/**
+ * Ask OMDb for a title's IMDb rating. Three outcomes, and the difference
+ * between the last two is the whole point:
+ *
+ *   number     — the rating.
+ *   null       — OMDb answered, and has no rating for this title.
+ *   undefined  — no answer: network error, HTTP error, or an OMDb error body.
+ *                The caller must keep whatever it already had.
+ *
+ * Collapsing the last two into `null` (as this used to) means a transient
+ * failure on a weekly refresh silently deletes a rating the app had collected,
+ * and `imdb_checked_at` then hides the loss until the next recheck window.
+ *
+ * OMDb reports its own failures in the body with HTTP 200 -- a quota refusal is
+ * `{"Response":"False","Error":"Request limit reached!"}`, whose missing
+ * `imdbRating` used to parse straight to NaN and be stored as "no rating".
+ */
+async function imdbRating(
+  imdbId: string | null,
+): Promise<number | null | undefined> {
+  if (!imdbId || !OMDB_API_KEY) return undefined;
   try {
     const res = await fetch(
-      `https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${imdbId}`,
+      `https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${encodeURIComponent(imdbId)}`,
     );
+    if (!res.ok) return undefined;
     const data = await res.json();
+    // A body that is not an object is not an answer either -- trusting one
+    // would let a proxy hiccup read as "no rating" and clear a real value.
+    if (!data || typeof data !== 'object') return undefined;
+    if (data.Response === 'False') return undefined;
     const r = parseFloat(data?.imdbRating);
     return Number.isFinite(r) ? r : null;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -165,6 +349,25 @@ async function handleTrending(mediaType?: 'movie' | 'tv', page?: number) {
 }
 
 // --- title (detail + cache) --------------------------------------------
+/**
+ * Should this cached row send us back to OMDb for its IMDb rating?
+ *
+ * Yes when the rating is still missing and either OMDb has never been asked, or
+ * it was asked long enough ago to be worth asking again. The last clause is the
+ * whole point: without it "OMDb has no rating for this title" is indistinguish-
+ * able from "not backfilled yet", the row never satisfies the cache gate, and
+ * every view of it costs a TMDB refetch plus one of OMDb's 1,000 daily requests.
+ */
+function needsImdbLookup(row: {
+  imdb_id: string | null;
+  imdb_rating: number | null;
+  imdb_checked_at: string | null;
+}) {
+  if (!OMDB_API_KEY || !row.imdb_id || row.imdb_rating != null) return false;
+  if (!row.imdb_checked_at) return true;
+  return Date.now() - new Date(row.imdb_checked_at).getTime() > IMDB_RECHECK_MS;
+}
+
 async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
   // Cache gate: serve a recent copy without re-hitting TMDB + OMDb. We still
   // force a refetch for a row that *could* carry an IMDb rating but doesn't yet
@@ -180,8 +383,7 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
   if (cached) {
     const fresh =
       Date.now() - new Date(cached.cached_at).getTime() < TITLE_CACHE_TTL_MS;
-    const couldBackfillImdb =
-      !!OMDB_API_KEY && !!cached.imdb_id && cached.imdb_rating == null;
+    const couldBackfillImdb = needsImdbLookup(cached);
     if (fresh && !couldBackfillImdb) {
       const seasons =
         mediaType === 'tv'
@@ -204,6 +406,34 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
   const imdbId = detail.imdb_id ?? detail.external_ids?.imdb_id ?? null;
   const isTv = mediaType === 'tv';
 
+  // OMDb is the scarce upstream (1,000/day for everyone), so it gets its own
+  // global budget. Stamp the attempt either way: a refusal that left
+  // imdb_checked_at null would send the very next view straight back here.
+  // A refusal must not blank a rating we already have, either -- only an actual
+  // answer from OMDb is allowed to change the value.
+  let imdbRatingValue: number | null = cached?.imdb_rating ?? null;
+  let imdbCheckedAt: string | null = cached?.imdb_checked_at ?? null;
+  if (imdbId && OMDB_API_KEY) {
+    const omdb = await spend('omdb', NIL_UUID, 1, OMDB_BUDGET);
+    if (!omdb.allowed) {
+      console.warn(`omdb budget exhausted; skipping ${imdbId}`);
+      imdbCheckedAt = unansweredStamp();
+    } else {
+      const answer = await imdbRating(imdbId);
+      if (answer === undefined) {
+        console.warn(`omdb did not answer for ${imdbId}`);
+        imdbCheckedAt = unansweredStamp();
+      } else {
+        // An actual answer -- including "no rating", which is allowed to clear
+        // a value we had. Only this branch may write imdb_rating.
+        imdbRatingValue = answer;
+        imdbCheckedAt = new Date().toISOString();
+      }
+    }
+  } else if (!imdbId) {
+    imdbRatingValue = null;
+  }
+
   const titleRow = {
     tmdb_id: tmdbId,
     media_type: mediaType,
@@ -220,7 +450,8 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
       ? (detail.origin_country?.[0] ?? null)
       : (detail.production_countries?.[0]?.iso_3166_1 ?? null),
     tmdb_rating: detail.vote_average ?? null,
-    imdb_rating: await imdbRating(imdbId),
+    imdb_rating: imdbRatingValue,
+    imdb_checked_at: imdbCheckedAt,
     popularity: detail.popularity ?? null,
     status: detail.status ?? null,
     number_of_seasons: detail.number_of_seasons ?? null,
@@ -404,6 +635,78 @@ async function handleSeason(tmdbId: number, seasonNumber: number) {
   return json({ episodes });
 }
 
+/**
+ * Turn a request body into a validated call plus what it costs upstream.
+ *
+ * Cost is the worst-case number of TMDB requests the action makes, so the
+ * budget meters the shared resource rather than the convenience of an action.
+ * (`title` is charged 1 for the TMDB detail; its OMDb half has its own bucket.)
+ */
+function plan(
+  body: Record<string, unknown>,
+): { cost: number; run: () => Promise<Response> } | Response {
+  const { action } = body;
+  switch (action) {
+    case 'search': {
+      const q = typeof body.q === 'string' ? body.q.trim() : '';
+      if (q.length > MAX_QUERY_LENGTH) {
+        return badRequest('search query is too long');
+      }
+      return { cost: 3, run: () => handleSearch(q) };
+    }
+    case 'find': {
+      const externalId =
+        typeof body.external_id === 'string' ? body.external_id.trim() : '';
+      // TVDB ids are digits, IMDb ids are tt + digits. Anything else is either a
+      // typo or an attempt to steer the URL path.
+      if (
+        !/^[A-Za-z0-9]+$/.test(externalId) ||
+        externalId.length > MAX_EXTERNAL_ID_LENGTH
+      ) {
+        return badRequest('external_id must be alphanumeric');
+      }
+      const source = body.external_source;
+      if (typeof source !== 'string' || !FIND_SOURCES.includes(source)) {
+        return badRequest('external_source must be tvdb_id or imdb_id');
+      }
+      return { cost: 1, run: () => handleFind(externalId, source) };
+    }
+    case 'trending': {
+      // No media_type is the shape every client through v1.15.0 asks for and
+      // must keep getting: page 1 of both feeds. Do not "validate" it into an
+      // error -- absent is a valid, load-bearing value here.
+      if (body.media_type == null) {
+        return { cost: 2, run: () => handleTrending() };
+      }
+      const type = mediaType(body.media_type);
+      if (!type) return badRequest('media_type must be movie or tv');
+      const page =
+        body.page == null ? 1 : wholeNumber(body.page, 1, MAX_TRENDING_PAGE);
+      if (page === null) {
+        return badRequest(`page must be a whole number 1-${MAX_TRENDING_PAGE}`);
+      }
+      return { cost: 1, run: () => handleTrending(type, page) };
+    }
+    case 'title': {
+      const type = mediaType(body.media_type);
+      if (!type) return badRequest('media_type must be movie or tv');
+      const id = wholeNumber(body.tmdb_id, 1, MAX_TMDB_ID);
+      if (id === null) return badRequest('tmdb_id must be a positive whole number');
+      return { cost: 1, run: () => handleTitle(id, type) };
+    }
+    case 'season': {
+      const id = wholeNumber(body.tmdb_id, 1, MAX_TMDB_ID);
+      if (id === null) return badRequest('tmdb_id must be a positive whole number');
+      // Season 0 is TMDB's specials season, so the floor is 0 and not 1.
+      const season = wholeNumber(body.season_number, 0, MAX_SEASON_NUMBER);
+      if (season === null) return badRequest('season_number must be a whole number');
+      return { cost: 1, run: () => handleSeason(id, season) };
+    }
+    default:
+      return json({ error: `Unknown action: ${String(action)}` }, 400);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -411,32 +714,46 @@ Deno.serve(async (req) => {
   if (!TMDB_API_KEY) {
     return json({ error: 'TMDB_API_KEY not configured' }, 500);
   }
+
+  let body: Record<string, unknown>;
   try {
-    const {
-      action,
-      q,
-      external_id,
-      external_source,
-      tmdb_id,
-      media_type,
-      season_number,
-      page,
-    } = await req.json();
-    switch (action) {
-      case 'search':
-        return await handleSearch(q);
-      case 'find':
-        return await handleFind(external_id, external_source);
-      case 'trending':
-        return await handleTrending(media_type, page);
-      case 'title':
-        return await handleTitle(tmdb_id, media_type);
-      case 'season':
-        return await handleSeason(tmdb_id, season_number);
-      default:
-        return json({ error: `Unknown action: ${action}` }, 400);
-    }
+    body = await req.json();
+  } catch {
+    return badRequest('Request body must be JSON');
+  }
+  if (typeof body !== 'object' || body === null) {
+    return badRequest('Request body must be a JSON object');
+  }
+
+  const planned = plan(body);
+  if (planned instanceof Response) return planned;
+
+  const uid = callerId(req);
+  const limit = await spend(
+    'tmdb-proxy',
+    uid ?? NIL_UUID,
+    planned.cost,
+    uid ? USER_BUDGET : ANON_BUDGET,
+  );
+  if (!limit.allowed) {
+    return json(
+      {
+        error: `Too many requests. Try again in ${limit.retryAfter}s.`,
+      },
+      429,
+      { 'Retry-After': String(limit.retryAfter) },
+    );
+  }
+
+  try {
+    return await planned.run();
   } catch (err) {
-    return json({ error: String(err) }, 500);
+    // The message can carry an upstream URL, a Postgres error or a key-shaped
+    // string; it belongs in the logs, not in a client alert.
+    console.error(`${String(body.action)} failed:`, err);
+    return json(
+      { error: 'The movie database is unavailable right now. Try again later.' },
+      502,
+    );
   }
 });

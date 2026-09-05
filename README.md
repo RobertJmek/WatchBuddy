@@ -150,8 +150,10 @@ supabase/
                            0011 feed seen-window, 0012 ratings entity index,
                            0013 get_stats RPC, 0014 follow notifications,
                            0015 like_count compat shim,
-                           0016 notification dismissal)
-  functions/               Edge Functions (tmdb-proxy)
+                           0016 notification dismissal,
+                           0017 backend hardening, 0018 rate limits,
+                           0019 rate-limit execute grant)
+  functions/               Edge Functions (tmdb-proxy, delete-account)
 ```
 
 ---
@@ -185,13 +187,20 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
   `0005_episodes_cached_at` → `0006_review_likes` → `0007_review_replies` →
   `0008_notifications` → `0009_feed` → `0010_feed_seen` → `0011_feed_seen_window` →
   `0012_ratings_entity_index` → `0013_get_stats_rpc` → `0014_follow_notifications` →
-  `0015_like_count_compat` → `0016_notification_dismiss`.
+  `0015_like_count_compat` → `0016_notification_dismiss` →
+  `0017_backend_hardening` → `0018_rate_limits` →
+  `0019_rate_limit_execute_grant`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
   supabase functions deploy tmdb-proxy --project-ref <ref>
+  supabase functions deploy delete-account --project-ref <ref>
   ```
   (Optional: also set `OMDB_API_KEY` to enable IMDb ratings.)
+
+  **Order matters:** `tmdb-proxy` writes `titles.imdb_checked_at` and spends
+  from the rate-limit buckets, both of which `0017`/`0018` create — apply the
+  migrations first.
 
 ### 4. Run
 A **development build** is required (OAuth deep links and native modules don't work in Expo Go):

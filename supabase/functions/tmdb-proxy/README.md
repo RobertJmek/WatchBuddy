@@ -2,7 +2,10 @@
 
 Server-side proxy + cache for TMDB. Keeps API keys off the client and upserts
 fetched metadata into Postgres so statistics can run as SQL over the user's
-library. Requires a valid Supabase JWT (`verify_jwt` stays on).
+library. Requires a valid Supabase JWT — **`verify_jwt = true` is pinned in
+`supabase/config.toml`**, not left to the CLI default or a dashboard toggle,
+because the rate limiter trusts the token's `sub` claim without re-verifying
+its signature.
 
 ## Secrets
 
@@ -15,6 +18,8 @@ Secrets, or `supabase secrets set KEY=value`). `SUPABASE_URL` and
 | `TMDB_API_KEY` | **yes** | TMDB v4 read-access token (Bearer). All metadata. |
 | `OMDB_API_KEY` | no | Enables IMDb rating numbers (see below). |
 | `TITLE_CACHE_TTL_HOURS` | no | How long a cached title is served before refetch. Default `168` (7 days). |
+| `IMDB_RECHECK_HOURS` | no | How long an *answered* but fruitless OMDb lookup is remembered before asking again. Default `24`. |
+| `IMDB_RETRY_MINUTES` | no | How long an *unanswered* lookup (our budget refused, or OMDb was unreachable) is remembered. Default `60`. |
 
 ## Enabling IMDb ratings
 
@@ -41,6 +46,77 @@ until the TTL expires.
 OMDb round-trips. This is what keeps OMDb usage well under the 1,000/day free
 limit — without it, every title view spent one OMDb request.
 
-One edge case by design: a title that has an `imdb_id` but for which OMDb
-returns no rating will refetch on every view (it always looks "could backfill").
-This is rare for real titles and is no worse than the pre-cache behavior.
+A title that has an `imdb_id` but for which OMDb has **no** rating used to defeat
+that cache entirely: it always looked like it "could backfill", so every view
+refetched from TMDB *and* spent another OMDb request, forever. `titles.imdb_checked_at`
+(migration `0017`) records when OMDb was last asked, whether or not it answered,
+and the gate re-asks only after `IMDB_RECHECK_HOURS`. `src/lib/tmdb.ts` mirrors
+the same rule client-side.
+
+## Rate limiting
+
+Every call spends from a token bucket stored in Postgres (`rate_limits` +
+`consume_rate_limit`, migration `0018`) before it is dispatched. Buckets are in
+the database and not in the isolate because an isolate has no memory across
+bursts and several run at once.
+
+| bucket | subject | capacity | refill | covers |
+|---|---|---|---|---|
+| `tmdb-proxy` | caller's uid | 300 | 40/s | upstream TMDB requests, per signed-in user |
+| `tmdb-proxy` | nil uuid | 30 | 1/s | callers presenting only the anon key |
+| `omdb` | nil uuid | 100 | 700/day | OMDb's global 1,000/day quota |
+
+Cost is the worst-case number of upstream requests an action makes: `search` 3,
+bare `trending` 2, everything else 1. The per-user ceiling is sized off the TV
+Time importer — the heaviest legitimate client — so a real import never feels it.
+
+Over budget returns **429** with `Retry-After` and a human message. Running the
+`omdb` bucket dry is not an error: the title loads without its IMDb rating and
+the lookup is retried after `IMDB_RECHECK_HOURS`. A refused OMDb lookup — like a
+missing `OMDB_API_KEY`, a network error, or OMDb's own `{"Response":"False"}`
+error body — leaves any rating the row already had; **only an actual answer from
+OMDb changes the stored value**, and "OMDb has no rating for this title" counts
+as an answer.
+
+That distinction is why `imdbRating()` returns three things and not two: a
+number, `null` for an answered "no rating", and `undefined` for no answer at
+all. Collapsing the last two means one transient failure on a weekly refresh
+silently deletes a rating the app had collected, with `imdb_checked_at` hiding
+the loss until the next window. An unanswered lookup is stamped with the
+shorter `IMDB_RETRY_MINUTES` window rather than the full recheck one, so a busy
+hour does not cost a title its rating for a day. If the limiter itself fails, the
+request is allowed through and the failure is logged.
+
+The bucket for a signed-in caller is keyed by the `sub` claim of the token,
+read **without re-verifying it**: `verify_jwt` already did, and the claim only
+picks a bucket — it never authorises a read or a write. A caller with no `sub`
+(the anon key is publicly embedded in the app, so presenting it is legitimate)
+falls into the shared anon bucket rather than being rejected.
+
+Tuning capacity or refill is a **function deploy**, not a migration — both are
+passed per call.
+
+`consume_rate_limit` is `security definer` and executable by **`service_role`
+only**. That grant is the whole feature: exposed to `anon` or `authenticated` it
+lets any client drain any bucket, and the anon key is embedded in the app.
+Revoking it has to **name the roles** — `revoke ... from public` drops only the
+implicit grant, while Supabase's `alter default privileges` has already handed
+`anon` and `authenticated` an explicit one. Migration `0018` got that wrong and
+`0019` fixes it; if you ever add another server-only function here, copy `0019`,
+not `0018`.
+
+## Validation
+
+Parameters are validated before they reach a URL or a query: `media_type` must
+be `movie` or `tv`, `tmdb_id` / `season_number` / `page` must be whole numbers in
+range, `external_id` must be alphanumeric, `q` is length-capped, and the IMDb id
+is URL-encoded before it reaches OMDb. A bad parameter returns **400**.
+
+Unexpected failures are logged server-side and answered with a generic message
+and **502** — an upstream URL or a Postgres error must not end up in an alert on
+someone's phone. The deliberate errors are unchanged: `409` for "not cached
+yet", and the `{ error }` body shape every shipped client already reads.
+
+Calling `trending` with **no** `media_type` remains valid and returns
+`{ movies, tv }`: that is the shape every client through v1.15.0 parses, and an
+edge deploy reaches all of them at once.
