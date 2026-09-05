@@ -88,17 +88,48 @@ turned off for this function, that is the property that would need revisiting.
 A caller with no `sub` is not rejected: the anon key is publicly embedded in the
 app and presenting it is legitimate. Those callers share one tight bucket.
 
+Because that reasoning rests entirely on `verify_jwt`, it is now **pinned in
+`supabase/config.toml`** (`[functions.tmdb-proxy] verify_jwt = true`, and the
+same for `delete-account`) rather than left to the CLI default and a dashboard
+toggle. A behaviour this depends on should be a line in the repo, not a setting
+someone has to remember. With it off, anyone could mint a token with an
+arbitrary `sub`, take a fresh per-user budget on every request, and reach the
+proxy unauthenticated besides.
+
 ### Running out of OMDb budget degrades, it does not fail
 
 The title still loads, without its IMDb rating.
 
 With one rule attached: **only an actual answer from OMDb may change the stored
-value.** A refused lookup — and, for the same reason, a missing `OMDB_API_KEY` —
-now leaves whatever rating the row already had instead of overwriting it with
-null. The old code called `imdbRating()` unconditionally on every refetch, so
-unsetting the key (or, from now on, a busy hour) would have quietly wiped
-ratings the app had already collected. An answered lookup that returns nothing
-still clears the value, which is the case where "no rating" is the truth.
+value.** A lookup that produced no answer leaves whatever rating the row already
+had. An answered lookup that returns nothing still clears it — that is the case
+where "no rating" is the truth.
+
+Getting that right needs `imdbRating()` to return **three** things, not two:
+
+| result | meaning |
+|---|---|
+| a number | the rating |
+| `null` | OMDb answered, and has no rating for this title |
+| `undefined` | no answer — network error, HTTP error, or an OMDb error body |
+
+**The first cut of this shipped with only two**, and the rule was enforced only
+on the path where our own bucket refused. `imdbRating()` returned `null` for a
+network failure and for OMDb's own `{"Response":"False","Error":"Request limit
+reached!"}` (whose missing `imdbRating` parsed to `NaN`) exactly as it did for a
+genuine "no rating". So on the weekly TTL refresh of an already-rated title,
+one transient failure deleted the rating — and `imdb_checked_at`, added in the
+same change, then hid the loss until the next recheck window. Caught in review;
+the fix is above.
+
+An unanswered lookup is stamped with a **shorter** window (`IMDB_RETRY_MINUTES`,
+default 60) than an answered one. A full 24h would mean a busy hour costs a
+title its rating for a day, and an import of a few hundred cold titles leaves
+most of them waiting on a bucket that refills far sooner. Not stamping at all
+would reopen the cache-defeating loop the stamp exists to close. The stamp is
+back-dated by the difference, so both gates — here and the mirror in
+`src/lib/tmdb.ts` — come due early without needing a second column or a client
+that knows about it.
 
 That degradation is only tolerable because of the second half:
 
@@ -241,6 +272,12 @@ first check for it was a plain call, which did reach the insert.
 
 ### Verified against production
 
+> **Superseded in part.** The table below was measured against the first deploy.
+> The OMDb tri-state fix and the pinned `verify_jwt` landed after it, so
+> `tmdb-proxy` needs a **redeploy**; the rate-limit and validation rows are
+> unaffected by that change and still hold.
+
+
 Migrations `0017`–`0019` applied and both functions deployed, 2026-09-05. What
 prod actually answers, with the anon key:
 
@@ -293,7 +330,25 @@ request — so the bucket can be exhausted without generating any TMDB traffic.
   everyone** for a while. That is strictly better than the same import
   exhausting the *actual* quota for the rest of the day, which is what happened
   before, and the rating is not lost — it backfills on the next recheck.
-- Not done here, deliberately: the write half of the viewer seam
-  (`deleteMine`/`updateMine`), response-shape validation for `get_stats` and
-  `get_feed`, and a query-key factory. They are separate changes with separate
-  risk.
+- **Left out on purpose, named so they are not lost.** The first three came out
+  of the same audit as this pass and were sequenced after it; the rest surfaced
+  while reviewing it:
+  - the write half of the viewer seam (`deleteMine`/`updateMine` for six
+    mutations that delete/update without `user_id`, leaning on RLS alone);
+  - response-shape validation for the `get_stats` and `get_feed` RPCs — the
+    same class of bug that poisoned the persisted cache on the Hot section;
+  - a query-key factory;
+  - **indexes on the FK side of the cascade deletes.** Cheap, and
+    `delete-account` leans entirely on those cascades — an account with a lot
+    of history is the slow case nobody has measured;
+  - **`handleSeason` still answers `409 Title not cached yet`**, which the
+    client surfaces to the user as-is. It is a control-flow signal wearing an
+    error's clothes; left alone here because changing it is a client change
+    too, and this pass was deliberately server-only;
+  - **`get_stats` takes `p_user_id` from the caller.** Reads are world-open so
+    nothing leaks, but the parameter is trusted rather than derived, which is
+    the shape the viewer seam exists to avoid;
+  - **two simultaneous cold requests for the same title spend two OMDb
+    tokens.** There is no in-flight coalescing, so a burst on an uncached title
+    double-charges the global budget. Bounded and rare; worth knowing before
+    the budget is tuned down.

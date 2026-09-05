@@ -38,6 +38,28 @@ const TITLE_CACHE_TTL_MS =
 const IMDB_RECHECK_MS =
   Number(Deno.env.get('IMDB_RECHECK_HOURS') ?? '24') * 3600_000;
 
+// The window for the other case: nobody answered. Our own budget refused, or
+// OMDb was unreachable. A full recheck window would be wrong -- one busy hour
+// would cost a title its rating for a day, and an import of a few hundred cold
+// titles would leave most of them waiting on a bucket that refills far sooner.
+// Not stamping at all would be wrong too: the very next view would come back
+// through a full TMDB refetch, which is the cache-defeating loop the stamp
+// exists to close.
+const IMDB_RETRY_MS =
+  Number(Deno.env.get('IMDB_RETRY_MINUTES') ?? '60') * 60_000;
+
+/**
+ * A value for `imdb_checked_at` that comes due after IMDB_RETRY_MS rather than
+ * IMDB_RECHECK_MS. Both gates (here and the mirror in `src/lib/tmdb.ts`) ask
+ * `now - checked_at > RECHECK`, so back-dating the stamp by the difference
+ * makes it fire early, without a second column or a client that knows about it.
+ */
+function unansweredStamp(): string {
+  return new Date(
+    Date.now() - Math.max(0, IMDB_RECHECK_MS - IMDB_RETRY_MS),
+  ).toISOString();
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
@@ -197,17 +219,41 @@ async function tmdb(path: string, params: Record<string, string> = {}) {
   return res.json();
 }
 
-async function imdbRating(imdbId: string | null): Promise<number | null> {
-  if (!imdbId || !OMDB_API_KEY) return null;
+/**
+ * Ask OMDb for a title's IMDb rating. Three outcomes, and the difference
+ * between the last two is the whole point:
+ *
+ *   number     — the rating.
+ *   null       — OMDb answered, and has no rating for this title.
+ *   undefined  — no answer: network error, HTTP error, or an OMDb error body.
+ *                The caller must keep whatever it already had.
+ *
+ * Collapsing the last two into `null` (as this used to) means a transient
+ * failure on a weekly refresh silently deletes a rating the app had collected,
+ * and `imdb_checked_at` then hides the loss until the next recheck window.
+ *
+ * OMDb reports its own failures in the body with HTTP 200 -- a quota refusal is
+ * `{"Response":"False","Error":"Request limit reached!"}`, whose missing
+ * `imdbRating` used to parse straight to NaN and be stored as "no rating".
+ */
+async function imdbRating(
+  imdbId: string | null,
+): Promise<number | null | undefined> {
+  if (!imdbId || !OMDB_API_KEY) return undefined;
   try {
     const res = await fetch(
       `https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${encodeURIComponent(imdbId)}`,
     );
+    if (!res.ok) return undefined;
     const data = await res.json();
+    // A body that is not an object is not an answer either -- trusting one
+    // would let a proxy hiccup read as "no rating" and clear a real value.
+    if (!data || typeof data !== 'object') return undefined;
+    if (data.Response === 'False') return undefined;
     const r = parseFloat(data?.imdbRating);
     return Number.isFinite(r) ? r : null;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -369,11 +415,20 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
   let imdbCheckedAt: string | null = cached?.imdb_checked_at ?? null;
   if (imdbId && OMDB_API_KEY) {
     const omdb = await spend('omdb', NIL_UUID, 1, OMDB_BUDGET);
-    imdbCheckedAt = new Date().toISOString();
-    if (omdb.allowed) {
-      imdbRatingValue = await imdbRating(imdbId);
-    } else {
+    if (!omdb.allowed) {
       console.warn(`omdb budget exhausted; skipping ${imdbId}`);
+      imdbCheckedAt = unansweredStamp();
+    } else {
+      const answer = await imdbRating(imdbId);
+      if (answer === undefined) {
+        console.warn(`omdb did not answer for ${imdbId}`);
+        imdbCheckedAt = unansweredStamp();
+      } else {
+        // An actual answer -- including "no rating", which is allowed to clear
+        // a value we had. Only this branch may write imdb_rating.
+        imdbRatingValue = answer;
+        imdbCheckedAt = new Date().toISOString();
+      }
     }
   } else if (!imdbId) {
     imdbRatingValue = null;

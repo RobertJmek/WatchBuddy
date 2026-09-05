@@ -2,7 +2,10 @@
 
 Server-side proxy + cache for TMDB. Keeps API keys off the client and upserts
 fetched metadata into Postgres so statistics can run as SQL over the user's
-library. Requires a valid Supabase JWT (`verify_jwt` stays on).
+library. Requires a valid Supabase JWT — **`verify_jwt = true` is pinned in
+`supabase/config.toml`**, not left to the CLI default or a dashboard toggle,
+because the rate limiter trusts the token's `sub` claim without re-verifying
+its signature.
 
 ## Secrets
 
@@ -15,7 +18,8 @@ Secrets, or `supabase secrets set KEY=value`). `SUPABASE_URL` and
 | `TMDB_API_KEY` | **yes** | TMDB v4 read-access token (Bearer). All metadata. |
 | `OMDB_API_KEY` | no | Enables IMDb rating numbers (see below). |
 | `TITLE_CACHE_TTL_HOURS` | no | How long a cached title is served before refetch. Default `168` (7 days). |
-| `IMDB_RECHECK_HOURS` | no | How long a fruitless OMDb lookup is remembered before asking again. Default `24`. |
+| `IMDB_RECHECK_HOURS` | no | How long an *answered* but fruitless OMDb lookup is remembered before asking again. Default `24`. |
+| `IMDB_RETRY_MINUTES` | no | How long an *unanswered* lookup (our budget refused, or OMDb was unreachable) is remembered. Default `60`. |
 
 ## Enabling IMDb ratings
 
@@ -69,8 +73,18 @@ Time importer — the heaviest legitimate client — so a real import never feel
 Over budget returns **429** with `Retry-After` and a human message. Running the
 `omdb` bucket dry is not an error: the title loads without its IMDb rating and
 the lookup is retried after `IMDB_RECHECK_HOURS`. A refused OMDb lookup — like a
-missing `OMDB_API_KEY` — leaves any rating the row already had; only an actual
-answer from OMDb changes the stored value. If the limiter itself fails, the
+missing `OMDB_API_KEY`, a network error, or OMDb's own `{"Response":"False"}`
+error body — leaves any rating the row already had; **only an actual answer from
+OMDb changes the stored value**, and "OMDb has no rating for this title" counts
+as an answer.
+
+That distinction is why `imdbRating()` returns three things and not two: a
+number, `null` for an answered "no rating", and `undefined` for no answer at
+all. Collapsing the last two means one transient failure on a weekly refresh
+silently deletes a rating the app had collected, with `imdb_checked_at` hiding
+the loss until the next window. An unanswered lookup is stamped with the
+shorter `IMDB_RETRY_MINUTES` window rather than the full recheck one, so a busy
+hour does not cost a title its rating for a day. If the limiter itself fails, the
 request is allowed through and the failure is logged.
 
 The bucket for a signed-in caller is keyed by the `sub` claim of the token,
