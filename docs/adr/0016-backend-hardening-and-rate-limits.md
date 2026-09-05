@@ -239,6 +239,29 @@ RPC with `p_cost = 0` hits the guard clause before any insert, so an authorised
 caller gets the function's own `P0001` and an unauthorised one gets `404`. The
 first check for it was a plain call, which did reach the insert.
 
+### Verified against production
+
+Migrations `0017`–`0019` applied and both functions deployed, 2026-09-05. What
+prod actually answers, with the anon key:
+
+| check | result |
+|---|---|
+| anon → `consume_rate_limit` | `42501 permission denied for function`, HTTP 401 (was: the function's own `P0001`, HTTP 400 — i.e. anon reached the body) |
+| bare `{action:'trending'}` | `{ movies: 20, tv: 20 }` — the frozen shape is intact, and the call succeeding proves `service_role` kept its grant |
+| `media_type: "../../secret"` | `400 media_type must be movie or tv` |
+| 60 parallel calls into the anon bucket | **32 allowed / 28 refused** — capacity 30 plus ~2 refilled mid-burst |
+| one refused response | `HTTP 429`, `retry-after: 1`, `{"error":"Too many requests. Try again in 1s."}` |
+| the same call six seconds later | through — the bucket refills on its own |
+
+The fourth row is the one that mattered. Spending **fails open**, so a limiter
+that had silently lost its grant would look exactly like a working app: every
+earlier check would still have passed. The only way to tell the two apart is to
+run the bucket dry and watch it refuse.
+
+Probed with `action: 'season'` on a valid-but-uncached `tmdb_id`, which clears
+validation, spends its token, and then returns `409` without a single upstream
+request — so the bucket can be exhausted without generating any TMDB traffic.
+
 ## Consequences
 
 - **Ordering is load-bearing, as always with this stack.** Migrations `0017` and
