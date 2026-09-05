@@ -217,8 +217,13 @@ been the odd choice:
 - **Ordering is load-bearing, as always with this stack.** Migrations `0017` and
   `0018` must be applied **before** `tmdb-proxy` is deployed (it writes
   `imdb_checked_at` and calls `consume_rate_limit`), and the function must be
-  deployed **before** the v1.16.1 build ships. Every step is backward compatible
-  with the step before it, so there is no window where a shipped client breaks.
+  deployed **before** the v1.16.1 build ships. **`delete-account` needs a deploy
+  of its own** — it is the second function in the diff, and it reads
+  `rate_limits`. That one is the forgiving step: out of order it logs the
+  failed cleanup and deletes the account anyway.
+
+  Every step is backward compatible with the step before it, so there is no
+  window where a shipped client breaks.
 - **Old clients are unaffected.** `imdb_checked_at` is a new column on a
   `select('*')` read; the 429 arrives as `{ error }`, which every shipped build
   already surfaces through `invoke()`. A client older than v1.16.1 keeps using
