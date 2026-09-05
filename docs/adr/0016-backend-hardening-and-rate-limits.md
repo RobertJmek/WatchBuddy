@@ -272,10 +272,23 @@ first check for it was a plain call, which did reach the insert.
 
 ### Verified against production
 
-> **Superseded in part.** The table below was measured against the first deploy.
-> The OMDb tri-state fix and the pinned `verify_jwt` landed after it, so
-> `tmdb-proxy` needs a **redeploy**; the rate-limit and validation rows are
-> unaffected by that change and still hold.
+Re-run after the redeploy that carried the OMDb tri-state fix and the pinned
+`verify_jwt` (2026-09-05). Two rows are new since the first pass:
+
+| check | result |
+|---|---|
+| no `Authorization` header | `401 UNAUTHORIZED_NO_AUTH_HEADER` — `verify_jwt` is live |
+| `Authorization: Bearer not.a.jwt` | `401 UNAUTHORIZED_INVALID_JWT_FORMAT` |
+| `page: 9999` | `400 page must be a whole number 1-500` |
+| a real title round-trip (`tmdb_id` 278, 155) | ratings `9.3` / `9.1` intact, `imdb_checked_at` populated |
+
+**What the last row does not prove.** Both titles served from cache — fresh, and
+already rated, so no OMDb call happened. It shows the gate and the new column
+round-tripping; it says nothing about the failure path the fix is about, which
+only fires on a TTL refresh of a rated title while OMDb is unreachable. That
+path is covered by the offline harness (11 cases, and a negative control in
+which the pre-fix version fails 8 of them), not by anything observable from
+outside.
 
 
 Migrations `0017`–`0019` applied and both functions deployed, 2026-09-05. What
