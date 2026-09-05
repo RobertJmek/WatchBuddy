@@ -68,8 +68,16 @@ Time importer — the heaviest legitimate client — so a real import never feel
 
 Over budget returns **429** with `Retry-After` and a human message. Running the
 `omdb` bucket dry is not an error: the title loads without its IMDb rating and
-the lookup is retried after `IMDB_RECHECK_HOURS`. If the limiter itself fails,
-the request is allowed through and the failure is logged.
+the lookup is retried after `IMDB_RECHECK_HOURS`. A refused OMDb lookup — like a
+missing `OMDB_API_KEY` — leaves any rating the row already had; only an actual
+answer from OMDb changes the stored value. If the limiter itself fails, the
+request is allowed through and the failure is logged.
+
+The bucket for a signed-in caller is keyed by the `sub` claim of the token,
+read **without re-verifying it**: `verify_jwt` already did, and the claim only
+picks a bucket — it never authorises a read or a write. A caller with no `sub`
+(the anon key is publicly embedded in the app, so presenting it is legitimate)
+falls into the shared anon bucket rather than being rejected.
 
 Tuning capacity or refill is a **function deploy**, not a migration — both are
 passed per call.
@@ -78,9 +86,13 @@ passed per call.
 
 Parameters are validated before they reach a URL or a query: `media_type` must
 be `movie` or `tv`, `tmdb_id` / `season_number` / `page` must be whole numbers in
-range, `external_id` must be alphanumeric, `q` is length-capped. Unexpected
-failures are logged server-side and answered with a generic message — an
-upstream URL or a Postgres error must not end up in an alert on someone's phone.
+range, `external_id` must be alphanumeric, `q` is length-capped, and the IMDb id
+is URL-encoded before it reaches OMDb. A bad parameter returns **400**.
+
+Unexpected failures are logged server-side and answered with a generic message
+and **502** — an upstream URL or a Postgres error must not end up in an alert on
+someone's phone. The deliberate errors are unchanged: `409` for "not cached
+yet", and the `{ error }` body shape every shipped client already reads.
 
 Calling `trending` with **no** `media_type` remains valid and returns
 `{ movies, tv }`: that is the shape every client through v1.15.0 parses, and an
