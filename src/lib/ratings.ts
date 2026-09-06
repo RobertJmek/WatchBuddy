@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase';
-import { currentViewer, requireViewer, selectMine } from '@/lib/viewer';
+import {
+  currentViewer,
+  deleteMine,
+  requireViewer,
+  selectMine,
+} from '@/lib/viewer';
 
 export type RatingEntityType = 'movie' | 'show';
 
@@ -272,12 +277,8 @@ export async function likeReview(ratingId: string) {
 }
 
 export async function unlikeReview(ratingId: string) {
-  const uid = await requireViewer();
-  const { error } = await supabase
-    .from('review_likes')
-    .delete()
-    .eq('rating_id', ratingId)
-    .eq('user_id', uid);
+  const { q } = await deleteMine('review_likes');
+  const { error } = await q.eq('rating_id', ratingId);
   if (error) throw error;
 }
 
@@ -285,9 +286,8 @@ export async function removeRating(
   entityType: RatingEntityType,
   entityId: string,
 ) {
-  const { error } = await supabase
-    .from('ratings')
-    .delete()
+  const { q } = await deleteMine('ratings');
+  const { error } = await q
     .eq('entity_type', entityType)
     .eq('entity_id', entityId);
   if (error) throw error;

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { requireViewer, selectMine } from '@/lib/viewer';
+import { deleteMine, requireViewer, selectMine, updateMine } from '@/lib/viewer';
 
 export type LibraryStatus =
   | 'watchlist'
@@ -138,10 +138,8 @@ export async function setLibraryStatus(titleId: string, status: LibraryStatus) {
 }
 
 export async function removeFromLibrary(titleId: string) {
-  const { error } = await supabase
-    .from('library_items')
-    .delete()
-    .eq('title_id', titleId);
+  const { q } = await deleteMine('library_items');
+  const { error } = await q.eq('title_id', titleId);
   if (error) throw error;
 }
 
@@ -155,21 +153,23 @@ export async function getFavorite(titleId: string): Promise<boolean> {
 
 /**
  * Toggle the heart. Updates the existing library row; if there is none and the
- * user is favoriting, creates one with status 'watchlist'. RLS scopes the
- * update/insert to the current user.
+ * user is favoriting, creates one with status 'watchlist'. The update is scoped
+ * by `updateMine`, the insert names `user_id` outright.
  */
 export async function setFavorite(titleId: string, favorite: boolean) {
-  const uid = await requireViewer();
-  const { data: updated, error: updateError } = await supabase
-    .from('library_items')
-    .update({ is_favorite: favorite })
+  const { q } = await updateMine('library_items', { is_favorite: favorite });
+  const { data: updated, error: updateError } = await q
     .eq('title_id', titleId)
     .select('id');
   if (updateError) throw updateError;
   if ((updated?.length ?? 0) > 0) return;
 
-  // No library row yet — only meaningful when turning the heart on.
+  // No library row yet — only meaningful when turning the heart on. The viewer
+  // is resolved here rather than up top so the common path (the row exists, the
+  // update lands, we return) doesn't pay a second auth round-trip: the dedupe
+  // in `viewer.ts` only covers *concurrent* lookups, and these are sequential.
   if (favorite) {
+    const uid = await requireViewer();
     const { error: insertError } = await supabase.from('library_items').insert({
       user_id: uid,
       title_id: titleId,

@@ -1,4 +1,5 @@
 import { LIBRARY_STATUSES } from '@/lib/library';
+import { parseRawStats } from '@/lib/rpc-shape';
 import { supabase } from '@/lib/supabase';
 import { currentViewer } from '@/lib/viewer';
 
@@ -48,7 +49,7 @@ const WEEKDAYS = [
  * The `get_stats` RPC returns tz/locale-independent numeric aggregates only; the
  * client (here) formats the locale/timezone-dependent labels. See migration 0013.
  */
-type RawStats = {
+export type RawStats = {
   distinctTitles: number;
   totalMovieWatches: number;
   totalEpisodeWatches: number;
@@ -163,5 +164,5 @@ export async function getStats(userId?: string): Promise<Stats> {
     p_tz: deviceTimeZone(),
   });
   if (error) throw error;
-  return formatStats(data as RawStats);
+  return formatStats(parseRawStats(data));
 }

@@ -1,6 +1,7 @@
 import { type ReviewItem } from '@/lib/ratings';
+import { parseFeedRows } from '@/lib/rpc-shape';
 import { supabase } from '@/lib/supabase';
-import { currentViewer, requireViewer } from '@/lib/viewer';
+import { currentViewer, updateMine } from '@/lib/viewer';
 
 /** A person as shown in a feed row (actor or follow target). */
 export type FeedActor = {
@@ -36,7 +37,7 @@ export type FeedItem =
 export type FeedPage = { items: FeedItem[]; nextCursor: string | null };
 
 /** The raw shape returned by the get_feed RPC (one row per event). */
-type FeedRow = {
+export type FeedRow = {
   type: FeedItem['type'];
   actor_id: string;
   entity_id: string | null;
@@ -65,7 +66,7 @@ export async function getFeed({
     p_before: before ?? null,
   });
   if (error) throw error;
-  const rows = (data ?? []) as FeedRow[];
+  const rows = parseFeedRows(data);
   if (rows.length === 0) return { items: [], nextCursor: null };
 
   const actorIds = new Set<string>();
@@ -172,11 +173,13 @@ export async function getFeed({
  * focus) keeps the list stable while the viewer is reading it.
  */
 export async function markFeedSeen() {
-  const uid = await requireViewer();
-  const { error } = await supabase
-    .from('profiles')
-    .update({ feed_seen_at: new Date().toISOString() })
-    .eq('id', uid);
+  // `profiles` is owned by its primary key, not a `user_id` column.
+  const { q } = await updateMine(
+    'profiles',
+    { feed_seen_at: new Date().toISOString() },
+    'id',
+  );
+  const { error } = await q;
   if (error) throw error;
 }
 

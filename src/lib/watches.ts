@@ -1,6 +1,12 @@
 import { setLibraryStatus } from '@/lib/library';
 import { supabase } from '@/lib/supabase';
-import { currentViewer, requireViewer, selectMine } from '@/lib/viewer';
+import {
+  currentViewer,
+  deleteMine,
+  requireViewer,
+  selectMine,
+  updateMine,
+} from '@/lib/viewer';
 
 /** How many times the user has watched each episode of a title. */
 export async function getEpisodeWatchCounts(
@@ -28,14 +34,12 @@ export async function logEpisodeWatch(episodeId: string, titleId: string) {
   if (error) throw error;
 }
 
-/** Delete specific episode-watch rows by id (owner-scoped by RLS). Used by the
- *  Search swipe-to-log undo to reverse *exactly* the rows a swipe inserted. */
+/** Delete specific episode-watch rows by id. Used by the Search swipe-to-log
+ *  undo to reverse *exactly* the rows a swipe inserted. */
 export async function removeEpisodeWatchesByIds(ids: string[]) {
   if (ids.length === 0) return;
-  const { error } = await supabase
-    .from('episode_watches')
-    .delete()
-    .in('id', ids);
+  const { q } = await deleteMine('episode_watches');
+  const { error } = await q.in('id', ids);
   if (error) throw error;
 }
 
@@ -49,10 +53,8 @@ export async function removeOneEpisodeWatch(episodeId: string) {
   if (error) throw error;
   const row = data?.[0];
   if (!row) return;
-  const { error: delErr } = await supabase
-    .from('episode_watches')
-    .delete()
-    .eq('id', row.id);
+  const { q: del } = await deleteMine('episode_watches');
+  const { error: delErr } = await del.eq('id', row.id);
   if (delErr) throw delErr;
 }
 
@@ -108,11 +110,8 @@ export async function getMovieWatches(titleId: string): Promise<MovieWatch[]> {
 }
 
 export async function removeMovieWatch(watchId: string) {
-  // Scoped by RLS: the owner-only write policy lets a user delete only their own row.
-  const { error } = await supabase
-    .from('movie_watches')
-    .delete()
-    .eq('id', watchId);
+  const { q } = await deleteMine('movie_watches');
+  const { error } = await q.eq('id', watchId);
   if (error) throw error;
 }
 
@@ -238,7 +237,8 @@ export async function getDiary({
 
 /**
  * Move watch rows to a new calendar day, preserving each row's time-of-day so
- * within-day ordering survives. RLS scopes the updates to the owner's rows.
+ * within-day ordering survives. Each update is scoped to the viewer by
+ * `updateMine`; RLS is the backstop, not the mechanism.
  */
 export async function updateWatchDay(
   kind: 'movie' | 'episode',
@@ -247,7 +247,7 @@ export async function updateWatchDay(
 ) {
   const table = kind === 'movie' ? 'movie_watches' : 'episode_watches';
   await Promise.all(
-    rows.map((r) => {
+    rows.map(async (r) => {
       const old = new Date(r.watched_at);
       const next = new Date(
         day.getFullYear(),
@@ -258,13 +258,11 @@ export async function updateWatchDay(
         old.getSeconds(),
         old.getMilliseconds(),
       );
-      return supabase
-        .from(table)
-        .update({ watched_at: next.toISOString() })
-        .eq('id', r.id)
-        .then(({ error }) => {
-          if (error) throw error;
-        });
+      const { q } = await updateMine(table, {
+        watched_at: next.toISOString(),
+      });
+      const { error } = await q.eq('id', r.id);
+      if (error) throw error;
     }),
   );
 }
