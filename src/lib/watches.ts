@@ -237,7 +237,8 @@ export async function getDiary({
 
 /**
  * Move watch rows to a new calendar day, preserving each row's time-of-day so
- * within-day ordering survives. RLS scopes the updates to the owner's rows.
+ * within-day ordering survives. Each update is scoped to the viewer by
+ * `updateMine`; RLS is the backstop, not the mechanism.
  */
 export async function updateWatchDay(
   kind: 'movie' | 'episode',

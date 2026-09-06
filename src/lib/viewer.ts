@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase';
  * Concurrent identity lookups share one round-trip.
  *
  * `supabase.auth.getUser()` hits the auth server, and a batched write (see
- * `shiftWatchesToDay`) resolves the viewer once per row — N parallel calls for
+ * `updateWatchDay`) resolves the viewer once per row — N parallel calls for
  * one user action, which is both slow and a pointless bite out of the auth rate
  * limit. The promise is cleared as soon as it settles, so nothing is ever
  * cached across an await boundary and a sign-out can't be missed.
