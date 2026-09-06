@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { requireViewer, selectMine } from '@/lib/viewer';
+import { deleteMine, requireViewer, selectMine, updateMine } from '@/lib/viewer';
 
 export type LibraryStatus =
   | 'watchlist'
@@ -138,10 +138,8 @@ export async function setLibraryStatus(titleId: string, status: LibraryStatus) {
 }
 
 export async function removeFromLibrary(titleId: string) {
-  const { error } = await supabase
-    .from('library_items')
-    .delete()
-    .eq('title_id', titleId);
+  const { q } = await deleteMine('library_items');
+  const { error } = await q.eq('title_id', titleId);
   if (error) throw error;
 }
 
@@ -160,9 +158,8 @@ export async function getFavorite(titleId: string): Promise<boolean> {
  */
 export async function setFavorite(titleId: string, favorite: boolean) {
   const uid = await requireViewer();
-  const { data: updated, error: updateError } = await supabase
-    .from('library_items')
-    .update({ is_favorite: favorite })
+  const { q } = await updateMine('library_items', { is_favorite: favorite });
+  const { data: updated, error: updateError } = await q
     .eq('title_id', titleId)
     .select('id');
   if (updateError) throw updateError;

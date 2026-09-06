@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { currentViewer, requireViewer } from '@/lib/viewer';
+import { currentViewer, requireViewer, updateMine } from '@/lib/viewer';
 
 export type Profile = {
   id: string;
@@ -74,14 +74,12 @@ export async function uploadAvatar(
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 
-/** Update the signed-in user's profile (RLS restricts this to their own row). */
+/** Update the signed-in user's profile. */
 export async function updateProfile(update: ProfileUpdate): Promise<void> {
-  const uid = await requireViewer();
+  // `profiles` is owned by its primary key, not a `user_id` column.
+  const { q } = await updateMine('profiles', update, 'id');
 
-  const { error } = await supabase
-    .from('profiles')
-    .update(update)
-    .eq('id', uid);
+  const { error } = await q;
   if (error) {
     // 23505 = unique_violation, i.e. the username is taken.
     if (error.code === '23505') throw new UsernameTakenError();

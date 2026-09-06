@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { requireViewer } from '@/lib/viewer';
+import { requireViewer, updateMine } from '@/lib/viewer';
 
 export type NotificationItem = {
   id: string;
@@ -127,34 +127,27 @@ export async function getUnreadCount(): Promise<number> {
  * unread badge alive from somewhere you can no longer see.
  */
 export async function dismissNotification(id: string) {
-  const uid = await requireViewer();
   const now = new Date().toISOString();
-  const { error } = await supabase
-    .from('notifications')
-    .update({ dismissed_at: now, read_at: now })
-    .eq('id', id)
-    .eq('user_id', uid);
+  const { q } = await updateMine('notifications', {
+    dismissed_at: now,
+    read_at: now,
+  });
+  const { error } = await q.eq('id', id);
   if (error) throw error;
 }
 
 /** Undo a dismissal. The row returns read, in its old place — `created_at` never moved. */
 export async function undismissNotification(id: string) {
-  const uid = await requireViewer();
-  const { error } = await supabase
-    .from('notifications')
-    .update({ dismissed_at: null })
-    .eq('id', id)
-    .eq('user_id', uid);
+  const { q } = await updateMine('notifications', { dismissed_at: null });
+  const { error } = await q.eq('id', id);
   if (error) throw error;
 }
 
 export async function markAllRead() {
-  const uid = await requireViewer();
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('user_id', uid)
-    .is('read_at', null);
+  const { q } = await updateMine('notifications', {
+    read_at: new Date().toISOString(),
+  });
+  const { error } = await q.is('read_at', null);
   if (error) throw error;
 }
 
