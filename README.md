@@ -101,6 +101,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   copy for a bug report, plus the privacy policy, support, account-deletion and
   safety-standards pages, opened in-app.
 - **Appearance** — light / dark / system theme toggle (persisted), teal accent throughout.
+- **Accessibility** — every control is labelled for VoiceOver / TalkBack, toggles announce which
+  state they're in, and the gesture-only actions have non-gesture equivalents: swipe-to-log,
+  swipe-to-dismiss and the two-thumb filter sliders are all reachable from a screen reader.
 - **Offline** — read data (Library / Diary / Stats / profiles) is cached and persisted, so the
   app cold-opens and browses offline.
 - **Polish** — press/entry animations and skeleton loading states across all screens.
@@ -134,13 +137,16 @@ src/
     user/[id]/             Public profile (index) + followers / following
     season, diary, stats, edit-profile, library-section, about, sign-in
     import-data (chooser) → import-tvtime / import-watchbuddy
-  components/              Reusable UI (poster shelf, watch bars, rating/review rows,
+  components/              Reusable UI (avatar, poster shelf, watch bars, rating/review rows,
                            follow button, user row, …)
   lib/                     supabase client, query client, TMDB client, and data modules
                            (library, library-filter, watches, ratings, stats, social,
                            profile, genres, export, …)
+    keys.ts                Every TanStack Query key, one root per resource
+    navigation.ts          openTitle() — the one place that knows the title route
     tvtime/                In-app TV Time import engine (parse, resolve, status, db, engine)
     wb-import/             WatchBuddy-export import engine (parse, resolve, db, engine)
+.github/workflows/         CI: type-check + lint on every push and pull request
 scripts/                   TV Time importer CLI (import_tvtime.py + docs) and app-icon generator
 supabase/
   migrations/              SQL schema + RLS, applied in order (0001 init, 0002 favorites,
@@ -263,11 +269,24 @@ for that walkthrough. Both paths are idempotent and interoperate (either can run
 
 ---
 
-## Verify it works
+## Checks
+
 ```bash
-npx tsc --noEmit                 # type-check
-npx expo export --platform ios   # bundle without a device
+npm run typecheck                # tsc --noEmit (strict)
+npm run lint                     # expo lint
+npx expo export --platform ios   # bundle without a device (catches route/import breaks)
 ```
+
+The first two run in **GitHub Actions on every push and pull request**
+(`.github/workflows/ci.yml`), where lint is enforced at zero warnings
+(`npm run lint:ci`). Neither a type error nor a lint warning can reach `main`
+unnoticed. Nothing else runs in CI — there is no test suite, and `expo export`
+is a slow way to learn what `tsc` already said.
+
+Note that CI regenerates `expo-env.d.ts` before type-checking: the file is
+gitignored by Expo's own template but supplies the ambient `expo/types`
+declarations, so without it `tsc` fails in a fresh checkout on code that
+compiles fine locally.
 
 ---
 
