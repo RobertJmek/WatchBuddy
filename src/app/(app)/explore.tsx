@@ -83,6 +83,14 @@ type LoggedEntry = {
   pending: boolean;
 };
 
+/** Identity of a search result in the session-log map, and as a list key. */
+const itemKey = (r: SearchResult) => `${r.media_type}-${r.tmdb_id}`;
+
+/** The swipe reveal's label and the custom action's label, from one place. */
+function logLabel(item: SearchResult) {
+  return item.media_type === 'tv' ? 'Log whole series' : 'Log watch';
+}
+
 /**
  * Memoized, and its props are shaped for it: the handlers take the item rather
  * than closing over it, so the parent can hold them stable across a keystroke.
@@ -96,6 +104,7 @@ const ResultRow = memo(function ResultRow({
   logged,
   pending,
   onUndoTap,
+  onLog,
 }: {
   item: SearchResult;
   bg: string;
@@ -106,11 +115,30 @@ const ResultRow = memo(function ResultRow({
   pending: boolean;
   /** Tapping the checkmark undoes the session log (same as swipe-left). */
   onUndoTap: (item: SearchResult) => void;
+  /** Swipe-right's action, offered here too — see the accessibility note below. */
+  onLog: (item: SearchResult) => void;
 }) {
   const queryClient = useQueryClient();
   return (
     <PressScale
       style={[styles.row, { backgroundColor: bg }]}
+      // The swipe's two directions, as custom actions. They live on this
+      // element and not on `SwipeToLogRow`'s child wrapper because a screen
+      // reader only exposes the actions of the element it has *focused*, and
+      // this `PressScale` is the row's focusable node. Logging is the one that
+      // matters: unlike undo (the ✓) it has no tap equivalent here at all.
+      accessibilityActions={
+        logged
+          ? [
+              { name: 'log', label: logLabel(item) },
+              { name: 'undo', label: 'Undo' },
+            ]
+          : [{ name: 'log', label: logLabel(item) }]
+      }
+      onAccessibilityAction={({ nativeEvent }) => {
+        if (nativeEvent.actionName === 'log') onLog(item);
+        else if (nativeEvent.actionName === 'undo') onUndoTap(item);
+      }}
       // Warm the detail cache while the finger is still down.
       onPressIn={() =>
         queryClient.prefetchQuery(titleQueryOptions(item.tmdb_id, item.media_type))
@@ -179,7 +207,7 @@ const SearchRow = memo(function SearchRow({
   return (
     <SwipeToLogRow
       onLog={() => onLog(item)}
-      logLabel={item.media_type === 'tv' ? 'Log whole series' : 'Log watch'}
+      logLabel={logLabel(item)}
       longLog={item.media_type === 'tv'}
       onUndo={logged ? () => onUndo(item) : undefined}>
       <ResultRow
@@ -189,6 +217,7 @@ const SearchRow = memo(function SearchRow({
         logged={logged}
         pending={pending}
         onUndoTap={onUndo}
+        onLog={onLog}
       />
     </SwipeToLogRow>
   );
@@ -312,8 +341,6 @@ export default function SearchScreen() {
   const loggedRef = useRef(logged);
   // eslint-disable-next-line react-hooks/refs -- a mailbox, not render state
   loggedRef.current = logged;
-
-  const itemKey = (r: SearchResult) => `${r.media_type}-${r.tmdb_id}`;
 
   const invalidateWatchData = useCallback(
     (titleId?: string) => {

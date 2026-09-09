@@ -8,6 +8,18 @@ import { useTheme } from '@/hooks/use-theme';
 import { hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { normalizeRange, type Range } from '@/lib/library-filter';
 
+/**
+ * A thumb is `adjustable`, but on Android `ReactAccessibilityDelegate`
+ * dispatches only the actions a view actually declares — so without this list
+ * TalkBack's volume-style swipe reaches `onAccessibilityAction` on iOS and does
+ * nothing at all on Android. Frozen at module scope so it stays referentially
+ * stable across renders.
+ */
+const ADJUST_ACTIONS = [
+  { name: 'increment' as const },
+  { name: 'decrement' as const },
+];
+
 const THUMB = 24;
 const TRACK_H = 4;
 
@@ -250,6 +262,10 @@ export function RangeSlider({
                 accessibilityRole="adjustable"
                 accessibilityLabel={`${label}, lowest`}
                 accessibilityValue={{ min: domain[0], max: hi, now: lo }}
+                // Declared explicitly: Android's delegate only dispatches
+                // actions that are in this list, so `adjustable` alone leaves
+                // TalkBack's swipe-up/down inert. iOS works without them.
+                accessibilityActions={ADJUST_ACTIONS}
                 onAccessibilityAction={({ nativeEvent }) =>
                   step('lo', nativeEvent.actionName === 'increment' ? 1 : -1)
                 }
@@ -263,6 +279,7 @@ export function RangeSlider({
                 accessibilityRole="adjustable"
                 accessibilityLabel={`${label}, highest`}
                 accessibilityValue={{ min: lo, max: domain[1], now: hi }}
+                accessibilityActions={ADJUST_ACTIONS}
                 onAccessibilityAction={({ nativeEvent }) =>
                   step('hi', nativeEvent.actionName === 'increment' ? 1 : -1)
                 }

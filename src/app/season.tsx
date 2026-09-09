@@ -177,7 +177,25 @@ export default function SeasonScreen() {
                     accessibilityLabel={
                       n === 0 ? 'Log this episode' : `Watched ${n} times, log again`
                     }
-                    accessibilityState={{ selected: n > 0 }}>
+                    accessibilityState={{ selected: n > 0 }}
+                    // The swipe's two directions, on the row's focusable
+                    // element (a screen reader only exposes the focused
+                    // element's actions, so `SwipeToLogRow` can't carry them).
+                    // Both already have tap buttons here — the ✓ and the − —
+                    // but keeping the same action vocabulary everywhere means
+                    // a swipe row behaves the same way on every screen.
+                    accessibilityActions={
+                      n > 0
+                        ? [
+                            { name: 'log', label: 'Log episode' },
+                            { name: 'undo', label: 'Undo' },
+                          ]
+                        : [{ name: 'log', label: 'Log episode' }]
+                    }
+                    onAccessibilityAction={({ nativeEvent }) => {
+                      if (nativeEvent.actionName === 'log') addWatch(item);
+                      else if (nativeEvent.actionName === 'undo') removeWatch(item);
+                    }}>
                     <ThemedText style={n > 0 ? styles.badgeOn : styles.badgeOff}>
                       {n === 0 ? '' : n === 1 ? '✓' : `×${n}`}
                     </ThemedText>

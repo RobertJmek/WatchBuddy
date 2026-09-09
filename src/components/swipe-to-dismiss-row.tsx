@@ -31,6 +31,12 @@ import { AccentText, Danger, Spacing } from '@/constants/theme';
  *   which it is everywhere except inside an RN `Modal`.
  * - **No haptics in here.** The caller owns them, so wiring the same action to a
  *   button later can't double-buzz.
+ *
+ * The caller also owns the accessible path, for the reason spelled out in
+ * `swipe-to-log-row.tsx`: custom actions are only exposed for the *focused*
+ * element, so they belong on the row's own `Pressable`, not on a wrapper here.
+ * Dismissal has no tap equivalent anywhere in the app, so for this row that
+ * action is the only way a screen reader can reach the feature at all.
  */
 export function SwipeToDismissRow({
   children,
@@ -61,15 +67,7 @@ export function SwipeToDismissRow({
           <ThemedText style={styles.actionText}>Dismiss</ThemedText>
         </View>
       )}>
-      {/* Dismissal has no tap equivalent anywhere, so the gesture must also be
-          reachable as an action or it doesn't exist for a screen reader. */}
-      <View
-        accessibilityActions={[{ name: 'dismiss', label: 'Dismiss' }]}
-        onAccessibilityAction={({ nativeEvent }) => {
-          if (nativeEvent.actionName === 'dismiss') onDismiss();
-        }}>
-        {children}
-      </View>
+      {children}
     </Swipeable>
   );
 }

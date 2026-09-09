@@ -27,6 +27,17 @@ type Props = {
  * action once and snaps back, with a colored icon+label revealed underneath so
  * the gesture is self-explanatory.
  *
+ * **Accessibility is the caller's job, and it isn't optional.** A screen reader
+ * cannot perform a pan, so the same actions have to be reachable another way —
+ * but they must sit on the row's own **focusable** element (its `Pressable` /
+ * `PressScale`), because VoiceOver and TalkBack only expose the custom actions
+ * of the element that has focus. Putting them on a wrapper here looks right and
+ * is dead: the wrapper isn't accessible, so it never receives focus. Making the
+ * wrapper `accessible` instead would collapse the whole row into one node and
+ * swallow the ✓ button and the avatar. So each call site spreads
+ * `accessibilityActions` + `onAccessibilityAction` onto its own row — see
+ * `ResultRow` in `explore.tsx` for the worked example.
+ *
  * Uses `Swipeable` from the package's *main* entry (the same module react-navigation
  * already loads) rather than the `react-native-gesture-handler/ReanimatedSwipeable`
  * subpath — mixing the subpath with the main entry pulls a second copy of the
@@ -81,20 +92,7 @@ export function SwipeToLogRow({
             )
           : undefined
       }>
-      {/* A swipe is unavailable to a screen reader, so both directions are
-          also offered as custom actions. They go on a wrapper rather than on
-          `Swipeable` itself, which doesn't type accessibility props. */}
-      <View
-        accessibilityActions={[
-          { name: 'log', label: logLabel },
-          ...(onUndo ? [{ name: 'undo', label: 'Undo' }] : []),
-        ]}
-        onAccessibilityAction={({ nativeEvent }) => {
-          if (nativeEvent.actionName === 'log') onLog();
-          else if (nativeEvent.actionName === 'undo') onUndo?.();
-        }}>
-        {children}
-      </View>
+      {children}
     </Swipeable>
   );
 }

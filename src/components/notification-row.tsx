@@ -33,10 +33,21 @@ function copyFor(n: NotificationItem) {
  * root route that covers the tab bar, consistent with the Feed's other review
  * taps) -- except a follow, which has no review and goes to the profile too.
  */
+const DISMISS_ACTIONS = [{ name: 'dismiss', label: 'Dismiss' }];
+
 export const NotificationRow = memo(function NotificationRow({
   item,
+  onDismiss,
 }: {
   item: NotificationItem;
+  /**
+   * The swipe-to-dismiss gesture, as a custom action. It has to live on this
+   * row's own focusable element — a screen reader exposes the actions of the
+   * element it has focused, so the wrapper inside `SwipeToDismissRow` would
+   * never be reached. Dismissal has no tap equivalent anywhere in the app, so
+   * without this the feature does not exist for a screen reader at all.
+   */
+  onDismiss?: () => void;
 }) {
   const c = useTheme();
   const router = useRouter();
@@ -56,7 +67,11 @@ export const NotificationRow = memo(function NotificationRow({
               params: { ratingId: item.ratingId },
             })
           : openActor()
-      }>
+      }
+      accessibilityActions={onDismiss ? DISMISS_ACTIONS : undefined}
+      onAccessibilityAction={({ nativeEvent }) => {
+        if (nativeEvent.actionName === 'dismiss') onDismiss?.();
+      }}>
       <Pressable
         hitSlop={6}
         onPress={openActor}
