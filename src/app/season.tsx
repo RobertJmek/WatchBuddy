@@ -12,7 +12,7 @@ import { RowSkeleton } from '@/components/skeleton';
 import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Danger, NeutralBorder, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
@@ -234,10 +234,10 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: '#8888',
+    borderColor: NeutralBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   minusText: { fontSize: 18, opacity: 0.7 },
-  error: { color: '#e44', margin: Spacing.three },
+  error: { color: Danger, margin: Spacing.three },
 });

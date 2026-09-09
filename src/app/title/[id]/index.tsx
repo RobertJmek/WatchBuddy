@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { TvWatchBar } from '@/components/tv-watch-bar';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Danger, Glow, Spacing, Type } from '@/constants/theme';
+import { Accent, Danger, Glow, Hero, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import { imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
@@ -60,7 +60,7 @@ export default function TitleDetailScreen() {
           headerShown: true,
           headerTransparent: true,
           headerTitle: '',
-          headerTintColor: '#fff',
+          headerTintColor: Hero.headerTint,
           headerRight: title
             ? () => <FavoriteButton titleId={title.id} />
             : undefined,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   backdropWrap: {
     height: 320,
     justifyContent: 'flex-end',
-    backgroundColor: '#000',
+    backgroundColor: Hero.letterbox,
   },
   // The film-frame cue: a true-black letterbox bar across the top of the still.
   letterboxTop: {
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 22,
-    backgroundColor: '#000',
+    backgroundColor: Hero.letterbox,
   },
   headerRow: {
     flexDirection: 'row',
@@ -301,9 +301,9 @@ const styles = StyleSheet.create({
     width: POSTER_W,
     height: POSTER_W * 1.5,
     borderRadius: 4,
-    backgroundColor: '#0003',
+    backgroundColor: Hero.scrim,
     borderWidth: 1,
-    borderColor: 'rgba(245,241,232,0.15)',
+    borderColor: Hero.hairline,
   },
   headerText: { flex: 1, gap: Spacing.one, paddingBottom: Spacing.one },
   eyebrow: {
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontFamily: Type.display,
-    color: '#F5F1E8',
+    color: Hero.text,
     fontSize: 30,
     lineHeight: 40,
   },
@@ -324,19 +324,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    color: 'rgba(245,241,232,0.7)',
+    color: Hero.textMuted,
   },
   pills: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.one },
   pill: {
     borderWidth: 1,
-    borderColor: 'rgba(245,241,232,0.28)',
+    borderColor: Hero.border,
     paddingHorizontal: Spacing.two,
     paddingVertical: 3,
     borderRadius: 4,
   },
   pillText: {
     fontFamily: Type.semibold,
-    color: '#F5F1E8',
+    color: Hero.text,
     fontSize: 11,
     letterSpacing: 0.5,
   },

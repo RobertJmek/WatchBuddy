@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { openTitle } from '@/lib/navigation';
 import {
   getTrendingPage,
   imageUrl,
@@ -87,13 +88,10 @@ export default function TrendingSectionScreen() {
       <PressScale
         style={{ width: cardW }}
         onPress={() =>
-          router.push({
-            pathname: '/title/[id]',
-            params: {
-              id: String(item.tmdb_id),
-              type: item.media_type,
-              name: item.title,
-            },
+          openTitle(router, {
+            tmdbId: item.tmdb_id,
+            mediaType: item.media_type,
+            name: item.title,
           })
         }>
         <Image

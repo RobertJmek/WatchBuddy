@@ -10,14 +10,16 @@ import {
   View,
 } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { FollowButton } from '@/components/follow-button';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { RowSkeleton, Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { openTitle } from '@/lib/navigation';
 import { getLibraryFor, type LibraryEntry } from '@/lib/library';
 import { getProfileById } from '@/lib/profile';
 import { getFollowCounts, getFollowState } from '@/lib/social';
@@ -128,14 +130,11 @@ export default function UserProfileScreen() {
     setRefreshing(false);
   };
 
-  function openTitle(item: PosterItem) {
-    router.push({
-      pathname: '/title/[id]',
-      params: {
-        id: String(item.tmdb_id),
-        type: item.media_type,
-        name: item.title,
-      },
+  function openPoster(item: PosterItem) {
+    openTitle(router, {
+      tmdbId: item.tmdb_id,
+      mediaType: item.media_type,
+      name: item.title,
     });
   }
 
@@ -143,23 +142,11 @@ export default function UserProfileScreen() {
   const name =
     profile?.display_name?.trim() ||
     (profile?.username ? `@${profile.username}` : 'User');
-  const initial = (name.replace('@', '') || '?').charAt(0).toUpperCase();
   const stats = statsQ.data;
 
   const header = (
     <View style={styles.header}>
-      {profile?.avatar_url ? (
-        <Image
-          style={styles.avatar}
-          source={{ uri: profile.avatar_url }}
-          contentFit="cover"
-          transition={150}
-        />
-      ) : (
-        <View style={[styles.avatar, styles.avatarFallback]}>
-          <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-        </View>
-      )}
+      <Avatar uri={profile?.avatar_url} name={name} size={88} />
 
       <ThemedText type="title">{name}</ThemedText>
       {profile?.username ? (
@@ -260,13 +247,13 @@ export default function UserProfileScreen() {
 
       <View style={styles.shelves}>
         {watchingShelf.length > 0 && (
-          <PosterShelf title="Watching now" items={watchingShelf} onPressItem={openTitle} />
+          <PosterShelf title="Watching now" items={watchingShelf} onPressItem={openPoster} />
         )}
         {favoritesShelf.length > 0 && (
-          <PosterShelf title="Favorites" items={favoritesShelf} onPressItem={openTitle} />
+          <PosterShelf title="Favorites" items={favoritesShelf} onPressItem={openPoster} />
         )}
         {completedShelf.length > 0 && (
-          <PosterShelf title="Recently completed" items={completedShelf} onPressItem={openTitle} />
+          <PosterShelf title="Recently completed" items={completedShelf} onPressItem={openPoster} />
         )}
       </View>
 
@@ -310,13 +297,10 @@ export default function UserProfileScreen() {
             <Pressable
               style={[styles.row, { backgroundColor: c.backgroundElement }]}
               onPress={() =>
-                router.push({
-                  pathname: '/title/[id]',
-                  params: {
-                    id: String(item.tmdbId),
-                    type: item.mediaType,
-                    name: item.titleName,
-                  },
+                openTitle(router, {
+                  tmdbId: item.tmdbId,
+                  mediaType: item.mediaType,
+                  name: item.titleName,
                 })
               }>
               <Image
@@ -350,9 +334,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: Spacing.three, gap: Spacing.two },
   header: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.three },
-  avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: PlaceholderBg },
-  avatarFallback: { backgroundColor: Accent, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: AccentText, fontSize: 36, lineHeight: 44, fontWeight: '700' },
   bio: { textAlign: 'center', lineHeight: 21 },
   counts: {
     flexDirection: 'row',

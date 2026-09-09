@@ -24,6 +24,7 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { getGenres } from '@/lib/genres';
 import { getLibrary, LIBRARY_STATUSES, type MyLibraryEntry } from '@/lib/library';
+import { openTitle } from '@/lib/navigation';
 import {
   applyFilter,
   EMPTY_FILTER,
@@ -130,15 +131,12 @@ export default function LibraryScreen() {
     return applyFilter(searched, filter);
   }, [entries, term, filter]);
 
-  const openTitle = useCallback(
+  const openPoster = useCallback(
     (item: PosterItem) => {
-      router.push({
-        pathname: '/title/[id]',
-        params: {
-          id: String(item.tmdb_id),
-          type: item.media_type,
-          name: item.title,
-        },
+      openTitle(router, {
+        tmdbId: item.tmdb_id,
+        mediaType: item.media_type,
+        name: item.title,
       });
     },
     [router],
@@ -322,7 +320,7 @@ export default function LibraryScreen() {
                   key={s.key}
                   title={s.label}
                   items={s.items}
-                  onPressItem={openTitle}
+                  onPressItem={openPoster}
                   onPressHeader={s.open}
                 />
               ))

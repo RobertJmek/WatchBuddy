@@ -33,6 +33,7 @@ import {
   isActive,
   yearBounds,
 } from '@/lib/library-filter';
+import { openTitle } from '@/lib/navigation';
 import { imageUrl } from '@/lib/tmdb';
 
 const COLS = 3;
@@ -101,13 +102,10 @@ export default function LibrarySectionScreen() {
       <PressScale
         style={{ width: cardW }}
         onPress={() =>
-          router.push({
-            pathname: '/title/[id]',
-            params: {
-              id: String(item.title!.tmdb_id),
-              type: item.title!.media_type,
-              name: item.title!.title,
-            },
+          openTitle(router, {
+            tmdbId: item.title!.tmdb_id,
+            mediaType: item.title!.media_type,
+            name: item.title!.title,
           })
         }>
         <Image

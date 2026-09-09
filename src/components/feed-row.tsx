@@ -1,12 +1,13 @@
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { ReviewRow } from '@/components/review-row';
 import { ThemedText } from '@/components/themed-text';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { FeedActor, FeedItem } from '@/lib/feed';
+import { openTitle } from '@/lib/navigation';
 
 function actorName(a: FeedActor) {
   return a.display_name?.trim() || (a.username ? `@${a.username}` : 'Someone');
@@ -20,26 +21,6 @@ export function formatEventTime(iso: string) {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function Avatar({ actor, size = 36 }: { actor: FeedActor; size?: number }) {
-  const dim = { width: size, height: size, borderRadius: size / 2 };
-  if (actor.avatar_url) {
-    return (
-      <Image
-        style={[styles.avatar, dim]}
-        source={{ uri: actor.avatar_url }}
-        contentFit="cover"
-        transition={150}
-      />
-    );
-  }
-  const initial = actorName(actor).replace('@', '').charAt(0).toUpperCase() || '?';
-  return (
-    <View style={[styles.avatar, styles.avatarFallback, dim]}>
-      <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-    </View>
-  );
 }
 
 /**
@@ -56,11 +37,6 @@ export function FeedRow({ item }: { item: FeedItem }) {
   const router = useRouter();
   const c = useTheme();
 
-  const openTitle = (t: { tmdbId: number; mediaType: 'movie' | 'tv'; name: string }) =>
-    router.push({
-      pathname: '/title/[id]',
-      params: { id: String(t.tmdbId), type: t.mediaType, name: t.name },
-    });
   const openUser = (id: string) =>
     router.push({ pathname: '/user/[id]', params: { id } });
   const openThread = (ratingId: string) =>
@@ -74,7 +50,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       <ReviewRow
         review={item.review}
         titleName={item.title?.name}
-        onTitlePress={item.title ? () => openTitle(item.title!) : undefined}
+        onTitlePress={item.title ? () => openTitle(router, item.title!) : undefined}
       />
     );
   }
@@ -95,7 +71,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
 
   switch (item.type) {
     case 'episode_watch':
-      onPress = () => openTitle(item.title);
+      onPress = () => openTitle(router, item.title);
       body = (
         <ThemedText type="small">
           {person(item.actor)} watched {item.count}{' '}
@@ -104,7 +80,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       );
       break;
     case 'movie_watch':
-      onPress = () => openTitle(item.title);
+      onPress = () => openTitle(router, item.title);
       body = (
         <ThemedText type="small">
           {person(item.actor)} watched {strong(item.title.name)}
@@ -112,7 +88,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       );
       break;
     case 'rating':
-      onPress = () => openTitle(item.title);
+      onPress = () => openTitle(router, item.title);
       body = (
         <ThemedText type="small">
           {person(item.actor)} rated {strong(item.title.name)}{' '}
@@ -153,7 +129,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       style={[styles.row, { backgroundColor: c.backgroundElement }]}
       onPress={onPress}>
       <Pressable hitSlop={6} onPress={() => openUser(item.actor.id)}>
-        <Avatar actor={item.actor} />
+        <Avatar uri={item.actor.avatar_url} name={actorName(item.actor)} />
       </Pressable>
       <View style={styles.body}>
         {body}
@@ -174,7 +150,4 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   body: { flex: 1, gap: Spacing.half },
-  avatar: { backgroundColor: PlaceholderBg },
-  avatarFallback: { backgroundColor: Accent, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: AccentText, fontSize: 15, lineHeight: 19, fontWeight: '700' },
 });

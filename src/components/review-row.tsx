@@ -1,12 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { likeReview, unlikeReview, type ReviewItem } from '@/lib/ratings';
@@ -74,7 +74,6 @@ export function ReviewRow({
   const name =
     review.display_name?.trim() ||
     (review.username ? `@${review.username}` : 'User');
-  const initial = (name.replace('@', '') || '?').charAt(0).toUpperCase();
 
   return (
     <Pressable
@@ -83,18 +82,7 @@ export function ReviewRow({
         router.push({ pathname: '/user/[id]', params: { id: review.userId } })
       }>
       <View style={styles.top}>
-        {review.avatar_url ? (
-          <Image
-            style={styles.avatar}
-            source={{ uri: review.avatar_url }}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : (
-          <View style={[styles.avatar, styles.avatarFallback]}>
-            <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-          </View>
-        )}
+        <Avatar uri={review.avatar_url} name={name} />
         <View style={styles.who}>
           <View style={styles.nameLine}>
             <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
@@ -190,13 +178,6 @@ export function ReviewRow({
 const styles = StyleSheet.create({
   card: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.two },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 15, lineHeight: 19, fontWeight: '700' },
   who: { flex: 1 },
   nameLine: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.one },
   name: { flexShrink: 1 },
