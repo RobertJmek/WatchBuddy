@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -34,7 +33,7 @@ const COMPOSER_ACTIONS_HEIGHT = 72;
 export default function TitleDetailScreen() {
   const router = useRouter();
   const c = useTheme();
-  const { id, type, name } = useLocalSearchParams<{
+  const { id, type } = useLocalSearchParams<{
     id: string;
     type: MediaType;
     name?: string;

@@ -241,6 +241,9 @@ export function ReviewThread({
   // server truth whenever the thread refetches — mirrors ReviewRow.
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(0);
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+     -- `liked`/`likes` are optimistic: they move on tap and are re-seeded from
+     the server here. */
   useEffect(() => {
     if (review) {
       setLiked(review.likedByMe);
@@ -252,7 +255,10 @@ export function ReviewThread({
       setLikes(0);
     }
     // ratingId keyed so a new thread re-syncs even if its counts coincide.
+    // Depending on `review` itself would re-run on every refetch that changes
+    // nothing here.
   }, [ratingId, review?.likedByMe, review?.likeCount]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   function openLikers() {
     if (likes === 0) return;

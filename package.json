@@ -52,6 +52,8 @@
     "@resvg/resvg-js": "^2.6.2",
     "@types/papaparse": "^5.5.2",
     "@types/react": "~19.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~56.0.4",
     "patch-package": "^8.0.1",
     "postinstall-postinstall": "^2.1.0",
     "typescript": "~6.0.3"
@@ -63,6 +65,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "lint:ci": "expo lint --max-warnings 0",
+    "typecheck": "tsc --noEmit",
     "postinstall": "patch-package"
   },
   "private": true

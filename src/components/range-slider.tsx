@@ -58,16 +58,22 @@ export function RangeSlider({
   formatEmpty: string;
 }) {
   const c = useTheme();
-  const shown = value ?? domain;
-  const [lo, setLo] = useState(shown[0]);
-  const [hi, setHi] = useState(shown[1]);
+  const [shownLo, shownHi] = value ?? domain;
+  const [lo, setLo] = useState(shownLo);
+  const [hi, setHi] = useState(shownHi);
   const [rowW, setRowW] = useState(0);
 
   // Re-sync when the range changes from outside (Clear, or a removed chip).
+  // The two ends are read out of the tuple first so the dependencies are the
+  // numbers themselves, not a fresh array on every render.
+  /* eslint-disable react-hooks/set-state-in-effect -- mirroring an
+     externally-owned range into the thumbs' own state is the point of this
+     effect: the thumbs must hold state locally to stay smooth mid-drag. */
   useEffect(() => {
-    setLo(shown[0]);
-    setHi(shown[1]);
-  }, [shown[0], shown[1]]);
+    setLo(shownLo);
+    setHi(shownHi);
+  }, [shownLo, shownHi]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const span = domain[1] - domain[0];
   // A library whose titles all share one year has nothing to slide.
@@ -75,6 +81,9 @@ export function RangeSlider({
 
   // Live values the gesture reads and writes without waiting for a re-render.
   const live = useRef({ lo, hi });
+  /* eslint-disable-next-line react-hooks/refs -- deliberate: the ref is a
+     mailbox for the gesture, not render state, and it has to hold this
+     render's values by the time the pan handlers below run. */
   live.current = { lo, hi };
   const grabbed = useRef<'lo' | 'hi'>('lo');
 
@@ -125,6 +134,9 @@ export function RangeSlider({
     hapticTick();
   }
 
+  /* eslint-disable react-hooks/refs -- the builder is constructed during
+     render, but its callbacks only ever run from the gesture, which is
+     exactly when reading `live.current` is correct. */
   const pan = Gesture.Pan()
     .enabled(!inert)
     .activeOffsetX([-6, 6])
@@ -164,6 +176,7 @@ export function RangeSlider({
       }
       onChange(next);
     });
+  /* eslint-enable react-hooks/refs */
 
   // Always reads the live thumbs, so the number tracks the finger instead of
   // waiting for the release. Full span reads as "off" even mid-drag, which is

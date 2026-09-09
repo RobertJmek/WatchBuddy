@@ -79,7 +79,7 @@ export default function AuthCallback() {
     return () => {
       active = false;
     };
-  }, [code, session]);
+  }, [code, session, router]);
 
   return (
     <ThemedView style={styles.container}>

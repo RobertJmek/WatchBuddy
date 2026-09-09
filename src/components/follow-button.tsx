@@ -28,6 +28,9 @@ export function FollowButton({
   const [saving, setSaving] = useState(false);
 
   // Keep in sync if the row is recycled / refetched with a new state.
+  /* eslint-disable-next-line react-hooks/set-state-in-effect -- `following` is
+     optimistic local state that moves before the server answers, so it cannot
+     be derived; re-seeding it on a new prop is how a recycled row recovers. */
   useEffect(() => setFollowing(initialFollowing), [initialFollowing]);
 
   async function toggle() {

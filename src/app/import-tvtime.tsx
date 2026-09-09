@@ -107,6 +107,9 @@ function MatchCard({
   const c = useTheme();
   const [results, setResults] = useState<SearchResult[] | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- clearing the previous
+     item's matches before the new search resolves; the alternative is showing
+     the wrong title's results for as long as the request takes. */
   useEffect(() => {
     let alive = true;
     setResults(null);
@@ -122,6 +125,7 @@ function MatchCard({
       alive = false;
     };
   }, [item]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <View style={[styles.matchCard, { borderColor: c.border }]}>

@@ -7,7 +7,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { ThemedText } from '@/components/themed-text';
-import { Accent, PlaceholderBg, Spacing } from '@/constants/theme';
+import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { imageUrl, titleQueryOptions } from '@/lib/tmdb';
 

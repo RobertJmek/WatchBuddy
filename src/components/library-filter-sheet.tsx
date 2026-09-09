@@ -85,11 +85,15 @@ export function LibraryFilterSheet({
   // Read through a ref so the effect below can see the current genres without
   // depending on their identity.
   const genresRef = useRef(genres);
+  // eslint-disable-next-line react-hooks/refs -- a mailbox, not render state
   genresRef.current = genres;
 
   // Every opening starts from what's actually applied — including the fold,
   // which opens flat unless a genre you've already picked sits below it. A
   // selected chip you can't see is a filter you can't undo from here.
+  /* eslint-disable react-hooks/set-state-in-effect -- the draft is edited in
+     the sheet and only committed on Apply, so it has to be state; opening is
+     the moment it is re-seeded from what's applied. */
   useEffect(() => {
     if (!visible) return;
     setDraft(filter);
@@ -101,6 +105,7 @@ export function LibraryFilterSheet({
     // `genres` is deliberately not a dependency: it's a fresh array on every
     // parent render, and re-running this would collapse the list under a finger.
   }, [visible, filter]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const shown = expanded ? genres : genres.slice(0, COLLAPSED_GENRES);
 
