@@ -51,16 +51,26 @@ announces as nothing.
 | `swipe-to-log-row` | swipe right / left | *Log* / *Undo* |
 | `swipe-to-dismiss-row` | swipe right | *Dismiss* |
 
-The actions sit on a wrapper `<View>` **inside** the `Swipeable`, not on
-`Swipeable` itself. RNGH spreads unknown props onto its gesture handler at
-runtime, so passing them straight through appears to work — but `SwipeableProps`
-does not type accessibility props, and building an accessibility guarantee on an
-untyped runtime spread is the kind of thing that breaks silently on a version
-bump. The wrapper is one unstyled `View` in a full-width row, which is
-layout-neutral in a column flex context, and it type-checks.
+**The actions belong on the row's own focusable element — not on the swipe
+component.** VoiceOver and TalkBack expose the custom actions of the element
+that has **focus**, and that is the row itself (a `Pressable` or `PressScale`
+with a button role). A wrapper inside `Swipeable` is not `accessible`, so it is
+never a focus target and its actions are never reachable: the first attempt at
+this shipped exactly that and the action menu would have been empty. Making the
+wrapper `accessible` is the wrong repair — it collapses the whole row into one
+node and swallows the ✓ button and the avatar with it.
 
-Logging already had a tap equivalent at both call sites (the ✓ in Search, the
-`+`/`−` in a season). Dismissing did not, which is why that one is not optional.
+So `SwipeToLogRow` / `SwipeToDismissRow` carry no accessibility props at all;
+each call site spreads `accessibilityActions` + `onAccessibilityAction` onto its
+own row, and both components document that contract in their doc comment. The
+label a swipe reveals and the label its action offers come from one helper
+(`logLabel()` in `explore.tsx`) so they cannot drift apart.
+
+Which of these are load-bearing differs by screen, and it is worth being precise:
+in a season **both** directions already have buttons (the ✓ and the `−`), so the
+actions there are consistency. In Search, undo has the ✓ but **logging has no tap
+equivalent at all**. And dismissing a notification has none anywhere. Those last
+two are the only paths that exist.
 
 ### 4. A pan-only slider is an `adjustable`
 
@@ -70,14 +80,27 @@ and an increment/decrement action that steps by one. Unlike a drag it **commits
 immediately** — there is no release to commit on — which also means the haptic
 tick fires per step, matching the drag.
 
+The role is not enough on its own: **Android's `ReactAccessibilityDelegate`
+dispatches only the actions a view actually declares**, so a thumb must list
+`increment`/`decrement` in `accessibilityActions` or TalkBack's volume-style
+swipe reaches nothing. iOS works without the declaration, which is precisely why
+this is easy to ship broken.
+
 ## Consequences
 
 - 188 accessibility props where there were none. Most are mechanical; the four
   conventions above are the part that has to survive future code.
-- **The wrapper `<View>` inside the two `Swipeable`s is the one layout risk in
-  this change**, and it is on a code path (`Swipeable`) that has already shipped
-  broken once, in v1.12.0. It must be device-tested on both platforms: rows
-  render normally, and the swipe still commits.
+- **The contract is easy to forget.** Because the swipe components deliberately
+  hold no accessibility props, a new call site that omits the actions loses the
+  accessible path with nothing failing — not `tsc`, not lint, not `expo export`.
+  The doc comment on each component is the only guard, which is why both say so
+  at length rather than in passing.
+- `NotificationRow` gains an `onDismiss` prop that duplicates what its
+  `SwipeToDismissRow` parent already receives. That redundancy is the price of
+  putting the action on the focusable node.
+- Both defects here were found in review, not by any tool, and neither would
+  have been visible without a screen reader running. **A device pass with
+  TalkBack and VoiceOver is the only real verification** of anything in this ADR.
 - The slider's `step()` is a second write path into the same state as the pan.
   It reads the live values through the same ref the gesture uses, so the two
   cannot disagree, but it is a second path.
