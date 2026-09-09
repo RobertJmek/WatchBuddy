@@ -67,15 +67,16 @@ function RootNavigator() {
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="title/[id]" />
         <Stack.Screen name="title/[id]/reviews" />
-        {/* Root twins of the Library-nested thread — reached from a title's
-            review list, they cover the tab bar. Notifications + the nested
-            /thread/[ratingId] live inside the Library stack instead. */}
+        {/* Reached from a title's review list and from a notification; they
+            cover the tab bar. */}
         <Stack.Screen name="review/[ratingId]" />
         <Stack.Screen name="review/[ratingId]/likes" />
         <Stack.Screen name="season" />
         <Stack.Screen name="diary" />
         <Stack.Screen name="stats" />
+        <Stack.Screen name="import-data" />
         <Stack.Screen name="import-tvtime" />
+        <Stack.Screen name="import-watchbuddy" />
         <Stack.Screen name="edit-profile" />
         <Stack.Screen name="about" />
         <Stack.Screen name="library-section" />

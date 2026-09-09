@@ -9,11 +9,7 @@ import { Spacing } from '@/constants/theme';
 import { UserRow } from '@/components/user-row';
 import { getReviewLikers } from '@/lib/ratings';
 
-/**
- * "Liked by" list for a review. Mounted by two routes (root
- * /review/[ratingId]/likes and Library-nested /thread/[ratingId]/likes) so it
- * inherits whichever navigator opened the thread — see ADR 0005.
- */
+/** "Liked by" list for a review. Mounted by /review/[ratingId]/likes. */
 export function ReviewLikes({ ratingId }: { ratingId: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ['reviewLikers', ratingId],

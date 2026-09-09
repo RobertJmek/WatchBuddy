@@ -29,6 +29,7 @@ import {
   rangeForPeriod,
   type DiaryPeriod,
 } from '@/lib/diary-period';
+import { openTitle } from '@/lib/navigation';
 import { imageUrl } from '@/lib/tmdb';
 import {
   getDiary,
@@ -361,13 +362,10 @@ export default function DiaryScreen() {
             <PressScale
               style={[styles.row, { backgroundColor: c.backgroundElement }]}
               onPress={() =>
-                router.push({
-                  pathname: '/title/[id]',
-                  params: {
-                    id: String(item.tmdbId),
-                    type: item.mediaType,
-                    name: item.titleName,
-                  },
+                openTitle(router, {
+                  tmdbId: item.tmdbId,
+                  mediaType: item.mediaType,
+                  name: item.titleName,
                 })
               }>
               <Image

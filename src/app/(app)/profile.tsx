@@ -1,15 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { Button } from '@/components/button';
 import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getMyProfile } from '@/lib/profile';
@@ -46,7 +46,6 @@ export default function ProfileScreen() {
 
   const email = session?.user.email ?? '';
   const name = profile?.display_name?.trim() || email;
-  const initial = (name || '?').charAt(0).toUpperCase();
 
   return (
     <ThemedView style={styles.container}>
@@ -62,18 +61,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.identity}>
-          {profile?.avatar_url ? (
-            <Image
-              style={styles.avatar}
-              source={{ uri: profile.avatar_url }}
-              contentFit="cover"
-              transition={150}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-            </View>
-          )}
+          <Avatar uri={profile?.avatar_url} name={name} size={64} />
           <View style={styles.identityText}>
             <ThemedText type="subtitle" numberOfLines={1}>
               {name}
@@ -180,13 +168,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 26, lineHeight: 32, fontWeight: '700' },
   identityText: { flex: 1, gap: Spacing.half },
   bio: { lineHeight: 21 },
   counts: {

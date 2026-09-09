@@ -27,6 +27,7 @@ import { Accent, AccentText, Danger, PlaceholderBg, Spacing } from '@/constants/
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
+import { openTitle } from '@/lib/navigation';
 import {
   getLibraryStatus,
   removeFromLibrary,
@@ -109,13 +110,10 @@ function ResultRow({
         queryClient.prefetchQuery(titleQueryOptions(item.tmdb_id, item.media_type))
       }
       onPress={() =>
-        router.push({
-          pathname: '/title/[id]',
-          params: {
-            id: String(item.tmdb_id),
-            type: item.media_type,
-            name: item.title,
-          },
+        openTitle(router, {
+          tmdbId: item.tmdb_id,
+          mediaType: item.media_type,
+          name: item.title,
         })
       }>
       <Image
@@ -216,15 +214,12 @@ export default function SearchScreen() {
   // PosterShelf is memoized, so every prop it takes has to be referentially
   // stable or the memo buys nothing — the shelves re-render (and re-render
   // every poster) on each keystroke in the search box otherwise.
-  const openTitle = useCallback(
+  const openPoster = useCallback(
     (item: PosterItem) => {
-      router.push({
-        pathname: '/title/[id]',
-        params: {
-          id: String(item.tmdb_id),
-          type: item.media_type,
-          name: item.title,
-        },
+      openTitle(router, {
+        tmdbId: item.tmdb_id,
+        mediaType: item.media_type,
+        name: item.title,
       });
     },
     [router],
@@ -527,14 +522,14 @@ export default function SearchScreen() {
               <PosterShelf
                 title="Hot Movies"
                 items={trendingMovies}
-                onPressItem={openTitle}
+                onPressItem={openPoster}
                 showCount={false}
                 onPressHeader={openTrendingMovies}
               />
               <PosterShelf
                 title="Hot TV"
                 items={trendingTv}
-                onPressItem={openTitle}
+                onPressItem={openPoster}
                 showCount={false}
                 onPressHeader={openTrendingTv}
               />

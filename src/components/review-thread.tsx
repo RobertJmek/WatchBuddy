@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
@@ -23,11 +22,12 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { likeReview, setRating, unlikeReview } from '@/lib/ratings';
@@ -45,33 +45,13 @@ function nameOf(r: { display_name: string | null; username: string | null }) {
 /** One row in the ⋯ menu — shared by reply rows and the review card. */
 type MenuAction = { label: string; destructive?: boolean; run: () => void };
 
-function Avatar({ uri, name }: { uri: string | null; name: string }) {
-  const initial = (name.replace('@', '') || '?').charAt(0).toUpperCase();
-  return uri ? (
-    <Image style={styles.avatar} source={{ uri }} contentFit="cover" transition={150} />
-  ) : (
-    <View style={[styles.avatar, styles.avatarFallback]}>
-      <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-    </View>
-  );
-}
-
 /**
- * A review plus its reply thread and like footer. Mounted by two routes:
- *   - `variant="root"`   — /review/[ratingId], a root screen that covers the
- *     tab bar (reached from a title's review list).
- *   - `variant="library"` — /thread/[ratingId], nested in the Library stack so
- *     the tab bar stays visible (reached from a notification). See ADR 0005.
- * The only behavioral difference is which "Liked by" route it pushes, so back
- * stays inside the same navigator.
+ * A review plus its reply thread and like footer. Mounted by /review/[ratingId],
+ * a root screen that covers the tab bar (reached from a title's review list).
+ * ADR 0005's Library-nested twin at /thread/[ratingId] is gone — notifications
+ * moved to the Feed tab, which was the only thing that ever reached it.
  */
-export function ReviewThread({
-  ratingId,
-  variant = 'root',
-}: {
-  ratingId: string;
-  variant?: 'root' | 'library';
-}) {
+export function ReviewThread({ ratingId }: { ratingId: string }) {
   const c = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -262,14 +242,7 @@ export function ReviewThread({
 
   function openLikers() {
     if (likes === 0) return;
-    // Push into the same navigator we're mounted in so Back returns here.
-    router.push({
-      pathname:
-        variant === 'library'
-          ? '/thread/[ratingId]/likes'
-          : '/review/[ratingId]/likes',
-      params: { ratingId },
-    });
+    router.push({ pathname: '/review/[ratingId]/likes', params: { ratingId } });
   }
 
   async function toggleLike() {
@@ -324,7 +297,7 @@ export function ReviewThread({
                         params: { id: review.userId },
                       })
                     }>
-                    <Avatar uri={review.avatar_url} name={nameOf(review)} />
+                    <Avatar uri={review.avatar_url} name={nameOf(review)} size={32} />
                     <View style={styles.who}>
                       <ThemedText type="smallBold" numberOfLines={1}>
                         {nameOf(review)}
@@ -433,7 +406,7 @@ export function ReviewThread({
             }
             renderItem={({ item }) => (
               <View style={[styles.reply, item.level === 1 && styles.replyNested]}>
-                <Avatar uri={item.avatar_url} name={nameOf(item)} />
+                <Avatar uri={item.avatar_url} name={nameOf(item)} size={32} />
                 <View style={styles.replyBody}>
                   <View style={styles.replyHeader}>
                     <ThemedText type="small" style={{ color: c.textSecondary }}>
@@ -616,13 +589,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   deleted: { fontStyle: 'italic' },
-  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 14, lineHeight: 18, fontWeight: '700' },
   replyingTo: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { ReviewLikes } from '@/components/review-likes';
 
-// Root "Liked by" screen — twin of /thread/[ratingId]/likes (see ADR 0005).
+// "Liked by" screen for a review.
 export default function ReviewLikesScreen() {
   const { ratingId } = useLocalSearchParams<{ ratingId: string }>();
   return <ReviewLikes ratingId={ratingId} />;

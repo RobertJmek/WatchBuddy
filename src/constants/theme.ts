@@ -45,6 +45,33 @@ export const Colors = {
 /** Ambient amber "projector glow" — theme-aware default lives in Colors.glow. */
 export const Glow = '#E8B23A';
 
+/**
+ * Neutral hairline that reads on either theme. For static `StyleSheet` values
+ * that can't reach the per-scheme `Colors.border`.
+ */
+export const NeutralBorder = '#8888';
+
+/**
+ * The title screen's poster hero sits on a photograph, so it doesn't follow the
+ * light/dark theme — it is always the theater: true-black letterbox bars and
+ * warm projector-light type, whichever scheme the rest of the app is in. These
+ * are that one surface's palette, kept together so it stays coherent.
+ */
+export const Hero = {
+  /** True-black letterbox bars and the backdrop behind a missing still. */
+  letterbox: '#000',
+  /** Translucent black under the poster while its image loads. */
+  scrim: '#0003',
+  text: Colors.dark.text,
+  textMuted: 'rgba(245,241,232,0.7)',
+  /** The poster's own edge. */
+  hairline: 'rgba(245,241,232,0.15)',
+  /** Outline of the metadata pills. */
+  border: 'rgba(245,241,232,0.28)',
+  /** Back chevron and header icons, over an arbitrary photograph. */
+  headerTint: '#fff',
+} as const;
+
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 /**
