@@ -12,10 +12,11 @@ import { RowSkeleton } from '@/components/skeleton';
 import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Danger, NeutralBorder, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
+import { keys } from '@/lib/keys';
 import {
   getEpisodeWatchCounts,
   logEpisodeWatch,
@@ -38,8 +39,8 @@ export default function SeasonScreen() {
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   function invalidateWatchData() {
-    queryClient.invalidateQueries({ queryKey: ['diary'] });
-    queryClient.invalidateQueries({ queryKey: ['stats'] });
+    queryClient.invalidateQueries({ queryKey: keys.diary() });
+    queryClient.invalidateQueries({ queryKey: keys.stats() });
   }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -149,7 +150,10 @@ export default function SeasonScreen() {
               <Pressable
                 style={[styles.seasonButton, seasonBusy && styles.busy]}
                 onPress={logWholeSeason}
-                disabled={seasonBusy}>
+                disabled={seasonBusy}
+                accessibilityRole="button"
+                accessibilityLabel="Log whole season"
+                accessibilityState={{ disabled: seasonBusy, busy: seasonBusy }}>
                 <ThemedText style={styles.seasonButtonText}>
                   ＋ Log whole season
                 </ThemedText>
@@ -169,7 +173,30 @@ export default function SeasonScreen() {
                 <View style={[styles.row, { backgroundColor: c.background }]}>
                   <Pressable
                     style={[styles.check, n > 0 && styles.checkOn]}
-                    onPress={() => addWatch(item)}>
+                    onPress={() => addWatch(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      n === 0 ? 'Log this episode' : `Watched ${n} times, log again`
+                    }
+                    accessibilityState={{ selected: n > 0 }}
+                    // The swipe's two directions, on the row's focusable
+                    // element (a screen reader only exposes the focused
+                    // element's actions, so `SwipeToLogRow` can't carry them).
+                    // Both already have tap buttons here — the ✓ and the − —
+                    // but keeping the same action vocabulary everywhere means
+                    // a swipe row behaves the same way on every screen.
+                    accessibilityActions={
+                      n > 0
+                        ? [
+                            { name: 'log', label: 'Log episode' },
+                            { name: 'undo', label: 'Undo' },
+                          ]
+                        : [{ name: 'log', label: 'Log episode' }]
+                    }
+                    onAccessibilityAction={({ nativeEvent }) => {
+                      if (nativeEvent.actionName === 'log') addWatch(item);
+                      else if (nativeEvent.actionName === 'undo') removeWatch(item);
+                    }}>
                     <ThemedText style={n > 0 ? styles.badgeOn : styles.badgeOff}>
                       {n === 0 ? '' : n === 1 ? '✓' : `×${n}`}
                     </ThemedText>
@@ -187,7 +214,9 @@ export default function SeasonScreen() {
                     <Pressable
                       style={styles.minus}
                       onPress={() => removeWatch(item)}
-                      hitSlop={8}>
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove one watch of this episode">
                       <ThemedText style={styles.minusText}>−</ThemedText>
                     </Pressable>
                   )}
@@ -234,10 +263,10 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: '#8888',
+    borderColor: NeutralBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   minusText: { fontSize: 18, opacity: 0.7 },
-  error: { color: '#e44', margin: Spacing.three },
+  error: { color: Danger, margin: Spacing.three },
 });

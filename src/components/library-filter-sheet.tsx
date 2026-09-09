@@ -45,7 +45,9 @@ function Chip({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.chip, { borderColor: c.border }, active && styles.chipActive]}>
+      style={[styles.chip, { borderColor: c.border }, active && styles.chipActive]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}>
       <ThemedText type="small" style={active ? styles.chipTextActive : undefined}>
         {label}
       </ThemedText>
@@ -130,7 +132,11 @@ export function LibraryFilterSheet({
           in _layout.tsx — without one in here the range sliders' pan gestures
           never fire on Android. */}
       <GestureHandlerRootView style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable
+          style={styles.backdrop}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close filters">
           <Pressable
             style={[styles.sheet, { backgroundColor: c.background }]}
             onPress={(e) => e.stopPropagation()}>
@@ -138,7 +144,11 @@ export function LibraryFilterSheet({
               <ThemedText type="subtitle">Filters</ThemedText>
               {/* Dismisses without applying — the same cancel as a backdrop tap,
                   just reachable without aiming outside the sheet. */}
-              <Pressable onPress={onClose} hitSlop={10}>
+              <Pressable
+                onPress={onClose}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Close filters">
                 <IconSymbol name="xmark" size={20} tintColor={c.textSecondary} />
               </Pressable>
             </View>
@@ -182,7 +192,9 @@ export function LibraryFilterSheet({
                     <Pressable
                       onPress={() => setExpanded(!expanded)}
                       hitSlop={8}
-                      style={styles.disclosure}>
+                      style={styles.disclosure}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded }}>
                       <ThemedText type="smallBold" style={{ color: c.tint }}>
                         {expanded ? 'Show less' : `Show all (${genres.length})`}
                       </ThemedText>
@@ -215,7 +227,9 @@ export function LibraryFilterSheet({
                 onPress={() => {
                   hapticToggle(false);
                   setDraft(EMPTY_FILTER);
-                }}>
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear all filters">
                 <ThemedText type="small" style={{ color: c.textSecondary }}>
                   Clear
                 </ThemedText>

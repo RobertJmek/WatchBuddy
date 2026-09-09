@@ -81,7 +81,11 @@ export default function AboutScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Tappable because the first thing anyone reporting a bug is asked for
             is which build they're on, and nobody wants to retype it. */}
-        <Pressable onPress={copyBuild}>
+        <Pressable
+          onPress={copyBuild}
+          accessibilityRole="button"
+          accessibilityLabel={`WatchBuddy ${VERSION}${BUILD ? `, build ${BUILD}` : ''}`}
+          accessibilityHint="Copies the build number">
           <ThemedView type="backgroundElement" style={styles.buildCard}>
             <ThemedText type="subtitle">WatchBuddy {VERSION}</ThemedText>
             <ThemedText type="small" style={{ color: c.textSecondary }}>
@@ -102,7 +106,10 @@ export default function AboutScreen() {
                 openBrowserAsync(href, {
                   presentationStyle: WebBrowserPresentationStyle.AUTOMATIC,
                 })
-              }>
+              }
+              accessibilityRole="link"
+              accessibilityLabel={text}
+              accessibilityHint={hint}>
               <View style={styles.linkText}>
                 <ThemedText type="subtitle">{text}</ThemedText>
                 <ThemedText type="small" style={{ color: c.textSecondary }}>

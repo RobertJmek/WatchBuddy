@@ -6,9 +6,18 @@
 > bell / `/notifications` screen — they moved into the top-level **Feed** tab
 > (ADR 0006), so the notification → thread flow this ADR optimised no longer
 > exists. A notification now taps through to the **root** `/review/[ratingId]`
-> (covering the tab bar, like every other feed tap). The Library-nested
-> `/thread/[ratingId]` route still exists but is no longer reached from a
-> notification. The rest of this ADR is kept for historical context.
+> (covering the tab bar, like every other feed tap). The rest of this ADR is
+> kept for historical context.
+>
+> **Deleted (2026-09-10):** the Library-nested `/thread/[ratingId]` route is
+> gone, along with the `variant: 'root' | 'library'` prop on
+> `review-thread.tsx` that only it passed. It had been unreachable since the
+> supersession above, and route and branch had to go together — deleting only
+> the route would have converted a dead route into unreachable code. The
+> **Library tab remains a nested Stack** (`(app)/(library)/_layout.tsx`); that
+> half of this ADR is still load-bearing, since Library's own pushed screens
+> still keep the tab bar. What is gone is the *dual* route, and with it the
+> "Consequences" note below about the thread having two URLs.
 
 ## Context
 

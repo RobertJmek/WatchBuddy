@@ -20,6 +20,7 @@ import { ThemedView } from '@/components/themed-view';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getGenres } from '@/lib/genres';
+import { keys } from '@/lib/keys';
 import {
   getLibrary,
   type LibraryStatus,
@@ -33,6 +34,7 @@ import {
   isActive,
   yearBounds,
 } from '@/lib/library-filter';
+import { openTitle } from '@/lib/navigation';
 import { imageUrl } from '@/lib/tmdb';
 
 const COLS = 3;
@@ -56,11 +58,11 @@ export default function LibrarySectionScreen() {
   const cardW = (width - PAD * 2 - GAP * (COLS - 1)) / COLS;
 
   const { data: entries = [], isLoading } = useQuery({
-    queryKey: ['library'],
+    queryKey: keys.library(),
     queryFn: getLibrary,
   });
   const { data: genres = [] } = useQuery({
-    queryKey: ['genres'],
+    queryKey: keys.genres(),
     queryFn: getGenres,
     staleTime: Infinity,
   });
@@ -101,15 +103,14 @@ export default function LibrarySectionScreen() {
       <PressScale
         style={{ width: cardW }}
         onPress={() =>
-          router.push({
-            pathname: '/title/[id]',
-            params: {
-              id: String(item.title!.tmdb_id),
-              type: item.title!.media_type,
-              name: item.title!.title,
-            },
+          openTitle(router, {
+            tmdbId: item.title!.tmdb_id,
+            mediaType: item.title!.media_type,
+            name: item.title!.title,
           })
-        }>
+        }
+        accessibilityRole="button"
+        accessibilityLabel={item.title!.title}>
         <Image
           style={{
             width: cardW,
@@ -135,7 +136,12 @@ export default function LibrarySectionScreen() {
           headerShown: true,
           title: label ?? 'Library',
           headerRight: () => (
-            <Pressable onPress={() => setFilterOpen(true)} hitSlop={8}>
+            <Pressable
+              onPress={() => setFilterOpen(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={filtered ? 'Filters, active' : 'Filters'}
+              accessibilityState={{ selected: filtered }}>
               <IconSymbol
                 name="line.3.horizontal.decrease"
                 size={22}
@@ -188,7 +194,8 @@ export default function LibrarySectionScreen() {
                 <Pressable
                   onPress={() => setFilter(EMPTY_FILTER)}
                   hitSlop={8}
-                  style={styles.clear}>
+                  style={styles.clear}
+                  accessibilityRole="button">
                   <ThemedText type="smallBold" style={{ color: c.tint }}>
                     Clear filter
                   </ThemedText>

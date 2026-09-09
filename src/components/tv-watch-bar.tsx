@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { fetchAllEpisodes, type SeasonRow } from '@/lib/tmdb';
+import { keys } from '@/lib/keys';
 import { logManyEpisodeWatches } from '@/lib/watches';
 
 const ACTIVE = Accent;
@@ -36,8 +37,8 @@ export function TvWatchBar({
       await logManyEpisodeWatches(
         episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
       );
-      queryClient.invalidateQueries({ queryKey: ['diary'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: keys.diary() });
+      queryClient.invalidateQueries({ queryKey: keys.stats() });
       setMessage(`Logged ${episodes.length} episodes`);
       // Fires on completion, not on tap: a whole series takes seconds to write,
       // so the buzz *is* the "it's done" signal.
@@ -55,7 +56,10 @@ export function TvWatchBar({
       <Pressable
         style={[styles.button, busy && styles.busy]}
         onPress={logSeries}
-        disabled={busy}>
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Log whole series"
+        accessibilityState={{ disabled: busy, busy }}>
         <ThemedText style={styles.buttonText}>＋ Log whole series</ThemedText>
       </Pressable>
       {busy && <ActivityIndicator />}

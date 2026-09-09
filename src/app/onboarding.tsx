@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -13,10 +12,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Danger, PlaceholderBg, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { markOnboardingSeen } from '@/lib/onboarding';
 import {
@@ -37,7 +38,7 @@ export default function OnboardingScreen() {
   const { session } = useAuth();
 
   const { data: profile } = useQuery({
-    queryKey: ['profile'],
+    queryKey: keys.profile(),
     queryFn: getMyProfile,
   });
 
@@ -62,7 +63,6 @@ export default function OnboardingScreen() {
   }, [profile]);
 
   const avatarUri = picked?.uri ?? profile?.avatar_url ?? null;
-  const initial = (displayName.trim() || '?').charAt(0).toUpperCase();
 
   async function finish() {
     // Best-effort: a failed local-storage write must not trap the user on this
@@ -117,7 +117,7 @@ export default function OnboardingScreen() {
         bio: profile?.bio ?? null,
         ...(avatar_url ? { avatar_url } : {}),
       });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: keys.profile() });
       await finish();
     } catch (e) {
       setError(
@@ -151,19 +151,14 @@ export default function OnboardingScreen() {
         </ThemedText>
 
         <View style={styles.avatarSection}>
-          {avatarUri ? (
-            <Image
-              style={styles.avatar}
-              source={{ uri: avatarUri }}
-              contentFit="cover"
-              transition={150}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-            </View>
-          )}
-          <Pressable onPress={pickAvatar} disabled={saving} hitSlop={8}>
+          <Avatar uri={avatarUri} name={displayName} size={96} />
+          <Pressable
+            onPress={pickAvatar}
+            disabled={saving}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Add a photo"
+            accessibilityState={{ disabled: saving }}>
             <ThemedText type="smallBold" style={{ color: Accent }}>
               Add a photo
             </ThemedText>
@@ -197,7 +192,9 @@ export default function OnboardingScreen() {
         <Pressable
           style={[styles.primaryBtn, saving && styles.busy]}
           onPress={handleContinue}
-          disabled={saving}>
+          disabled={saving}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: saving, busy: saving }}>
           <ThemedText style={styles.primaryText}>
             {saving ? 'Saving…' : 'Continue'}
           </ThemedText>
@@ -207,7 +204,9 @@ export default function OnboardingScreen() {
           onPress={finish}
           disabled={saving}
           hitSlop={8}
-          style={styles.skipRow}>
+          style={styles.skipRow}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: saving }}>
           <ThemedText type="small" style={{ color: c.textSecondary }}>
             Skip for now
           </ThemedText>
@@ -223,13 +222,6 @@ const styles = StyleSheet.create({
   heading: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.three, marginTop: Spacing.one },
   avatarSection: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.three },
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 38, lineHeight: 46, fontWeight: '700' },
   input: {
     fontFamily: Type.body,
     borderRadius: Spacing.three,

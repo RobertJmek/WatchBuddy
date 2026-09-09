@@ -1,16 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { Button } from '@/components/button';
 import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { getMyProfile } from '@/lib/profile';
 import { getFollowCounts } from '@/lib/social';
@@ -27,12 +28,12 @@ export default function ProfileScreen() {
   const myId = session?.user.id;
 
   const { data: profile, refetch } = useQuery({
-    queryKey: ['profile'],
+    queryKey: keys.profile(),
     queryFn: getMyProfile,
   });
 
   const { data: counts, refetch: refetchCounts } = useQuery({
-    queryKey: ['followCounts', myId],
+    queryKey: keys.followCounts(myId),
     queryFn: () => getFollowCounts(myId!),
     enabled: !!myId,
   });
@@ -46,7 +47,6 @@ export default function ProfileScreen() {
 
   const email = session?.user.email ?? '';
   const name = profile?.display_name?.trim() || email;
-  const initial = (name || '?').charAt(0).toUpperCase();
 
   return (
     <ThemedView style={styles.container}>
@@ -56,24 +56,17 @@ export default function ProfileScreen() {
           {/* Version, build and the policy pages. Nothing here is needed while
               using the app, so it sits behind one tap instead of taking up the
               bottom of this screen. */}
-          <Pressable onPress={() => router.push('/about')} hitSlop={8}>
+          <Pressable
+            onPress={() => router.push('/about')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="About WatchBuddy">
             <IconSymbol name="info.circle" size={22} tintColor={c.textSecondary} />
           </Pressable>
         </View>
 
         <View style={styles.identity}>
-          {profile?.avatar_url ? (
-            <Image
-              style={styles.avatar}
-              source={{ uri: profile.avatar_url }}
-              contentFit="cover"
-              transition={150}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-            </View>
-          )}
+          <Avatar uri={profile?.avatar_url} name={name} size={64} />
           <View style={styles.identityText}>
             <ThemedText type="subtitle" numberOfLines={1}>
               {name}
@@ -99,7 +92,9 @@ export default function ProfileScreen() {
                   pathname: '/user/[id]/followers',
                   params: { id: myId },
                 })
-              }>
+              }
+              accessibilityRole="button"
+              accessibilityLabel={`${counts?.followers ?? 0} followers`}>
               <ThemedText type="smallBold">{counts?.followers ?? 0}</ThemedText>
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 {' followers'}
@@ -112,7 +107,9 @@ export default function ProfileScreen() {
                   pathname: '/user/[id]/following',
                   params: { id: myId },
                 })
-              }>
+              }
+              accessibilityRole="button"
+              accessibilityLabel={`Following ${counts?.following ?? 0} people`}>
               <ThemedText type="smallBold">{counts?.following ?? 0}</ThemedText>
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 {' following'}
@@ -132,19 +129,31 @@ export default function ProfileScreen() {
           onPress={() =>
             myId &&
             router.push({ pathname: '/user/[id]', params: { id: myId } })
-          }>
+          }
+          accessibilityRole="button">
           <ThemedText type="subtitle">View my profile</ThemedText>
           <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
         </Pressable>
-        <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={() => router.push('/stats')}>
+        <Pressable
+          style={[styles.link, { borderBottomColor: c.border }]}
+          onPress={() => router.push('/stats')}
+          accessibilityRole="button">
           <ThemedText type="subtitle">Statistics</ThemedText>
           <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
         </Pressable>
-        <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={() => router.push('/diary')}>
+        <Pressable
+          style={[styles.link, { borderBottomColor: c.border }]}
+          onPress={() => router.push('/diary')}
+          accessibilityRole="button">
           <ThemedText type="subtitle">Diary</ThemedText>
           <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
         </Pressable>
-        <Pressable style={[styles.link, { borderBottomColor: c.border }]} onPress={cycle}>
+        <Pressable
+          style={[styles.link, { borderBottomColor: c.border }]}
+          onPress={cycle}
+          accessibilityRole="button"
+          accessibilityLabel={`Theme: ${THEME_LABEL[pref]}`}
+          accessibilityHint="Cycles between light, dark and system">
           <ThemedText type="subtitle">Theme</ThemedText>
           <ThemedView style={styles.value}>
             <ThemedText type="small">{THEME_LABEL[pref]}</ThemedText>
@@ -180,13 +189,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 26, lineHeight: 32, fontWeight: '700' },
   identityText: { flex: 1, gap: Spacing.half },
   bio: { lineHeight: 21 },
   counts: {

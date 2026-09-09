@@ -7,6 +7,7 @@ import { Accent, AccentText } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { follow, unfollow } from '@/lib/social';
+import { keys } from '@/lib/keys';
 
 /**
  * Optimistic Follow/Following pill. Callers pass the known initial state (lists
@@ -43,8 +44,8 @@ export function FollowButton({
     try {
       if (next) await follow(userId);
       else await unfollow(userId);
-      queryClient.invalidateQueries({ queryKey: ['follow', userId] });
-      queryClient.invalidateQueries({ queryKey: ['followCounts'] });
+      queryClient.invalidateQueries({ queryKey: keys.follow(userId) });
+      queryClient.invalidateQueries({ queryKey: keys.followCounts() });
     } catch {
       setFollowing(!next); // revert
       onChange?.(!next);
@@ -58,6 +59,8 @@ export function FollowButton({
     <Pressable
       onPress={toggle}
       hitSlop={8}
+      accessibilityRole="button"
+      accessibilityState={{ selected: following, busy: saving }}
       style={({ pressed }) => [
         styles.pill,
         following

@@ -20,7 +20,11 @@ export function DismissedNotice({ onUndo }: { onUndo: () => void }) {
       <ThemedText type="small" style={{ color: c.textSecondary }}>
         Dismissed
       </ThemedText>
-      <Pressable onPress={onUndo} hitSlop={10}>
+      <Pressable
+        onPress={onUndo}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Undo dismissing this notification">
         <ThemedText type="smallBold" style={{ color: c.tint }}>
           Undo
         </ThemedText>

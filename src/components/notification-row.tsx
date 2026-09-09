@@ -1,10 +1,11 @@
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { formatEventTime } from '@/components/feed-row';
 import { ThemedText } from '@/components/themed-text';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { type NotificationItem } from '@/lib/notifications';
 
@@ -32,7 +33,22 @@ function copyFor(n: NotificationItem) {
  * root route that covers the tab bar, consistent with the Feed's other review
  * taps) -- except a follow, which has no review and goes to the profile too.
  */
-export function NotificationRow({ item }: { item: NotificationItem }) {
+const DISMISS_ACTIONS = [{ name: 'dismiss', label: 'Dismiss' }];
+
+export const NotificationRow = memo(function NotificationRow({
+  item,
+  onDismiss,
+}: {
+  item: NotificationItem;
+  /**
+   * The swipe-to-dismiss gesture, as a custom action. It has to live on this
+   * row's own focusable element — a screen reader exposes the actions of the
+   * element it has focused, so the wrapper inside `SwipeToDismissRow` would
+   * never be reached. Dismissal has no tap equivalent anywhere in the app, so
+   * without this the feature does not exist for a screen reader at all.
+   */
+  onDismiss?: () => void;
+}) {
   const c = useTheme();
   const router = useRouter();
   const openActor = () =>
@@ -51,22 +67,17 @@ export function NotificationRow({ item }: { item: NotificationItem }) {
               params: { ratingId: item.ratingId },
             })
           : openActor()
-      }>
-      <Pressable hitSlop={6} onPress={openActor}>
-        {item.actorAvatarUrl ? (
-          <Image
-            style={styles.avatar}
-            source={{ uri: item.actorAvatarUrl }}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : (
-          <View style={[styles.avatar, styles.avatarFallback]}>
-            <ThemedText style={styles.avatarInitial}>
-              {item.actorName.replace('@', '').charAt(0).toUpperCase()}
-            </ThemedText>
-          </View>
-        )}
+      }
+      accessibilityActions={onDismiss ? DISMISS_ACTIONS : undefined}
+      onAccessibilityAction={({ nativeEvent }) => {
+        if (nativeEvent.actionName === 'dismiss') onDismiss?.();
+      }}>
+      <Pressable
+        hitSlop={6}
+        onPress={openActor}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.actorName}, open profile`}>
+        <Avatar uri={item.actorAvatarUrl} name={item.actorName} />
       </Pressable>
       <View style={styles.body}>
         <ThemedText type="small" style={styles.message}>
@@ -80,7 +91,7 @@ export function NotificationRow({ item }: { item: NotificationItem }) {
       {item.unread && <View style={[styles.dot, { backgroundColor: Accent }]} />}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {
@@ -90,13 +101,6 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     borderRadius: Spacing.three,
   },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 15, lineHeight: 19, fontWeight: '700' },
   body: { flex: 1, gap: Spacing.half },
   message: { lineHeight: 19 },
   dot: { width: 9, height: 9, borderRadius: 5 },
