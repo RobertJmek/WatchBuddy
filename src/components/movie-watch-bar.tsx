@@ -34,10 +34,13 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
     }
   }
 
+  // A fetch on mount: `load` sets its own loading flag before awaiting, and is
+  // redefined every render, so the fetch is keyed on the title instead.
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titleId]);
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   async function log() {
     if (busy) return;

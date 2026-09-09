@@ -130,6 +130,9 @@ export function RatingBar({
   // starts on the scale but goes up/down must scroll the page instead.
   // `runOnJS` keeps the callbacks on the JS thread — there are at most ten state
   // updates in a full drag, so there's nothing to gain from a worklet.
+  /* eslint-disable react-hooks/refs -- the builder is constructed during
+     render, but its callbacks only ever run from the gesture, which is
+     exactly when reading `lastHovered.current` is correct. */
   const pan = Gesture.Pan()
     .activeOffsetX([-6, 6])
     .failOffsetY([-14, 14])
@@ -144,6 +147,7 @@ export function RatingBar({
       lastHovered.current = null;
       setHovered(null);
     });
+  /* eslint-enable react-hooks/refs */
 
   useEffect(() => {
     let active = true;

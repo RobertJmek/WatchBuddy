@@ -117,12 +117,16 @@ export default function EditProfileScreen() {
   }
 
   // Seed the form once the profile loads.
+  /* eslint-disable react-hooks/set-state-in-effect -- the fields are user-
+     editable, so they must be state; seeding them is the one moment the
+     server's copy wins. */
   useEffect(() => {
     if (!profile) return;
     setDisplayName(profile.display_name ?? '');
     setUsername(profile.username ?? '');
     setBio(profile.bio ?? '');
   }, [profile]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const avatarUri = picked?.uri ?? profile?.avatar_url ?? null;
   const initial = (displayName.trim() || '?').charAt(0).toUpperCase();

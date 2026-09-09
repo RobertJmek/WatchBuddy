@@ -25,6 +25,9 @@ export function PressScale({
     <AnimatedPressable
       {...rest}
       style={[style, animated]}
+      /* eslint-disable react-hooks/immutability -- a Reanimated shared value
+         is meant to be assigned; that is its whole interface, and the writes
+         below happen in press handlers, never during render. */
       onPressIn={(e) => {
         scale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
         onPressIn?.(e);
@@ -33,6 +36,7 @@ export function PressScale({
         scale.value = withSpring(1, { damping: 20, stiffness: 300 });
         onPressOut?.(e);
       }}
+      /* eslint-enable react-hooks/immutability */
     />
   );
 }

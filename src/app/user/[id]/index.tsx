@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -83,9 +82,13 @@ export default function UserProfileScreen() {
   // current state and the state we originally loaded.
   const initiallyFollowing = followQ.data ?? false;
   const [followingNow, setFollowingNow] = useState<boolean | undefined>(undefined);
+  /* eslint-disable react-hooks/set-state-in-effect -- the count is shifted
+     optimistically against the state we first loaded, so the button's current
+     state has to be held locally rather than derived from the query. */
   useEffect(() => {
     if (followQ.data !== undefined) setFollowingNow(followQ.data);
   }, [followQ.data]);
+  /* eslint-enable react-hooks/set-state-in-effect */
   const followers =
     (countsQ.data?.followers ?? 0) +
     ((followingNow ? 1 : 0) - (initiallyFollowing ? 1 : 0));
