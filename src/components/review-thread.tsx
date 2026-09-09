@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
@@ -23,13 +22,15 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticToggle } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
 import { likeReview, setRating, unlikeReview } from '@/lib/ratings';
 import {
   addReply,
@@ -45,39 +46,19 @@ function nameOf(r: { display_name: string | null; username: string | null }) {
 /** One row in the ⋯ menu — shared by reply rows and the review card. */
 type MenuAction = { label: string; destructive?: boolean; run: () => void };
 
-function Avatar({ uri, name }: { uri: string | null; name: string }) {
-  const initial = (name.replace('@', '') || '?').charAt(0).toUpperCase();
-  return uri ? (
-    <Image style={styles.avatar} source={{ uri }} contentFit="cover" transition={150} />
-  ) : (
-    <View style={[styles.avatar, styles.avatarFallback]}>
-      <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-    </View>
-  );
-}
-
 /**
- * A review plus its reply thread and like footer. Mounted by two routes:
- *   - `variant="root"`   — /review/[ratingId], a root screen that covers the
- *     tab bar (reached from a title's review list).
- *   - `variant="library"` — /thread/[ratingId], nested in the Library stack so
- *     the tab bar stays visible (reached from a notification). See ADR 0005.
- * The only behavioral difference is which "Liked by" route it pushes, so back
- * stays inside the same navigator.
+ * A review plus its reply thread and like footer. Mounted by /review/[ratingId],
+ * a root screen that covers the tab bar (reached from a title's review list).
+ * ADR 0005's Library-nested twin at /thread/[ratingId] is gone — notifications
+ * moved to the Feed tab, which was the only thing that ever reached it.
  */
-export function ReviewThread({
-  ratingId,
-  variant = 'root',
-}: {
-  ratingId: string;
-  variant?: 'root' | 'library';
-}) {
+export function ReviewThread({ ratingId }: { ratingId: string }) {
   const c = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['reviewThread', ratingId],
+    queryKey: keys.reviewThread(ratingId),
     queryFn: () => getReviewThread(ratingId),
   });
 
@@ -93,8 +74,8 @@ export function ReviewThread({
   const [savingReview, setSavingReview] = useState(false);
 
   function refresh() {
-    queryClient.invalidateQueries({ queryKey: ['reviewThread', ratingId] });
-    queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+    queryClient.invalidateQueries({ queryKey: keys.reviewThread(ratingId) });
+    queryClient.invalidateQueries({ queryKey: keys.titleRatings() });
   }
 
   async function send() {
@@ -193,7 +174,7 @@ export function ReviewThread({
       // Refresh the thread + community lists so the new/empty text shows even if
       // this screen is revisited from a cached notification tap.
       refresh();
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: keys.feed() });
       hapticSuccess();
       // Emptying the text removes the review (score kept) — nothing left to show.
       if (!text) {
@@ -226,7 +207,7 @@ export function ReviewThread({
               // reopens this screen showing the deleted text (refresh = thread +
               // titleRatings).
               refresh();
-              queryClient.invalidateQueries({ queryKey: ['feed'] });
+              queryClient.invalidateQueries({ queryKey: keys.feed() });
               router.back();
             } catch {
               Alert.alert('Could not delete your review.');
@@ -262,14 +243,7 @@ export function ReviewThread({
 
   function openLikers() {
     if (likes === 0) return;
-    // Push into the same navigator we're mounted in so Back returns here.
-    router.push({
-      pathname:
-        variant === 'library'
-          ? '/thread/[ratingId]/likes'
-          : '/review/[ratingId]/likes',
-      params: { ratingId },
-    });
+    router.push({ pathname: '/review/[ratingId]/likes', params: { ratingId } });
   }
 
   async function toggleLike() {
@@ -280,7 +254,7 @@ export function ReviewThread({
     try {
       if (next) await likeReview(ratingId);
       else await unlikeReview(ratingId);
-      queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+      queryClient.invalidateQueries({ queryKey: keys.titleRatings() });
     } catch {
       setLiked(!next);
       setLikes((n) => n + (next ? -1 : 1));
@@ -324,7 +298,7 @@ export function ReviewThread({
                         params: { id: review.userId },
                       })
                     }>
-                    <Avatar uri={review.avatar_url} name={nameOf(review)} />
+                    <Avatar uri={review.avatar_url} name={nameOf(review)} size={32} />
                     <View style={styles.who}>
                       <ThemedText type="smallBold" numberOfLines={1}>
                         {nameOf(review)}
@@ -342,7 +316,11 @@ export function ReviewThread({
                     </ThemedText>
                   </View>
                   {review.isMine && !editing && (
-                    <Pressable hitSlop={10} onPress={openReviewMenu}>
+                    <Pressable
+                      hitSlop={10}
+                      onPress={openReviewMenu}
+                      accessibilityRole="button"
+                      accessibilityLabel="Review options">
                       <IconSymbol
                         name="ellipsis"
                         size={18}
@@ -394,7 +372,10 @@ export function ReviewThread({
                       <Pressable
                         onLongPress={openLikers}
                         hitSlop={10}
-                        style={styles.likeBtn}>
+                        style={styles.likeBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${likes} likes`}
+                        accessibilityHint="Opens the list of people who liked this">
                         <IconSymbol name="heart" size={16} tintColor={c.textSecondary} />
                         <ThemedText type="small" style={{ color: c.textSecondary }}>
                           {likes}
@@ -408,7 +389,13 @@ export function ReviewThread({
                       onPress={toggleLike}
                       onLongPress={openLikers}
                       hitSlop={10}
-                      style={styles.likeBtn}>
+                      style={styles.likeBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={liked ? 'Unlike review' : 'Like review'}
+                      accessibilityState={{ selected: liked }}
+                      accessibilityHint={
+                        likes > 0 ? `${likes} likes. Long press to see who` : undefined
+                      }>
                       <IconSymbol
                         name="heart"
                         size={16}
@@ -433,7 +420,7 @@ export function ReviewThread({
             }
             renderItem={({ item }) => (
               <View style={[styles.reply, item.level === 1 && styles.replyNested]}>
-                <Avatar uri={item.avatar_url} name={nameOf(item)} />
+                <Avatar uri={item.avatar_url} name={nameOf(item)} size={32} />
                 <View style={styles.replyBody}>
                   <View style={styles.replyHeader}>
                     <ThemedText type="small" style={{ color: c.textSecondary }}>
@@ -443,7 +430,9 @@ export function ReviewThread({
                     {!item.isDeleted && (
                       <Pressable
                         hitSlop={10}
-                        onPress={() => openReplyMenu(item)}>
+                        onPress={() => openReplyMenu(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Reply options">
                         <IconSymbol
                           name="ellipsis"
                           size={16}
@@ -482,7 +471,11 @@ export function ReviewThread({
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 Replying to @{replyTo.username ?? nameOf(replyTo)}
               </ThemedText>
-              <Pressable hitSlop={8} onPress={() => setReplyTo(null)}>
+              <Pressable
+                hitSlop={8}
+                onPress={() => setReplyTo(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Stop replying">
                 <IconSymbol name="xmark" size={16} tintColor={c.textSecondary} />
               </Pressable>
             </View>
@@ -505,7 +498,10 @@ export function ReviewThread({
               style={[
                 styles.sendBtn,
                 (!draft.trim() || sending) && styles.sendDisabled,
-              ]}>
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Send reply"
+              accessibilityState={{ disabled: !draft.trim() || sending }}>
               <IconSymbol name="paperplane.fill" size={18} tintColor={AccentText} />
             </Pressable>
           </View>
@@ -520,7 +516,11 @@ export function ReviewThread({
         transparent
         animationType="fade"
         onRequestClose={() => setMenuActions(null)}>
-        <Pressable style={styles.backdrop} onPress={() => setMenuActions(null)}>
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => setMenuActions(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Close menu">
           <Pressable
             style={[styles.sheet, { backgroundColor: c.backgroundElement }]}
             onPress={(e) => e.stopPropagation()}>
@@ -616,13 +616,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   deleted: { fontStyle: 'italic' },
-  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 14, lineHeight: 18, fontWeight: '700' },
   replyingTo: {
     flexDirection: 'row',
     alignItems: 'center',

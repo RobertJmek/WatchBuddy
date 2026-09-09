@@ -82,7 +82,10 @@ export default function SignInScreen() {
             <Pressable
               style={[styles.secondaryBtn, { borderColor: c.border }]}
               onPress={handleGoogle}
-              disabled={busy}>
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Google"
+              accessibilityState={{ disabled: busy }}>
               <Image
                 style={styles.googleIcon}
                 source={require('@/assets/images/google-g.png')}
@@ -135,7 +138,9 @@ export default function SignInScreen() {
                 setCodeSent(false);
                 setCode('');
               }}
-              disabled={busy}>
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: busy }}>
               <ThemedText type="small" style={[styles.link, { color: Accent }]}>
                 Use a different email
               </ThemedText>

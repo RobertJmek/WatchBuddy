@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { Accent } from '@/constants/theme';
 import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { getFavorite, setFavorite } from '@/lib/library';
+import { keys } from '@/lib/keys';
 
 /** Heart toggle for the title detail header — filled teal when favorited. */
 export function FavoriteButton({ titleId }: { titleId: string }) {
@@ -32,7 +33,7 @@ export function FavoriteButton({ titleId }: { titleId: string }) {
     setSaving(true);
     try {
       await setFavorite(titleId, next);
-      queryClient.invalidateQueries({ queryKey: ['library'] });
+      queryClient.invalidateQueries({ queryKey: keys.library() });
     } catch {
       setFav(!next); // revert
       hapticFailure();
@@ -42,7 +43,13 @@ export function FavoriteButton({ titleId }: { titleId: string }) {
   }
 
   return (
-    <Pressable onPress={toggle} hitSlop={12} style={styles.btn}>
+    <Pressable
+      onPress={toggle}
+      hitSlop={12}
+      style={styles.btn}
+      accessibilityRole="button"
+      accessibilityLabel={fav ? 'Remove from favorites' : 'Add to favorites'}
+      accessibilityState={{ selected: fav, busy: saving || loading }}>
       <Text style={[styles.heart, { color: fav ? Accent : '#fff' }]}>
         {fav ? '♥' : '♡'}
       </Text>

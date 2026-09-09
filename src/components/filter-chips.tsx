@@ -48,7 +48,9 @@ export function FilterChips({
             hapticToggle(false);
             onChange(removeChip(filter, chip.key));
           }}
-          style={[styles.chip, { backgroundColor: c.backgroundElement }]}>
+          style={[styles.chip, { backgroundColor: c.backgroundElement }]}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove filter: ${chip.label}`}>
           <ThemedText type="small">{chip.label}</ThemedText>
           <IconSymbol name="xmark" size={12} tintColor={c.textSecondary} />
         </Pressable>
@@ -60,7 +62,9 @@ export function FilterChips({
           hapticToggle(false);
           onChange(EMPTY_FILTER);
         }}
-        style={styles.clear}>
+        style={styles.clear}
+        accessibilityRole="button"
+        accessibilityLabel="Clear all filters">
         <ThemedText type="small" style={{ color: c.tint }}>
           Clear
         </ThemedText>

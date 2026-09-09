@@ -24,6 +24,8 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { getGenres } from '@/lib/genres';
 import { getLibrary, LIBRARY_STATUSES, type MyLibraryEntry } from '@/lib/library';
+import { keys } from '@/lib/keys';
+import { openTitle } from '@/lib/navigation';
 import {
   applyFilter,
   EMPTY_FILTER,
@@ -59,7 +61,7 @@ export default function LibraryScreen() {
   const router = useRouter();
   const c = useTheme();
   // Deliberately no refetch-on-focus: every write that can change this list
-  // already invalidates ['library'] (explore, movie-watch-bar, favorite-button,
+  // already invalidates keys.library() (explore, movie-watch-bar, favorite-button,
   // library-status-bar, rating-bar, and a blanket invalidate in both importers),
   // so a blind refetch per tab focus just re-downloaded the whole library —
   // twice a visit, since backing out of a category focuses this screen again.
@@ -69,7 +71,7 @@ export default function LibraryScreen() {
     isLoading: loading,
     error,
     refetch,
-  } = useQuery({ queryKey: ['library'], queryFn: getLibrary });
+  } = useQuery({ queryKey: keys.library(), queryFn: getLibrary });
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -79,7 +81,7 @@ export default function LibraryScreen() {
   }, [refetch]);
 
   const { data: genres = [] } = useQuery({
-    queryKey: ['genres'],
+    queryKey: keys.genres(),
     queryFn: getGenres,
     staleTime: Infinity,
   });
@@ -130,15 +132,12 @@ export default function LibraryScreen() {
     return applyFilter(searched, filter);
   }, [entries, term, filter]);
 
-  const openTitle = useCallback(
+  const openPoster = useCallback(
     (item: PosterItem) => {
-      router.push({
-        pathname: '/title/[id]',
-        params: {
-          id: String(item.tmdb_id),
-          type: item.media_type,
-          name: item.title,
-        },
+      openTitle(router, {
+        tmdbId: item.tmdb_id,
+        mediaType: item.media_type,
+        name: item.title,
       });
     },
     [router],
@@ -212,7 +211,12 @@ export default function LibraryScreen() {
             Library
           </ThemedText>
           <View style={styles.headerActions}>
-            <Pressable onPress={toggleSearch} hitSlop={8} style={styles.searchBtn}>
+            <Pressable
+              onPress={toggleSearch}
+              hitSlop={8}
+              style={styles.searchBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Search your library">
               <IconSymbol
                 name="magnifyingglass"
                 size={22}
@@ -222,7 +226,10 @@ export default function LibraryScreen() {
             <Pressable
               onPress={() => setFilterOpen(true)}
               hitSlop={8}
-              style={styles.searchBtn}>
+              style={styles.searchBtn}
+              accessibilityRole="button"
+              accessibilityLabel={filtered ? 'Filters, active' : 'Filters'}
+              accessibilityState={{ selected: filtered }}>
               <IconSymbol
                 name="line.3.horizontal.decrease"
                 size={22}
@@ -249,7 +256,9 @@ export default function LibraryScreen() {
               <Pressable
                 style={styles.inputClear}
                 hitSlop={8}
-                onPress={toggleSearch}>
+                onPress={toggleSearch}
+                accessibilityRole="button"
+                accessibilityLabel="Close search">
                 <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
               </Pressable>
             )}
@@ -322,7 +331,7 @@ export default function LibraryScreen() {
                   key={s.key}
                   title={s.label}
                   items={s.items}
-                  onPressItem={openTitle}
+                  onPressItem={openPoster}
                   onPressHeader={s.open}
                 />
               ))

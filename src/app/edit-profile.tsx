@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { File, Paths } from 'expo-file-system';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
@@ -15,12 +14,14 @@ import {
   View,
 } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Danger, PlaceholderBg, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { buildExport } from '@/lib/export';
 import {
@@ -70,7 +71,7 @@ export default function EditProfileScreen() {
   }
 
   const { data: profile, isLoading } = useQuery({
-    queryKey: ['profile'],
+    queryKey: keys.profile(),
     queryFn: getMyProfile,
   });
 
@@ -129,7 +130,6 @@ export default function EditProfileScreen() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const avatarUri = picked?.uri ?? profile?.avatar_url ?? null;
-  const initial = (displayName.trim() || '?').charAt(0).toUpperCase();
 
   async function pickAvatar() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -171,7 +171,7 @@ export default function EditProfileScreen() {
         bio: about || null,
         ...(avatar_url ? { avatar_url } : {}),
       });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: keys.profile() });
       router.back();
     } catch (e) {
       setError(
@@ -199,19 +199,13 @@ export default function EditProfileScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.avatarSection}>
-            {avatarUri ? (
-              <Image
-                style={styles.avatar}
-                source={{ uri: avatarUri }}
-                contentFit="cover"
-                transition={150}
-              />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-              </View>
-            )}
-            <Pressable onPress={pickAvatar} disabled={saving}>
+            <Avatar uri={avatarUri} name={displayName} size={96} />
+            <Pressable
+              onPress={pickAvatar}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="Change photo"
+              accessibilityState={{ disabled: saving }}>
               <ThemedText type="smallBold" style={{ color: Accent }}>
                 Change photo
               </ThemedText>
@@ -256,7 +250,9 @@ export default function EditProfileScreen() {
           <Pressable
             style={[styles.saveBtn, saving && styles.busy]}
             onPress={handleSave}
-            disabled={saving}>
+            disabled={saving}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: saving, busy: saving }}>
             <ThemedText style={styles.saveText}>
               {saving ? 'Saving…' : 'Save'}
             </ThemedText>
@@ -266,7 +262,9 @@ export default function EditProfileScreen() {
             <Pressable
               style={[styles.link, { borderBottomColor: c.border }]}
               disabled={saving || exporting}
-              onPress={() => router.push('/import-data')}>
+              onPress={() => router.push('/import-data')}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving || exporting }}>
               <ThemedText type="subtitle">Import your data</ThemedText>
               <IconSymbol
                 name="chevron.right"
@@ -277,7 +275,9 @@ export default function EditProfileScreen() {
             <Pressable
               style={[styles.link, { borderBottomColor: c.border }]}
               disabled={saving || exporting}
-              onPress={exportMyData}>
+              onPress={exportMyData}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving || exporting, busy: exporting }}>
               <ThemedText type="subtitle">Export your data</ThemedText>
               {exporting ? (
                 <ActivityIndicator size="small" />
@@ -295,7 +295,10 @@ export default function EditProfileScreen() {
             onPress={confirmDeleteAccount}
             disabled={saving}
             hitSlop={8}
-            style={styles.deleteRow}>
+            style={styles.deleteRow}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+            accessibilityState={{ disabled: saving }}>
             <ThemedText type="small" style={{ color: Danger }}>
               Delete account…
             </ThemedText>
@@ -310,13 +313,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.two },
   avatarSection: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
-  avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 38, lineHeight: 46, fontWeight: '700' },
   input: {
     fontFamily: Type.body,
     borderRadius: Spacing.three,

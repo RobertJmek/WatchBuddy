@@ -1,14 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticToggle } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
 import { likeReview, unlikeReview, type ReviewItem } from '@/lib/ratings';
 
 function formatDate(iso: string) {
@@ -24,7 +25,7 @@ function formatDate(iso: string) {
  * profile. `showThreadAction` adds the 💬 reply-count button (off on the
  * thread screen itself, where the row is the header).
  */
-export function ReviewRow({
+export const ReviewRow = memo(function ReviewRow({
   review,
   showThreadAction = true,
   titleName,
@@ -62,9 +63,9 @@ export function ReviewRow({
     try {
       if (next) await likeReview(review.ratingId);
       else await unlikeReview(review.ratingId);
-      queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+      queryClient.invalidateQueries({ queryKey: keys.titleRatings() });
       // Keep the feed's copy of this review's heart in sync (no-op off-feed).
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: keys.feed() });
     } catch {
       setLiked(!next);
       setLikes((n) => n + (next ? -1 : 1));
@@ -74,7 +75,6 @@ export function ReviewRow({
   const name =
     review.display_name?.trim() ||
     (review.username ? `@${review.username}` : 'User');
-  const initial = (name.replace('@', '') || '?').charAt(0).toUpperCase();
 
   return (
     <Pressable
@@ -83,18 +83,7 @@ export function ReviewRow({
         router.push({ pathname: '/user/[id]', params: { id: review.userId } })
       }>
       <View style={styles.top}>
-        {review.avatar_url ? (
-          <Image
-            style={styles.avatar}
-            source={{ uri: review.avatar_url }}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : (
-          <View style={[styles.avatar, styles.avatarFallback]}>
-            <ThemedText style={styles.avatarInitial}>{initial}</ThemedText>
-          </View>
-        )}
+        <Avatar uri={review.avatar_url} name={name} />
         <View style={styles.who}>
           <View style={styles.nameLine}>
             <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
@@ -138,7 +127,13 @@ export function ReviewRow({
               })
             }
             hitSlop={10}
-            style={styles.likeBtn}>
+            style={styles.likeBtn}
+            accessibilityRole="button"
+            accessibilityLabel={
+              review.replyCount > 0
+                ? `Open thread, ${review.replyCount} replies`
+                : 'Open thread'
+            }>
             <IconSymbol name="bubble" size={16} tintColor={c.textSecondary} />
             {review.replyCount > 0 && (
               <ThemedText type="small" style={{ color: c.textSecondary }}>
@@ -154,7 +149,10 @@ export function ReviewRow({
             <Pressable
               onLongPress={openLikers}
               hitSlop={10}
-              style={styles.likeBtn}>
+              style={styles.likeBtn}
+              accessibilityRole="button"
+              accessibilityLabel={`${likes} likes`}
+              accessibilityHint="Opens the list of people who liked this">
               <IconSymbol name="heart" size={16} tintColor={c.textSecondary} />
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 {likes}
@@ -166,7 +164,13 @@ export function ReviewRow({
             onPress={toggleLike}
             onLongPress={openLikers}
             hitSlop={10}
-            style={styles.likeBtn}>
+            style={styles.likeBtn}
+            accessibilityRole="button"
+            accessibilityLabel={liked ? 'Unlike review' : 'Like review'}
+            accessibilityState={{ selected: liked }}
+            accessibilityHint={
+              likes > 0 ? `${likes} likes. Long press to see who` : undefined
+            }>
             <IconSymbol
               name="heart"
               size={16}
@@ -185,18 +189,11 @@ export function ReviewRow({
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.two },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: PlaceholderBg },
-  avatarFallback: {
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { color: AccentText, fontSize: 15, lineHeight: 19, fontWeight: '700' },
   who: { flex: 1 },
   nameLine: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.one },
   name: { flexShrink: 1 },

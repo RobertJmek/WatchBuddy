@@ -35,7 +35,12 @@ export function Button({
     <PressScale
       onPress={onPress}
       disabled={inactive}
-      style={[styles.base, v.box, inactive && styles.inactive, style]}>
+      style={[styles.base, v.box, inactive && styles.inactive, style]}
+      accessibilityRole="button"
+      // The title is a child, but not while loading — the spinner replaces it,
+      // and an unlabelled spinner is what a reader would otherwise announce.
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: inactive, busy: loading }}>
       {loading ? (
         <ActivityIndicator color={v.text} />
       ) : (
