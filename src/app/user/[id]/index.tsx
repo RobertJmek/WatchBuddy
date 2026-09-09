@@ -163,7 +163,9 @@ export default function UserProfileScreen() {
           style={styles.countItem}
           onPress={() =>
             router.push({ pathname: '/user/[id]/followers', params: { id } })
-          }>
+          }
+          accessibilityRole="button"
+          accessibilityLabel={`${followers} followers`}>
           <ThemedText type="smallBold">{followers}</ThemedText>
           <ThemedText type="small" style={{ color: c.textSecondary }}>
             {' followers'}
@@ -173,7 +175,9 @@ export default function UserProfileScreen() {
           style={styles.countItem}
           onPress={() =>
             router.push({ pathname: '/user/[id]/following', params: { id } })
-          }>
+          }
+          accessibilityRole="button"
+          accessibilityLabel={`Following ${following} people`}>
           <ThemedText type="smallBold">{following}</ThemedText>
           <ThemedText type="small" style={{ color: c.textSecondary }}>
             {' following'}

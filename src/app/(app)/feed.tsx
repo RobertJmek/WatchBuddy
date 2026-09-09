@@ -215,7 +215,10 @@ export default function FeedScreen() {
     }
     notificationRows.push(
       <SwipeToDismissRow key={n.id} onDismiss={() => onDismiss(n, nextId(notifications, n))}>
-        <NotificationRow item={n} />
+        <NotificationRow
+          item={n}
+          onDismiss={() => onDismiss(n, nextId(notifications, n))}
+        />
       </SwipeToDismissRow>,
     );
   }

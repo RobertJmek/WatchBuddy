@@ -21,15 +21,23 @@ export type PosterItem = {
 
 export function PosterCard({
   posterPath,
+  /** The title's name — the only thing a screen reader can announce for a poster. */
+  label,
   onPress,
   onPressIn,
 }: {
   posterPath: string | null;
+  label?: string;
   onPress: () => void;
   onPressIn?: () => void;
 }) {
   return (
-    <PressScale style={styles.card} onPress={onPress} onPressIn={onPressIn}>
+    <PressScale
+      style={styles.card}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      accessibilityRole="button"
+      accessibilityLabel={label}>
       <Image
         style={styles.cardPoster}
         source={{ uri: imageUrl(posterPath, 'w342') ?? undefined }}
@@ -76,6 +84,7 @@ export const PosterShelf = memo(function PosterShelf({
     ({ item }: { item: PosterItem }) => (
       <PosterCard
         posterPath={item.poster_path}
+        label={item.title}
         onPress={() => onPressItem(item)}
         // Warm the detail cache while the finger is still down.
         onPressIn={() =>
@@ -94,7 +103,9 @@ export const PosterShelf = memo(function PosterShelf({
       {onPressHeader ? (
         <Pressable
           style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
-          onPress={onPressHeader}>
+          onPress={onPressHeader}
+          accessibilityRole="button"
+          accessibilityLabel={`${title}, see all`}>
           <ThemedText type="subtitle">{title}</ThemedText>
           <View style={styles.headerRight}>
             {showCount && (

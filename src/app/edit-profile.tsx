@@ -199,7 +199,12 @@ export default function EditProfileScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.avatarSection}>
             <Avatar uri={avatarUri} name={displayName} size={96} />
-            <Pressable onPress={pickAvatar} disabled={saving}>
+            <Pressable
+              onPress={pickAvatar}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="Change photo"
+              accessibilityState={{ disabled: saving }}>
               <ThemedText type="smallBold" style={{ color: Accent }}>
                 Change photo
               </ThemedText>
@@ -244,7 +249,9 @@ export default function EditProfileScreen() {
           <Pressable
             style={[styles.saveBtn, saving && styles.busy]}
             onPress={handleSave}
-            disabled={saving}>
+            disabled={saving}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: saving, busy: saving }}>
             <ThemedText style={styles.saveText}>
               {saving ? 'Saving…' : 'Save'}
             </ThemedText>
@@ -254,7 +261,9 @@ export default function EditProfileScreen() {
             <Pressable
               style={[styles.link, { borderBottomColor: c.border }]}
               disabled={saving || exporting}
-              onPress={() => router.push('/import-data')}>
+              onPress={() => router.push('/import-data')}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving || exporting }}>
               <ThemedText type="subtitle">Import your data</ThemedText>
               <IconSymbol
                 name="chevron.right"
@@ -265,7 +274,9 @@ export default function EditProfileScreen() {
             <Pressable
               style={[styles.link, { borderBottomColor: c.border }]}
               disabled={saving || exporting}
-              onPress={exportMyData}>
+              onPress={exportMyData}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving || exporting, busy: exporting }}>
               <ThemedText type="subtitle">Export your data</ThemedText>
               {exporting ? (
                 <ActivityIndicator size="small" />
@@ -283,7 +294,10 @@ export default function EditProfileScreen() {
             onPress={confirmDeleteAccount}
             disabled={saving}
             hitSlop={8}
-            style={styles.deleteRow}>
+            style={styles.deleteRow}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+            accessibilityState={{ disabled: saving }}>
             <ThemedText type="small" style={{ color: Danger }}>
               Delete account…
             </ThemedText>

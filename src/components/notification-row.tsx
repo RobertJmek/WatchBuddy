@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
@@ -32,7 +33,22 @@ function copyFor(n: NotificationItem) {
  * root route that covers the tab bar, consistent with the Feed's other review
  * taps) -- except a follow, which has no review and goes to the profile too.
  */
-export function NotificationRow({ item }: { item: NotificationItem }) {
+const DISMISS_ACTIONS = [{ name: 'dismiss', label: 'Dismiss' }];
+
+export const NotificationRow = memo(function NotificationRow({
+  item,
+  onDismiss,
+}: {
+  item: NotificationItem;
+  /**
+   * The swipe-to-dismiss gesture, as a custom action. It has to live on this
+   * row's own focusable element — a screen reader exposes the actions of the
+   * element it has focused, so the wrapper inside `SwipeToDismissRow` would
+   * never be reached. Dismissal has no tap equivalent anywhere in the app, so
+   * without this the feature does not exist for a screen reader at all.
+   */
+  onDismiss?: () => void;
+}) {
   const c = useTheme();
   const router = useRouter();
   const openActor = () =>
@@ -51,8 +67,16 @@ export function NotificationRow({ item }: { item: NotificationItem }) {
               params: { ratingId: item.ratingId },
             })
           : openActor()
-      }>
-      <Pressable hitSlop={6} onPress={openActor}>
+      }
+      accessibilityActions={onDismiss ? DISMISS_ACTIONS : undefined}
+      onAccessibilityAction={({ nativeEvent }) => {
+        if (nativeEvent.actionName === 'dismiss') onDismiss?.();
+      }}>
+      <Pressable
+        hitSlop={6}
+        onPress={openActor}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.actorName}, open profile`}>
         <Avatar uri={item.actorAvatarUrl} name={item.actorName} />
       </Pressable>
       <View style={styles.body}>
@@ -67,7 +91,7 @@ export function NotificationRow({ item }: { item: NotificationItem }) {
       {item.unread && <View style={[styles.dot, { backgroundColor: Accent }]} />}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {

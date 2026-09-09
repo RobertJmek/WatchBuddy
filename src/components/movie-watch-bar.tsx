@@ -85,7 +85,10 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
       <Pressable
         style={[styles.button, busy && styles.buttonBusy]}
         onPress={log}
-        disabled={busy}>
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Log watch"
+        accessibilityState={{ disabled: busy, busy }}>
         <ThemedText style={styles.buttonText}>＋ Log watch</ThemedText>
       </Pressable>
 
@@ -95,7 +98,12 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
             Watched {watches.length}×{' '}
             {watches.length > 0 ? `· last ${formatDate(watches[0].watched_at)}` : ''}
           </ThemedText>
-          <Pressable onPress={undo} disabled={busy}>
+          <Pressable
+            onPress={undo}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Undo last watch"
+            accessibilityState={{ disabled: busy }}>
             <ThemedText type="small" style={styles.undo}>
               Undo last
             </ThemedText>

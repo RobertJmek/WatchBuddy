@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
@@ -24,7 +24,7 @@ function formatDate(iso: string) {
  * profile. `showThreadAction` adds the 💬 reply-count button (off on the
  * thread screen itself, where the row is the header).
  */
-export function ReviewRow({
+export const ReviewRow = memo(function ReviewRow({
   review,
   showThreadAction = true,
   titleName,
@@ -126,7 +126,13 @@ export function ReviewRow({
               })
             }
             hitSlop={10}
-            style={styles.likeBtn}>
+            style={styles.likeBtn}
+            accessibilityRole="button"
+            accessibilityLabel={
+              review.replyCount > 0
+                ? `Open thread, ${review.replyCount} replies`
+                : 'Open thread'
+            }>
             <IconSymbol name="bubble" size={16} tintColor={c.textSecondary} />
             {review.replyCount > 0 && (
               <ThemedText type="small" style={{ color: c.textSecondary }}>
@@ -142,7 +148,10 @@ export function ReviewRow({
             <Pressable
               onLongPress={openLikers}
               hitSlop={10}
-              style={styles.likeBtn}>
+              style={styles.likeBtn}
+              accessibilityRole="button"
+              accessibilityLabel={`${likes} likes`}
+              accessibilityHint="Opens the list of people who liked this">
               <IconSymbol name="heart" size={16} tintColor={c.textSecondary} />
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 {likes}
@@ -154,7 +163,13 @@ export function ReviewRow({
             onPress={toggleLike}
             onLongPress={openLikers}
             hitSlop={10}
-            style={styles.likeBtn}>
+            style={styles.likeBtn}
+            accessibilityRole="button"
+            accessibilityLabel={liked ? 'Unlike review' : 'Like review'}
+            accessibilityState={{ selected: liked }}
+            accessibilityHint={
+              likes > 0 ? `${likes} likes. Long press to see who` : undefined
+            }>
             <IconSymbol
               name="heart"
               size={16}
@@ -173,7 +188,7 @@ export function ReviewRow({
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.two },

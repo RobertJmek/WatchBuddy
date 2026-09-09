@@ -315,7 +315,11 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
                     </ThemedText>
                   </View>
                   {review.isMine && !editing && (
-                    <Pressable hitSlop={10} onPress={openReviewMenu}>
+                    <Pressable
+                      hitSlop={10}
+                      onPress={openReviewMenu}
+                      accessibilityRole="button"
+                      accessibilityLabel="Review options">
                       <IconSymbol
                         name="ellipsis"
                         size={18}
@@ -367,7 +371,10 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
                       <Pressable
                         onLongPress={openLikers}
                         hitSlop={10}
-                        style={styles.likeBtn}>
+                        style={styles.likeBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${likes} likes`}
+                        accessibilityHint="Opens the list of people who liked this">
                         <IconSymbol name="heart" size={16} tintColor={c.textSecondary} />
                         <ThemedText type="small" style={{ color: c.textSecondary }}>
                           {likes}
@@ -381,7 +388,13 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
                       onPress={toggleLike}
                       onLongPress={openLikers}
                       hitSlop={10}
-                      style={styles.likeBtn}>
+                      style={styles.likeBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={liked ? 'Unlike review' : 'Like review'}
+                      accessibilityState={{ selected: liked }}
+                      accessibilityHint={
+                        likes > 0 ? `${likes} likes. Long press to see who` : undefined
+                      }>
                       <IconSymbol
                         name="heart"
                         size={16}
@@ -416,7 +429,9 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
                     {!item.isDeleted && (
                       <Pressable
                         hitSlop={10}
-                        onPress={() => openReplyMenu(item)}>
+                        onPress={() => openReplyMenu(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Reply options">
                         <IconSymbol
                           name="ellipsis"
                           size={16}
@@ -455,7 +470,11 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 Replying to @{replyTo.username ?? nameOf(replyTo)}
               </ThemedText>
-              <Pressable hitSlop={8} onPress={() => setReplyTo(null)}>
+              <Pressable
+                hitSlop={8}
+                onPress={() => setReplyTo(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Stop replying">
                 <IconSymbol name="xmark" size={16} tintColor={c.textSecondary} />
               </Pressable>
             </View>
@@ -478,7 +497,10 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
               style={[
                 styles.sendBtn,
                 (!draft.trim() || sending) && styles.sendDisabled,
-              ]}>
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Send reply"
+              accessibilityState={{ disabled: !draft.trim() || sending }}>
               <IconSymbol name="paperplane.fill" size={18} tintColor={AccentText} />
             </Pressable>
           </View>
@@ -493,7 +515,11 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
         transparent
         animationType="fade"
         onRequestClose={() => setMenuActions(null)}>
-        <Pressable style={styles.backdrop} onPress={() => setMenuActions(null)}>
+        <Pressable
+          style={styles.backdrop}
+          onPress={() => setMenuActions(null)}
+          accessibilityRole="button"
+          accessibilityLabel="Close menu">
           <Pressable
             style={[styles.sheet, { backgroundColor: c.backgroundElement }]}
             onPress={(e) => e.stopPropagation()}>

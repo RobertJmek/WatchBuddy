@@ -151,7 +151,13 @@ export default function OnboardingScreen() {
 
         <View style={styles.avatarSection}>
           <Avatar uri={avatarUri} name={displayName} size={96} />
-          <Pressable onPress={pickAvatar} disabled={saving} hitSlop={8}>
+          <Pressable
+            onPress={pickAvatar}
+            disabled={saving}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Add a photo"
+            accessibilityState={{ disabled: saving }}>
             <ThemedText type="smallBold" style={{ color: Accent }}>
               Add a photo
             </ThemedText>
@@ -185,7 +191,9 @@ export default function OnboardingScreen() {
         <Pressable
           style={[styles.primaryBtn, saving && styles.busy]}
           onPress={handleContinue}
-          disabled={saving}>
+          disabled={saving}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: saving, busy: saving }}>
           <ThemedText style={styles.primaryText}>
             {saving ? 'Saving…' : 'Continue'}
           </ThemedText>
@@ -195,7 +203,9 @@ export default function OnboardingScreen() {
           onPress={finish}
           disabled={saving}
           hitSlop={8}
-          style={styles.skipRow}>
+          style={styles.skipRow}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: saving }}>
           <ThemedText type="small" style={{ color: c.textSecondary }}>
             Skip for now
           </ThemedText>

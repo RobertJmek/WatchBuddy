@@ -55,7 +55,10 @@ export function TvWatchBar({
       <Pressable
         style={[styles.button, busy && styles.busy]}
         onPress={logSeries}
-        disabled={busy}>
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Log whole series"
+        accessibilityState={{ disabled: busy, busy }}>
         <ThemedText style={styles.buttonText}>＋ Log whole series</ThemedText>
       </Pressable>
       {busy && <ActivityIndicator />}
