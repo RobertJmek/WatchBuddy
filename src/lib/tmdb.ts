@@ -35,6 +35,8 @@ export type TitleRow = {
   status: string | null;
   number_of_seasons: number | null;
   number_of_episodes: number | null;
+  /** When tmdb-proxy last asked OMDb about this title; null = never. */
+  imdb_checked_at: string | null;
 };
 
 export type SeasonRow = {
@@ -165,6 +167,10 @@ export function fetchTitle(tmdbId: number, mediaType: MediaType) {
 
 // Mirrors the edge function's cache gate (TITLE_CACHE_TTL_HOURS, default 168h).
 const TITLE_CACHE_TTL_MS = 168 * 3600_000;
+// ...and its OMDb re-ask gate (IMDB_RECHECK_HOURS, default 24h). Both are env
+// tunable server-side; these are the defaults, and being wrong only costs one
+// extra edge call that the server then answers from cache.
+const IMDB_RECHECK_MS = 24 * 3600_000;
 
 /**
  * Read-through title fetch: serve straight from the Postgres cache when fresh
@@ -186,8 +192,15 @@ export async function getTitle(
     const fresh =
       Date.now() - new Date(cached.cached_at).getTime() < TITLE_CACHE_TTL_MS;
     // Same backfill rule as the server: a row with a known imdb_id but no
-    // rating yet should go through the function so OMDb can fill it in.
-    const couldBackfillImdb = !!cached.imdb_id && cached.imdb_rating == null;
+    // rating yet should go through the function so OMDb can fill it in --
+    // unless OMDb was asked recently and had nothing, in which case asking
+    // again today is just a round trip the server answers from cache anyway.
+    const couldBackfillImdb =
+      !!cached.imdb_id &&
+      cached.imdb_rating == null &&
+      (!cached.imdb_checked_at ||
+        Date.now() - new Date(cached.imdb_checked_at).getTime() >
+          IMDB_RECHECK_MS);
     if (fresh && !couldBackfillImdb) {
       if (mediaType !== 'tv') return { title: cached, seasons: [] };
       const { data: seasons } = await supabase

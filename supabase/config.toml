@@ -385,6 +385,24 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Both functions are pinned to verify_jwt = true rather than left on the CLI
+# default, because behaviour depends on it and a dashboard toggle is not a
+# record of intent.
+#
+# tmdb-proxy reads the `sub` claim out of the caller's token WITHOUT verifying
+# the signature, to pick a rate-limit bucket. That is only sound because the
+# gateway has already verified it. With verify_jwt off, anyone could mint a
+# token with an arbitrary `sub`, get a fresh per-user budget on every request,
+# and call the proxy unauthenticated besides. See ADR 0016.
+#
+# delete-account identifies the caller from the same token and then erases that
+# account, so it must never be reachable without one.
+[functions.tmdb-proxy]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

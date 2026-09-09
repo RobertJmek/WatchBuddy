@@ -36,18 +36,54 @@ Deno.serve(async (req) => {
     if (userErr || !uid) return json({ error: 'Not authenticated' }, 401);
 
     // Avatar files live under avatars/{uid}/ — storage has no cascade.
-    const { data: files } = await admin.storage.from('avatars').list(uid);
-    if (files?.length) {
-      await admin.storage
+    //
+    // `list` returns at most 100 entries per call and defaults to exactly that,
+    // so a user who changed their avatar more than 100 times used to leave the
+    // rest behind: files owned by an account that no longer exists, which
+    // nothing will ever come back for. Page until the bucket stops answering.
+    // Each pass deletes the page it just read, so the next page shifts down to
+    // the front and there is no cursor to advance. The pass cap is a stop
+    // against a `remove` that reports success without removing anything, which
+    // would otherwise spin here forever.
+    const PAGE = 100;
+    for (let pass = 0; pass < 100; pass++) {
+      const { data: files, error: listErr } = await admin.storage
+        .from('avatars')
+        .list(uid, { limit: PAGE });
+      if (listErr) {
+        // Storage cleanup must not block the deletion itself: an account the
+        // user asked us to remove has to go, orphan files or not.
+        console.error('avatar list failed:', listErr.message);
+        break;
+      }
+      if (!files?.length) break;
+      const { error: removeErr } = await admin.storage
         .from('avatars')
         .remove(files.map((f) => `${uid}/${f.name}`));
+      if (removeErr) {
+        console.error('avatar remove failed:', removeErr.message);
+        break;
+      }
+      if (files.length < PAGE) break;
     }
 
+    // Rate-limit buckets are keyed by uid but deliberately carry no FK (the
+    // nil uuid stands in for the global buckets), so nothing cascades them.
+    const { error: bucketErr } = await admin
+      .from('rate_limits')
+      .delete()
+      .eq('subject', uid);
+    if (bucketErr) console.error('rate limit cleanup failed:', bucketErr.message);
+
     const { error } = await admin.auth.admin.deleteUser(uid);
-    if (error) return json({ error: error.message }, 500);
+    if (error) {
+      console.error('deleteUser failed:', error.message);
+      return json({ error: 'Could not delete the account. Try again later.' }, 500);
+    }
 
     return json({ ok: true });
   } catch (err) {
-    return json({ error: String(err) }, 500);
+    console.error('delete-account failed:', err);
+    return json({ error: 'Could not delete the account. Try again later.' }, 500);
   }
 });
