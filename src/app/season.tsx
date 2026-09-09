@@ -149,7 +149,10 @@ export default function SeasonScreen() {
               <Pressable
                 style={[styles.seasonButton, seasonBusy && styles.busy]}
                 onPress={logWholeSeason}
-                disabled={seasonBusy}>
+                disabled={seasonBusy}
+                accessibilityRole="button"
+                accessibilityLabel="Log whole season"
+                accessibilityState={{ disabled: seasonBusy, busy: seasonBusy }}>
                 <ThemedText style={styles.seasonButtonText}>
                   ＋ Log whole season
                 </ThemedText>
@@ -169,7 +172,12 @@ export default function SeasonScreen() {
                 <View style={[styles.row, { backgroundColor: c.background }]}>
                   <Pressable
                     style={[styles.check, n > 0 && styles.checkOn]}
-                    onPress={() => addWatch(item)}>
+                    onPress={() => addWatch(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      n === 0 ? 'Log this episode' : `Watched ${n} times, log again`
+                    }
+                    accessibilityState={{ selected: n > 0 }}>
                     <ThemedText style={n > 0 ? styles.badgeOn : styles.badgeOff}>
                       {n === 0 ? '' : n === 1 ? '✓' : `×${n}`}
                     </ThemedText>
@@ -187,7 +195,9 @@ export default function SeasonScreen() {
                     <Pressable
                       style={styles.minus}
                       onPress={() => removeWatch(item)}
-                      hitSlop={8}>
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove one watch of this episode">
                       <ThemedText style={styles.minusText}>−</ThemedText>
                     </Pressable>
                   )}

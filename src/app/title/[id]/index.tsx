@@ -220,7 +220,8 @@ export default function TitleDetailScreen() {
                               name: s.name ?? `Season ${s.season_number}`,
                             },
                           })
-                        }>
+                        }
+                        accessibilityRole="button">
                         <ThemedText>
                           {s.name ?? `Season ${s.season_number}`}
                           {s.episode_count ? ` · ${s.episode_count} eps` : ''}
@@ -255,7 +256,8 @@ export default function TitleDetailScreen() {
                               name: title.title,
                             },
                           })
-                        }>
+                        }
+                        accessibilityRole="button">
                         <ThemedText type="smallBold" style={{ color: Accent }}>
                           See all {ratingsQ.data.reviews.length} reviews ›
                         </ThemedText>

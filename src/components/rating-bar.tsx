@@ -66,7 +66,15 @@ function RatingChip({
   }));
 
   return (
-    <Pressable style={styles.cell} onPress={onPress}>
+    <Pressable
+      style={styles.cell}
+      onPress={onPress}
+      accessibilityRole="button"
+      // A tap on the current value clears it, so that's what the label has to
+      // promise — announcing "Rate 7" on the button that erases your 7 is worse
+      // than no label.
+      accessibilityLabel={selected ? `Clear rating of ${n}` : `Rate ${n} out of 10`}
+      accessibilityState={{ selected }}>
       <Animated.View
         style={[
           styles.num,
@@ -285,7 +293,9 @@ export function RatingBar({
               <Pressable
                 style={[styles.saveBtn, saving && styles.busy]}
                 onPress={saveReview}
-                disabled={saving}>
+                disabled={saving}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: saving, busy: saving }}>
                 <ThemedText type="small" style={styles.saveText}>
                   Save
                 </ThemedText>
@@ -302,7 +312,9 @@ export function RatingBar({
               { backgroundColor: c.backgroundElement },
               pressed && styles.busy,
             ]}
-            onPress={startEditing}>
+            onPress={startEditing}
+            accessibilityRole="button"
+            accessibilityHint="Edits your review">
             <ThemedText type="meta" style={{ color: c.textSecondary }}>
               Your review
             </ThemedText>
@@ -325,7 +337,10 @@ export function RatingBar({
                       params: { ratingId },
                     })
                   }
-                  style={styles.editRow}>
+                  style={styles.editRow}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${likeCount} likes`}
+                  accessibilityHint="Opens the list of people who liked this">
                   <IconSymbol
                     name="heart"
                     size={13}

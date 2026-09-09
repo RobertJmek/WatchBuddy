@@ -82,7 +82,9 @@ export default function ReviewsScreen() {
                             on
                               ? styles.sortChipOn
                               : { borderColor: c.border },
-                          ]}>
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: on }}>
                           <ThemedText
                             type="small"
                             style={on ? styles.sortTextOn : undefined}>

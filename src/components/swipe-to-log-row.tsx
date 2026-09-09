@@ -81,7 +81,20 @@ export function SwipeToLogRow({
             )
           : undefined
       }>
-      {children}
+      {/* A swipe is unavailable to a screen reader, so both directions are
+          also offered as custom actions. They go on a wrapper rather than on
+          `Swipeable` itself, which doesn't type accessibility props. */}
+      <View
+        accessibilityActions={[
+          { name: 'log', label: logLabel },
+          ...(onUndo ? [{ name: 'undo', label: 'Undo' }] : []),
+        ]}
+        onAccessibilityAction={({ nativeEvent }) => {
+          if (nativeEvent.actionName === 'log') onLog();
+          else if (nativeEvent.actionName === 'undo') onUndo?.();
+        }}>
+        {children}
+      </View>
     </Swipeable>
   );
 }

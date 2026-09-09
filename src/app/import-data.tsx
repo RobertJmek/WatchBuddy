@@ -41,7 +41,10 @@ export default function ImportDataScreen() {
           <Pressable
             key={s.route}
             style={[styles.card, { borderColor: c.border }]}
-            onPress={() => router.push(s.route)}>
+            onPress={() => router.push(s.route)}
+            accessibilityRole="button"
+            accessibilityLabel={s.title}
+            accessibilityHint={s.description}>
             <View style={styles.cardHeader}>
               <ThemedText type="subtitle">{s.title}</ThemedText>
               <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />

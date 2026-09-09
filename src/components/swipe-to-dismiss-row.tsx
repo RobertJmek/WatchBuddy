@@ -61,7 +61,15 @@ export function SwipeToDismissRow({
           <ThemedText style={styles.actionText}>Dismiss</ThemedText>
         </View>
       )}>
-      {children}
+      {/* Dismissal has no tap equivalent anywhere, so the gesture must also be
+          reachable as an action or it doesn't exist for a screen reader. */}
+      <View
+        accessibilityActions={[{ name: 'dismiss', label: 'Dismiss' }]}
+        onAccessibilityAction={({ nativeEvent }) => {
+          if (nativeEvent.actionName === 'dismiss') onDismiss();
+        }}>
+        {children}
+      </View>
     </Swipeable>
   );
 }

@@ -42,7 +42,13 @@ export function FavoriteButton({ titleId }: { titleId: string }) {
   }
 
   return (
-    <Pressable onPress={toggle} hitSlop={12} style={styles.btn}>
+    <Pressable
+      onPress={toggle}
+      hitSlop={12}
+      style={styles.btn}
+      accessibilityRole="button"
+      accessibilityLabel={fav ? 'Remove from favorites' : 'Add to favorites'}
+      accessibilityState={{ selected: fav, busy: saving || loading }}>
       <Text style={[styles.heart, { color: fav ? Accent : '#fff' }]}>
         {fav ? '♥' : '♡'}
       </Text>

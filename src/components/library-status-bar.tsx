@@ -59,7 +59,9 @@ export function LibraryStatusBar({ titleId }: { titleId: string }) {
           <Pressable
             key={value}
             onPress={() => choose(value)}
-            style={[styles.chip, selected && styles.chipActive]}>
+            style={[styles.chip, selected && styles.chipActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}>
             <ThemedText
               type="small"
               style={selected ? styles.chipTextActive : undefined}>

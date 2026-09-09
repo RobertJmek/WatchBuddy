@@ -210,7 +210,12 @@ export default function LibraryScreen() {
             Library
           </ThemedText>
           <View style={styles.headerActions}>
-            <Pressable onPress={toggleSearch} hitSlop={8} style={styles.searchBtn}>
+            <Pressable
+              onPress={toggleSearch}
+              hitSlop={8}
+              style={styles.searchBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Search your library">
               <IconSymbol
                 name="magnifyingglass"
                 size={22}
@@ -220,7 +225,10 @@ export default function LibraryScreen() {
             <Pressable
               onPress={() => setFilterOpen(true)}
               hitSlop={8}
-              style={styles.searchBtn}>
+              style={styles.searchBtn}
+              accessibilityRole="button"
+              accessibilityLabel={filtered ? 'Filters, active' : 'Filters'}
+              accessibilityState={{ selected: filtered }}>
               <IconSymbol
                 name="line.3.horizontal.decrease"
                 size={22}
@@ -247,7 +255,9 @@ export default function LibraryScreen() {
               <Pressable
                 style={styles.inputClear}
                 hitSlop={8}
-                onPress={toggleSearch}>
+                onPress={toggleSearch}
+                accessibilityRole="button"
+                accessibilityLabel="Close search">
                 <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
               </Pressable>
             )}

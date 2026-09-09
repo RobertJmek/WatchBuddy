@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { memo } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
@@ -12,7 +13,7 @@ import { useTheme } from '@/hooks/use-theme';
 import type { UserResult } from '@/lib/social';
 
 /** A person row with avatar, name, @handle and a Follow toggle; taps to profile. */
-export function UserRow({ user }: { user: UserResult }) {
+export const UserRow = memo(function UserRow({ user }: { user: UserResult }) {
   const router = useRouter();
   const c = useTheme();
   const name =
@@ -24,7 +25,9 @@ export function UserRow({ user }: { user: UserResult }) {
       style={[styles.row, { backgroundColor: c.backgroundElement }]}
       onPress={() =>
         router.push({ pathname: '/user/[id]', params: { id: user.id } })
-      }>
+      }
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, open profile`}>
       <Avatar uri={user.avatar_url} name={name} size={44} />
       <ThemedView style={styles.rowText}>
         <ThemedText type="smallBold" numberOfLines={1}>
@@ -37,7 +40,7 @@ export function UserRow({ user }: { user: UserResult }) {
       <FollowButton userId={user.id} initialFollowing={user.is_following} />
     </PressScale>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {

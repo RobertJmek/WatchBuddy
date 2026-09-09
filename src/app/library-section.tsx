@@ -107,7 +107,9 @@ export default function LibrarySectionScreen() {
             mediaType: item.title!.media_type,
             name: item.title!.title,
           })
-        }>
+        }
+        accessibilityRole="button"
+        accessibilityLabel={item.title!.title}>
         <Image
           style={{
             width: cardW,
@@ -133,7 +135,12 @@ export default function LibrarySectionScreen() {
           headerShown: true,
           title: label ?? 'Library',
           headerRight: () => (
-            <Pressable onPress={() => setFilterOpen(true)} hitSlop={8}>
+            <Pressable
+              onPress={() => setFilterOpen(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={filtered ? 'Filters, active' : 'Filters'}
+              accessibilityState={{ selected: filtered }}>
               <IconSymbol
                 name="line.3.horizontal.decrease"
                 size={22}
@@ -186,7 +193,8 @@ export default function LibrarySectionScreen() {
                 <Pressable
                   onPress={() => setFilter(EMPTY_FILTER)}
                   hitSlop={8}
-                  style={styles.clear}>
+                  style={styles.clear}
+                  accessibilityRole="button">
                   <ThemedText type="smallBold" style={{ color: c.tint }}>
                     Clear filter
                   </ThemedText>

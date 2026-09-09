@@ -93,7 +93,9 @@ export default function TrendingSectionScreen() {
             mediaType: item.media_type,
             name: item.title,
           })
-        }>
+        }
+        accessibilityRole="button"
+        accessibilityLabel={item.title}>
         <Image
           style={{
             width: cardW,

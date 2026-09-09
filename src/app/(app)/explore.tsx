@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useIsFocused, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -83,7 +83,13 @@ type LoggedEntry = {
   pending: boolean;
 };
 
-function ResultRow({
+/**
+ * Memoized, and its props are shaped for it: the handlers take the item rather
+ * than closing over it, so the parent can hold them stable across a keystroke.
+ * Without that, every character typed into the search box re-rendered every
+ * result row and its gesture handler.
+ */
+const ResultRow = memo(function ResultRow({
   item,
   bg,
   router,
@@ -99,7 +105,7 @@ function ResultRow({
   /** True while the DB write behind the optimistic ✓ hasn't landed yet. */
   pending: boolean;
   /** Tapping the checkmark undoes the session log (same as swipe-left). */
-  onUndoTap: () => void;
+  onUndoTap: (item: SearchResult) => void;
 }) {
   const queryClient = useQueryClient();
   return (
@@ -137,13 +143,56 @@ function ResultRow({
         <Pressable
           style={[styles.check, pending && styles.checkPending]}
           hitSlop={8}
-          onPress={onUndoTap}>
+          onPress={() => onUndoTap(item)}
+          accessibilityRole="button"
+          accessibilityLabel="Undo this watch"
+          accessibilityState={{ busy: pending }}>
           <IconSymbol name="checkmark" size={18} tintColor={AccentText} />
         </Pressable>
       ) : null}
     </PressScale>
   );
-}
+});
+
+/**
+ * One search result: the swipe wrapper plus the row. Memoized as a unit so a
+ * keystroke re-renders neither — `SwipeToLogRow`'s own memo can't help while
+ * its `onLog` is a fresh closure, and the closure has to live somewhere.
+ */
+const SearchRow = memo(function SearchRow({
+  item,
+  bg,
+  router,
+  logged,
+  pending,
+  onLog,
+  onUndo,
+}: {
+  item: SearchResult;
+  bg: string;
+  router: ReturnType<typeof useRouter>;
+  logged: boolean;
+  pending: boolean;
+  onLog: (item: SearchResult) => void;
+  onUndo: (item: SearchResult) => void;
+}) {
+  return (
+    <SwipeToLogRow
+      onLog={() => onLog(item)}
+      logLabel={item.media_type === 'tv' ? 'Log whole series' : 'Log watch'}
+      longLog={item.media_type === 'tv'}
+      onUndo={logged ? () => onUndo(item) : undefined}>
+      <ResultRow
+        item={item}
+        bg={bg}
+        router={router}
+        logged={logged}
+        pending={pending}
+        onUndoTap={onUndo}
+      />
+    </SwipeToLogRow>
+  );
+});
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -257,21 +306,30 @@ export default function SearchScreen() {
   // Cancel tokens for in-flight logs, so an undo tapped *before* the DB write
   // finishes can cancel it — the write, once done, rolls itself back.
   const inflight = useRef(new Map<string, { cancelled: boolean }>());
+  // The two handlers below are handed to memoized rows, so they have to stay
+  // referentially stable — which means they can't close over `logged`. They read
+  // it through here instead. (Same mailbox pattern as `range-slider`.)
+  const loggedRef = useRef(logged);
+  // eslint-disable-next-line react-hooks/refs -- a mailbox, not render state
+  loggedRef.current = logged;
 
   const itemKey = (r: SearchResult) => `${r.media_type}-${r.tmdb_id}`;
 
-  function invalidateWatchData(titleId?: string) {
-    queryClient.invalidateQueries({ queryKey: ['diary'] });
-    queryClient.invalidateQueries({ queryKey: ['stats'] });
-    if (titleId) {
-      // A movie log/undo also moves its Library status → refresh those views.
-      queryClient.invalidateQueries({ queryKey: ['library'] });
-      queryClient.invalidateQueries({ queryKey: ['libraryStatus', titleId] });
-    }
-  }
+  const invalidateWatchData = useCallback(
+    (titleId?: string) => {
+      queryClient.invalidateQueries({ queryKey: ['diary'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      if (titleId) {
+        // A movie log/undo also moves its Library status → refresh those views.
+        queryClient.invalidateQueries({ queryKey: ['library'] });
+        queryClient.invalidateQueries({ queryKey: ['libraryStatus', titleId] });
+      }
+    },
+    [queryClient],
+  );
 
   /** Delete exactly the rows an entry inserted (+ restore a movie's status). */
-  async function reverseEntry(entry: LoggedEntry) {
+  const reverseEntry = useCallback(async function reverseEntry(entry: LoggedEntry) {
     if (entry.kind === 'movie') {
       await removeMovieWatch(entry.watchIds[0]);
       if (entry.priorStatus)
@@ -282,11 +340,11 @@ export default function SearchScreen() {
       await removeEpisodeWatchesByIds(entry.watchIds);
       invalidateWatchData();
     }
-  }
+  }, [invalidateWatchData]);
 
-  function logItem(item: SearchResult) {
+  const logItem = useCallback(function logItem(item: SearchResult) {
     const key = itemKey(item);
-    if (logged.has(key)) return;
+    if (loggedRef.current.has(key)) return;
     const kind: LoggedEntry['kind'] = item.media_type === 'tv' ? 'tv' : 'movie';
     // Optimistic: show the ✓ instantly; the DB write runs in the background.
     setLogged((prev) =>
@@ -353,11 +411,11 @@ export default function SearchScreen() {
         hapticFailure();
       }
     })();
-  }
+  }, [invalidateWatchData, reverseEntry]);
 
-  function undoItem(item: SearchResult) {
+  const undoItem = useCallback(function undoItem(item: SearchResult) {
     const key = itemKey(item);
-    const entry = logged.get(key);
+    const entry = loggedRef.current.get(key);
     if (!entry) return;
     // Optimistic: drop the ✓ instantly.
     setLogged((prev) => {
@@ -374,7 +432,7 @@ export default function SearchScreen() {
     }
     // Resolved entry → delete its rows now.
     void reverseEntry(entry).catch(() => {});
-  }
+  }, [reverseEntry]);
 
   return (
     <ThemedView style={styles.container}>
@@ -402,7 +460,9 @@ export default function SearchScreen() {
             <Pressable
               style={styles.inputClear}
               hitSlop={8}
-              onPress={() => setQuery('')}>
+              onPress={() => setQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search">
               <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
             </Pressable>
           )}
@@ -466,24 +526,16 @@ export default function SearchScreen() {
             }
             renderItem={({ item }) => {
               const key = itemKey(item);
-              const isLogged = logged.has(key);
               return (
-                <SwipeToLogRow
-                  onLog={() => logItem(item)}
-                  logLabel={
-                    item.media_type === 'tv' ? 'Log whole series' : 'Log watch'
-                  }
-                  longLog={item.media_type === 'tv'}
-                  onUndo={isLogged ? () => undoItem(item) : undefined}>
-                  <ResultRow
-                    item={item}
-                    bg={c.backgroundElement}
-                    router={router}
-                    logged={isLogged}
-                    pending={logged.get(key)?.pending ?? false}
-                    onUndoTap={() => undoItem(item)}
-                  />
-                </SwipeToLogRow>
+                <SearchRow
+                  item={item}
+                  bg={c.backgroundElement}
+                  router={router}
+                  logged={logged.has(key)}
+                  pending={logged.get(key)?.pending ?? false}
+                  onLog={logItem}
+                  onUndo={undoItem}
+                />
               );
             }}
           />

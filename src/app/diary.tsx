@@ -133,7 +133,11 @@ export default function DiaryScreen() {
           headerShown: true,
           title: 'Diary',
           headerRight: () => (
-            <Pressable onPress={toggleSearch} hitSlop={8}>
+            <Pressable
+              onPress={toggleSearch}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Search the diary">
               <IconSymbol
                 name="magnifyingglass"
                 size={20}
@@ -158,7 +162,9 @@ export default function DiaryScreen() {
                 styles.chip,
                 { borderColor: c.border },
                 active && styles.chipActive,
-              ]}>
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}>
               <ThemedText
                 type="small"
                 style={active ? styles.chipTextActive : undefined}>
@@ -186,7 +192,9 @@ export default function DiaryScreen() {
             <Pressable
               style={styles.searchClear}
               hitSlop={8}
-              onPress={toggleSearch}>
+              onPress={toggleSearch}
+              accessibilityRole="button"
+              accessibilityLabel="Close search">
               <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
             </Pressable>
           )}
@@ -197,7 +205,9 @@ export default function DiaryScreen() {
         <View style={styles.customRow}>
           <Pressable
             style={[styles.dateField, { backgroundColor: c.backgroundElement }]}
-            onPress={() => setPicking('start')}>
+            onPress={() => setPicking('start')}
+            accessibilityRole="button"
+            accessibilityLabel={`From ${formatDay(customStart)}`}>
             <ThemedText type="small" style={{ color: c.textSecondary }}>
               From
             </ThemedText>
@@ -205,7 +215,9 @@ export default function DiaryScreen() {
           </Pressable>
           <Pressable
             style={[styles.dateField, { backgroundColor: c.backgroundElement }]}
-            onPress={() => setPicking('end')}>
+            onPress={() => setPicking('end')}
+            accessibilityRole="button"
+            accessibilityLabel={`To ${formatDay(customEnd)}`}>
             <ThemedText type="small" style={{ color: c.textSecondary }}>
               To
             </ThemedText>
@@ -243,7 +255,11 @@ export default function DiaryScreen() {
           transparent
           animationType="fade"
           onRequestClose={() => setPicking(null)}>
-          <Pressable style={styles.backdrop} onPress={() => setPicking(null)}>
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => setPicking(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Close date picker">
             <Pressable
               style={[styles.sheet, { backgroundColor: c.background }]}
               onPress={(e) => e.stopPropagation()}>
@@ -259,7 +275,10 @@ export default function DiaryScreen() {
                   else setCustomEnd(day);
                 }}
               />
-              <Pressable style={styles.doneBtn} onPress={() => setPicking(null)}>
+              <Pressable
+                style={styles.doneBtn}
+                onPress={() => setPicking(null)}
+                accessibilityRole="button">
                 <ThemedText style={styles.doneText}>Done</ThemedText>
               </Pressable>
             </Pressable>
@@ -288,7 +307,11 @@ export default function DiaryScreen() {
           transparent
           animationType="fade"
           onRequestClose={() => setEditing(null)}>
-          <Pressable style={styles.backdrop} onPress={() => setEditing(null)}>
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => setEditing(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Close date picker">
             <Pressable
               style={[styles.sheet, { backgroundColor: c.background }]}
               onPress={(e) => e.stopPropagation()}>
@@ -390,7 +413,9 @@ export default function DiaryScreen() {
               <Pressable
                 hitSlop={8}
                 style={styles.editBtn}
-                onPress={() => setEditing(item)}>
+                onPress={() => setEditing(item)}
+                accessibilityRole="button"
+                accessibilityLabel="Change the date this was watched">
                 <IconSymbol name="calendar" size={18} tintColor={c.textSecondary} />
               </Pressable>
             </PressScale>

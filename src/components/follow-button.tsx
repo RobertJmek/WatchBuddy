@@ -58,6 +58,8 @@ export function FollowButton({
     <Pressable
       onPress={toggle}
       hitSlop={8}
+      accessibilityRole="button"
+      accessibilityState={{ selected: following, busy: saving }}
       style={({ pressed }) => [
         styles.pill,
         following

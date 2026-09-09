@@ -134,6 +134,24 @@ export function RangeSlider({
     hapticTick();
   }
 
+  /**
+   * The keyboard/screen-reader equivalent of the drag. A pan is unperformable
+   * for anyone using a screen reader, so each thumb is an `adjustable` that
+   * steps by one and commits immediately — there is no "release" to commit on.
+   */
+  function step(which: 'lo' | 'hi', delta: number) {
+    const next =
+      which === 'lo'
+        ? [Math.min(Math.max(domain[0], lo + delta), hi), hi]
+        : [lo, Math.max(Math.min(domain[1], hi + delta), lo)];
+    if (next[0] === lo && next[1] === hi) return;
+    setLo(next[0]);
+    setHi(next[1]);
+    live.current = { lo: next[0], hi: next[1] };
+    hapticTick();
+    onChange(normalizeRange([next[0], next[1]], domain));
+  }
+
   /* eslint-disable react-hooks/refs -- the builder is constructed during
      render, but its callbacks only ever run from the gesture, which is
      exactly when reading `live.current` is correct. */
@@ -228,12 +246,26 @@ export function RangeSlider({
                   styles.thumb,
                   { left: loLeft, borderColor: c.background },
                 ]}
+                accessible
+                accessibilityRole="adjustable"
+                accessibilityLabel={`${label}, lowest`}
+                accessibilityValue={{ min: domain[0], max: hi, now: lo }}
+                onAccessibilityAction={({ nativeEvent }) =>
+                  step('lo', nativeEvent.actionName === 'increment' ? 1 : -1)
+                }
               />
               <View
                 style={[
                   styles.thumb,
                   { left: hiLeft, borderColor: c.background },
                 ]}
+                accessible
+                accessibilityRole="adjustable"
+                accessibilityLabel={`${label}, highest`}
+                accessibilityValue={{ min: lo, max: domain[1], now: hi }}
+                onAccessibilityAction={({ nativeEvent }) =>
+                  step('hi', nativeEvent.actionName === 'increment' ? 1 : -1)
+                }
               />
             </>
           )}

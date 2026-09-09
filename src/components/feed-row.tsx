@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
@@ -33,7 +34,7 @@ export function formatEventTime(iso: string) {
  * unreachable from every row -- most visibly on a follow, where the row press
  * goes to the *target* while the avatar shows the actor.
  */
-export function FeedRow({ item }: { item: FeedItem }) {
+export const FeedRow = memo(function FeedRow({ item }: { item: FeedItem }) {
   const router = useRouter();
   const c = useTheme();
 
@@ -128,7 +129,11 @@ export function FeedRow({ item }: { item: FeedItem }) {
     <Pressable
       style={[styles.row, { backgroundColor: c.backgroundElement }]}
       onPress={onPress}>
-      <Pressable hitSlop={6} onPress={() => openUser(item.actor.id)}>
+      <Pressable
+        hitSlop={6}
+        onPress={() => openUser(item.actor.id)}
+        accessibilityRole="button"
+        accessibilityLabel={`${actorName(item.actor)}, open profile`}>
         <Avatar uri={item.actor.avatar_url} name={actorName(item.actor)} />
       </Pressable>
       <View style={styles.body}>
@@ -139,7 +144,7 @@ export function FeedRow({ item }: { item: FeedItem }) {
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   row: {
