@@ -1,6 +1,6 @@
 import type { RatingEntityType } from '@/lib/ratings';
 import { supabase } from '@/lib/supabase';
-import { currentViewer, requireViewer } from '@/lib/viewer';
+import { currentViewer, requireViewer, updateMine } from '@/lib/viewer';
 
 /** One reply in a review thread, flattened for the two-level render. */
 export type ReplyItem = {
@@ -175,11 +175,10 @@ export async function addReply(
 
 /** Tombstone the reply: the row survives so child replies keep context. */
 export async function deleteReply(id: string) {
-  const uid = await requireViewer();
-  const { error } = await supabase
-    .from('review_replies')
-    .update({ deleted_at: new Date().toISOString(), body: '' })
-    .eq('id', id)
-    .eq('user_id', uid);
+  const { q } = await updateMine('review_replies', {
+    deleted_at: new Date().toISOString(),
+    body: '',
+  });
+  const { error } = await q.eq('id', id);
   if (error) throw error;
 }

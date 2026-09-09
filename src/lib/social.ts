@@ -77,7 +77,12 @@ export async function follow(userId: string): Promise<void> {
   if (error && error.code !== '23505') throw error;
 }
 
-/** Unfollow a user (removes the viewer's edge; no-ops if absent). */
+/**
+ * Unfollow a user (removes the viewer's edge; no-ops if absent).
+ *
+ * Not `deleteMine`: `follows` has no `user_id` column — the viewer is the
+ * `follower_id` half of the edge, and both halves are named explicitly here.
+ */
 export async function unfollow(userId: string): Promise<void> {
   const viewerId = await requireViewer();
   const { error } = await supabase
