@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
 import {
   getMovieWatches,
   logMovieWatch,
@@ -49,12 +50,12 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
     try {
       await logMovieWatch(titleId);
       await load();
-      queryClient.invalidateQueries({ queryKey: ['diary'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: keys.diary() });
+      queryClient.invalidateQueries({ queryKey: keys.stats() });
       // logMovieWatch also promoted the title to Completed — refresh the status
       // chips on this screen and the Library list so both reflect it.
-      queryClient.invalidateQueries({ queryKey: ['libraryStatus', titleId] });
-      queryClient.invalidateQueries({ queryKey: ['library'] });
+      queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
+      queryClient.invalidateQueries({ queryKey: keys.library() });
     } catch {
       hapticFailure();
     } finally {
@@ -69,8 +70,8 @@ export function MovieWatchBar({ titleId }: { titleId: string }) {
     try {
       await removeMovieWatch(watches[0].id);
       await load();
-      queryClient.invalidateQueries({ queryKey: ['diary'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: keys.diary() });
+      queryClient.invalidateQueries({ queryKey: keys.stats() });
     } catch {
       hapticFailure();
     } finally {

@@ -16,6 +16,7 @@ import {
   type ReviewSort,
 } from '@/lib/ratings';
 import type { MediaType } from '@/lib/tmdb';
+import { keys } from '@/lib/keys';
 
 const SORTS: { value: ReviewSort; label: string }[] = [
   { value: 'top', label: 'Top' },
@@ -34,7 +35,7 @@ export default function ReviewsScreen() {
   }>();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['titleRatings', titleId],
+    queryKey: keys.titleRatings(titleId),
     queryFn: () => getTitleRatings(entityTypeFor(type), titleId),
   });
 

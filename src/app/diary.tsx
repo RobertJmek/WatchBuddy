@@ -29,6 +29,7 @@ import {
   rangeForPeriod,
   type DiaryPeriod,
 } from '@/lib/diary-period';
+import { keys } from '@/lib/keys';
 import { openTitle } from '@/lib/navigation';
 import { imageUrl } from '@/lib/tmdb';
 import {
@@ -81,8 +82,8 @@ export default function DiaryScreen() {
     async (entry: DiaryEntry, day: Date) => {
       setEditing(null);
       await updateWatchDay(entry.kind, entry.rows, day);
-      queryClient.invalidateQueries({ queryKey: ['diary'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: keys.diary() });
+      queryClient.invalidateQueries({ queryKey: keys.stats() });
     },
     [queryClient],
   );
@@ -109,7 +110,7 @@ export default function DiaryScreen() {
     isLoading: loading,
     refetch,
   } = useQuery({
-    queryKey: ['diary', period, range.from ?? null, range.to ?? null],
+    queryKey: [...keys.diary(), period, range.from ?? null, range.to ?? null],
     queryFn: () => getDiary(range),
   });
 

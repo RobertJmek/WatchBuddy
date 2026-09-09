@@ -20,6 +20,7 @@ import { ThemedView } from '@/components/themed-view';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getGenres } from '@/lib/genres';
+import { keys } from '@/lib/keys';
 import {
   getLibrary,
   type LibraryStatus,
@@ -57,11 +58,11 @@ export default function LibrarySectionScreen() {
   const cardW = (width - PAD * 2 - GAP * (COLS - 1)) / COLS;
 
   const { data: entries = [], isLoading } = useQuery({
-    queryKey: ['library'],
+    queryKey: keys.library(),
     queryFn: getLibrary,
   });
   const { data: genres = [] } = useQuery({
-    queryKey: ['genres'],
+    queryKey: keys.genres(),
     queryFn: getGenres,
     staleTime: Infinity,
   });

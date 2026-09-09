@@ -18,6 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { openTitle } from '@/lib/navigation';
 import { getLibraryFor, type LibraryEntry } from '@/lib/library';
@@ -55,28 +56,28 @@ export default function UserProfileScreen() {
   const isMe = session?.user.id === id;
 
   const profileQ = useQuery({
-    queryKey: ['profile', id],
+    queryKey: keys.profile(id),
     queryFn: () => getProfileById(id),
   });
   const countsQ = useQuery({
-    queryKey: ['followCounts', id],
+    queryKey: keys.followCounts(id),
     queryFn: () => getFollowCounts(id),
   });
   const followQ = useQuery({
-    queryKey: ['follow', id],
+    queryKey: keys.follow(id),
     queryFn: () => getFollowState(id),
     enabled: !isMe,
   });
   const statsQ = useQuery({
-    queryKey: ['userStats', id],
+    queryKey: keys.stats(id),
     queryFn: () => getStats(id),
   });
   const diaryQ = useQuery({
-    queryKey: ['userDiary', id],
+    queryKey: keys.diary(id),
     queryFn: () => getDiary({ userId: id, limit: 12 }),
   });
   const libraryQ = useQuery({
-    queryKey: ['userLibrary', id],
+    queryKey: keys.library(id),
     queryFn: () => getLibraryFor(id),
   });
 

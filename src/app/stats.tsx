@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getStats } from '@/lib/stats';
+import { keys } from '@/lib/keys';
 
 const ACTIVE = Accent;
 
@@ -131,7 +132,7 @@ export default function StatsScreen() {
     data: stats,
     isLoading: loading,
     refetch,
-  } = useQuery({ queryKey: ['stats'], queryFn: () => getStats() });
+  } = useQuery({ queryKey: keys.stats(), queryFn: () => getStats() });
 
   useFocusEffect(
     useCallback(() => {

@@ -24,6 +24,7 @@ import { Accent, Danger, Glow, Hero, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import { imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
+import { keys } from '@/lib/keys';
 
 // Roughly the Save/Cancel row below the review composer, plus breathing room.
 // Without it the keyboard stops flush against the input and swallows the very
@@ -48,7 +49,7 @@ export default function TitleDetailScreen() {
   const year = title?.release_date?.slice(0, 4);
 
   const ratingsQ = useQuery({
-    queryKey: ['titleRatings', title?.id],
+    queryKey: keys.titleRatings(title?.id),
     queryFn: () => getTitleRatings(entityTypeFor(title!.media_type), title!.id),
     enabled: !!title,
   });

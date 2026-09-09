@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticToggle } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
 import { likeReview, unlikeReview, type ReviewItem } from '@/lib/ratings';
 
 function formatDate(iso: string) {
@@ -62,9 +63,9 @@ export const ReviewRow = memo(function ReviewRow({
     try {
       if (next) await likeReview(review.ratingId);
       else await unlikeReview(review.ratingId);
-      queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+      queryClient.invalidateQueries({ queryKey: keys.titleRatings() });
       // Keep the feed's copy of this review's heart in sync (no-op off-feed).
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: keys.feed() });
     } catch {
       setLiked(!next);
       setLikes((n) => n + (next ? -1 : 1));
