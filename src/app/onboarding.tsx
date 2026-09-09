@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { markOnboardingSeen } from '@/lib/onboarding';
 import {
@@ -37,7 +38,7 @@ export default function OnboardingScreen() {
   const { session } = useAuth();
 
   const { data: profile } = useQuery({
-    queryKey: ['profile'],
+    queryKey: keys.profile(),
     queryFn: getMyProfile,
   });
 
@@ -116,7 +117,7 @@ export default function OnboardingScreen() {
         bio: profile?.bio ?? null,
         ...(avatar_url ? { avatar_url } : {}),
       });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: keys.profile() });
       await finish();
     } catch (e) {
       setError(

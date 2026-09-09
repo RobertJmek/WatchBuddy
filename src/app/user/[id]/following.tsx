@@ -9,12 +9,13 @@ import { UserRow } from '@/components/user-row';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getFollowing } from '@/lib/social';
+import { keys } from '@/lib/keys';
 
 export default function FollowingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useTheme();
   const { data, isLoading } = useQuery({
-    queryKey: ['following', id],
+    queryKey: keys.following(id),
     queryFn: () => getFollowing(id),
   });
 

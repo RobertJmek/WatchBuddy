@@ -18,6 +18,7 @@ import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { getFeed, markFeedSeen } from '@/lib/feed';
 import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
@@ -55,7 +56,7 @@ export default function FeedScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['feed'],
+    queryKey: keys.feed(),
     queryFn: ({ pageParam }) => getFeed({ before: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -63,14 +64,14 @@ export default function FeedScreen() {
 
   // Personal notifications (likes/replies on my reviews), pinned atop the feed.
   const { data: notifications = [], refetch: refetchNotifications } = useQuery({
-    queryKey: ['notifications'],
+    queryKey: keys.notifications(),
     queryFn: getNotifications,
   });
 
   // Whether the viewer follows anyone — distinguishes "follow someone" from
   // "your friends have been quiet" in the empty state.
   const { data: counts } = useQuery({
-    queryKey: ['followCounts', myId],
+    queryKey: keys.followCounts(myId),
     queryFn: () => getFollowCounts(myId!),
     enabled: !!myId,
   });
@@ -89,8 +90,8 @@ export default function FeedScreen() {
     const uid = session?.user.id;
     if (!uid) return;
     return subscribeToNotifications(uid, () => {
-      queryClient.invalidateQueries({ queryKey: ['notifUnread'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: keys.notifUnread() });
+      queryClient.invalidateQueries({ queryKey: keys.notifications() });
     });
   }, [session?.user.id, queryClient]);
 
@@ -102,7 +103,7 @@ export default function FeedScreen() {
       refetchNotifications();
       markAllRead()
         .then(() =>
-          queryClient.invalidateQueries({ queryKey: ['notifUnread'] }),
+          queryClient.invalidateQueries({ queryKey: keys.notifUnread() }),
         )
         .catch(() => {});
       // On blur: advance the seen watermark so what we just looked at ages out
@@ -149,8 +150,8 @@ export default function FeedScreen() {
       // when Supabase answers. `hapticUndo` is the taking-something-back verb.
       hapticUndo();
       const previous =
-        queryClient.getQueryData<NotificationItem[]>(['notifications']) ?? [];
-      queryClient.setQueryData<NotificationItem[]>(['notifications'], (old) =>
+        queryClient.getQueryData<NotificationItem[]>(keys.notifications()) ?? [];
+      queryClient.setQueryData<NotificationItem[]>(keys.notifications(), (old) =>
         (old ?? []).filter((n) => n.id !== item.id),
       );
       setUndos((prev) => [...prev, { item, beforeId }]);
@@ -162,9 +163,9 @@ export default function FeedScreen() {
       try {
         await dismissNotification(item.id);
         // Dismissal writes read_at too, so the badge has to be re-counted.
-        queryClient.invalidateQueries({ queryKey: ['notifUnread'] });
+        queryClient.invalidateQueries({ queryKey: keys.notifUnread() });
       } catch {
-        queryClient.setQueryData(['notifications'], previous);
+        queryClient.setQueryData(keys.notifications(), previous);
         forgetUndo(item.id);
         hapticFailure();
       }
@@ -180,7 +181,7 @@ export default function FeedScreen() {
       // It used to wait for a refetch to bring it back, which is why undoing
       // looked like it did nothing until you pulled to refresh. Re-sorted the way
       // the server sorts, so the row lands where it belongs rather than on top.
-      queryClient.setQueryData<NotificationItem[]>(['notifications'], (old) => {
+      queryClient.setQueryData<NotificationItem[]>(keys.notifications(), (old) => {
         const rest = old ?? [];
         if (rest.some((n) => n.id === item.id)) return rest;
         return [...rest, item].sort((a, b) =>
@@ -194,8 +195,8 @@ export default function FeedScreen() {
       }
       // Reconcile either way: on success this is a no-op, on failure it takes the
       // row back off the list.
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notifUnread'] });
+      queryClient.invalidateQueries({ queryKey: keys.notifications() });
+      queryClient.invalidateQueries({ queryKey: keys.notifUnread() });
     },
     [forgetUndo, queryClient],
   );

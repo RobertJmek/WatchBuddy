@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { getUnreadCount, subscribeToNotifications } from '@/lib/notifications';
 import { emitTabReset } from '@/lib/tab-reset';
@@ -16,7 +17,7 @@ export default function AppTabs() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const { data: unread = 0 } = useQuery({
-    queryKey: ['notifUnread'],
+    queryKey: keys.notifUnread(),
     queryFn: getUnreadCount,
     enabled: !!session,
   });
@@ -24,7 +25,7 @@ export default function AppTabs() {
     const uid = session?.user.id;
     if (!uid) return;
     return subscribeToNotifications(uid, () => {
-      queryClient.invalidateQueries({ queryKey: ['notifUnread'] });
+      queryClient.invalidateQueries({ queryKey: keys.notifUnread() });
     });
   }, [session?.user.id, queryClient]);
 

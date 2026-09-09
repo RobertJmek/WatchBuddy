@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { openTitle } from '@/lib/navigation';
 import {
   getTrendingPage,
@@ -42,7 +43,7 @@ const MAX_PAGES = 10;
  * inconsistency does.
  *
  * Sibling to `library-section`, not a generalisation of it: that screen filters
- * the `['library']` cache client-side and carries the filter sheet, while this
+ * the `keys.library()` cache client-side and carries the filter sheet, while this
  * one pages a remote feed and has nothing to filter.
  */
 export default function TrendingSectionScreen() {
@@ -61,7 +62,7 @@ export default function TrendingSectionScreen() {
       // The '1' is the response shape, not the feed. Pages fetched from a proxy
       // that predated pagination were shapeless and got persisted; orphaning
       // that key is how an already-poisoned cache recovers without a reinstall.
-      queryKey: ['trendingPage', 1, mediaType],
+      queryKey: keys.trendingPage(mediaType),
       queryFn: ({ pageParam }) => getTrendingPage(mediaType, pageParam),
       initialPageParam: 1,
       getNextPageParam: (last) =>

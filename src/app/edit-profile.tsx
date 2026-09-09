@@ -21,6 +21,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { buildExport } from '@/lib/export';
 import {
@@ -70,7 +71,7 @@ export default function EditProfileScreen() {
   }
 
   const { data: profile, isLoading } = useQuery({
-    queryKey: ['profile'],
+    queryKey: keys.profile(),
     queryFn: getMyProfile,
   });
 
@@ -170,7 +171,7 @@ export default function EditProfileScreen() {
         bio: about || null,
         ...(avatar_url ? { avatar_url } : {}),
       });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: keys.profile() });
       router.back();
     } catch (e) {
       setError(

@@ -27,6 +27,7 @@ import { Accent, AccentText, Danger, PlaceholderBg, Spacing } from '@/constants/
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
 import { openTitle } from '@/lib/navigation';
 import {
   getLibraryStatus,
@@ -270,21 +271,21 @@ export default function SearchScreen() {
           : 'search';
 
   const search = useQuery({
-    queryKey: ['search', term],
+    queryKey: keys.search(term),
     queryFn: () => searchTitles(term),
     enabled: searching,
     placeholderData: keepPreviousData,
   });
 
   const people = useQuery({
-    queryKey: ['userSearch', peopleDebounced],
+    queryKey: keys.userSearch(peopleDebounced),
     queryFn: () => searchUsers(peopleDebounced),
     enabled: isPeople && peopleDebounced.length > 0,
     placeholderData: keepPreviousData,
   });
 
   const trending = useQuery({
-    queryKey: ['trending'],
+    queryKey: keys.trending(),
     queryFn: getTrending,
     staleTime: 1000 * 60 * 60 * 24, // 24h — the weekly feed barely moves.
   });
@@ -344,12 +345,12 @@ export default function SearchScreen() {
 
   const invalidateWatchData = useCallback(
     (titleId?: string) => {
-      queryClient.invalidateQueries({ queryKey: ['diary'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: keys.diary() });
+      queryClient.invalidateQueries({ queryKey: keys.stats() });
       if (titleId) {
         // A movie log/undo also moves its Library status → refresh those views.
-        queryClient.invalidateQueries({ queryKey: ['library'] });
-        queryClient.invalidateQueries({ queryKey: ['libraryStatus', titleId] });
+        queryClient.invalidateQueries({ queryKey: keys.library() });
+        queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
       }
     },
     [queryClient],

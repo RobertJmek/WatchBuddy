@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { getMyProfile } from '@/lib/profile';
 import { getFollowCounts } from '@/lib/social';
@@ -27,12 +28,12 @@ export default function ProfileScreen() {
   const myId = session?.user.id;
 
   const { data: profile, refetch } = useQuery({
-    queryKey: ['profile'],
+    queryKey: keys.profile(),
     queryFn: getMyProfile,
   });
 
   const { data: counts, refetch: refetchCounts } = useQuery({
-    queryKey: ['followCounts', myId],
+    queryKey: keys.followCounts(myId),
     queryFn: () => getFollowCounts(myId!),
     enabled: !!myId,
   });

@@ -20,6 +20,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
 import {
   entityTypeFor,
   getRating,
@@ -197,12 +198,12 @@ export function RatingBar({
     try {
       if (clear) await removeRating(entityType, titleId);
       else await setRating(entityType, titleId, n, review);
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
+      queryClient.invalidateQueries({ queryKey: keys.stats() });
+      queryClient.invalidateQueries({ queryKey: keys.titleRatings(titleId) });
       // The library carries the viewer's own rating (it's a filter axis), so a
       // changed or cleared value has to reach it. Only this path matters —
       // editing a review's text keeps the value, so it can't move the axis.
-      queryClient.invalidateQueries({ queryKey: ['library'] });
+      queryClient.invalidateQueries({ queryKey: keys.library() });
     } catch {
       setValue(previous);
       hapticFailure();
@@ -221,7 +222,7 @@ export function RatingBar({
       await setRating(entityType, titleId, value, draft);
       setReview(draft.trim());
       setEditing(false);
-      queryClient.invalidateQueries({ queryKey: ['titleRatings', titleId] });
+      queryClient.invalidateQueries({ queryKey: keys.titleRatings(titleId) });
       hapticSuccess();
     } catch {
       hapticFailure();

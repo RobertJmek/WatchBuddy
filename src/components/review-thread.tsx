@@ -30,6 +30,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticToggle } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
 import { likeReview, setRating, unlikeReview } from '@/lib/ratings';
 import {
   addReply,
@@ -57,7 +58,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['reviewThread', ratingId],
+    queryKey: keys.reviewThread(ratingId),
     queryFn: () => getReviewThread(ratingId),
   });
 
@@ -73,8 +74,8 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
   const [savingReview, setSavingReview] = useState(false);
 
   function refresh() {
-    queryClient.invalidateQueries({ queryKey: ['reviewThread', ratingId] });
-    queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+    queryClient.invalidateQueries({ queryKey: keys.reviewThread(ratingId) });
+    queryClient.invalidateQueries({ queryKey: keys.titleRatings() });
   }
 
   async function send() {
@@ -173,7 +174,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
       // Refresh the thread + community lists so the new/empty text shows even if
       // this screen is revisited from a cached notification tap.
       refresh();
-      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: keys.feed() });
       hapticSuccess();
       // Emptying the text removes the review (score kept) — nothing left to show.
       if (!text) {
@@ -206,7 +207,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
               // reopens this screen showing the deleted text (refresh = thread +
               // titleRatings).
               refresh();
-              queryClient.invalidateQueries({ queryKey: ['feed'] });
+              queryClient.invalidateQueries({ queryKey: keys.feed() });
               router.back();
             } catch {
               Alert.alert('Could not delete your review.');
@@ -253,7 +254,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
     try {
       if (next) await likeReview(ratingId);
       else await unlikeReview(ratingId);
-      queryClient.invalidateQueries({ queryKey: ['titleRatings'] });
+      queryClient.invalidateQueries({ queryKey: keys.titleRatings() });
     } catch {
       setLiked(!next);
       setLikes((n) => n + (next ? -1 : 1));

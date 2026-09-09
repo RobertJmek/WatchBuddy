@@ -8,11 +8,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { UserRow } from '@/components/user-row';
 import { getReviewLikers } from '@/lib/ratings';
+import { keys } from '@/lib/keys';
 
 /** "Liked by" list for a review. Mounted by /review/[ratingId]/likes. */
 export function ReviewLikes({ ratingId }: { ratingId: string }) {
   const { data, isLoading } = useQuery({
-    queryKey: ['reviewLikers', ratingId],
+    queryKey: keys.reviewLikers(ratingId),
     queryFn: () => getReviewLikers(ratingId),
   });
 

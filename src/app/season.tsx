@@ -16,6 +16,7 @@ import { Accent, AccentText, Danger, NeutralBorder, Spacing } from '@/constants/
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
+import { keys } from '@/lib/keys';
 import {
   getEpisodeWatchCounts,
   logEpisodeWatch,
@@ -38,8 +39,8 @@ export default function SeasonScreen() {
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   function invalidateWatchData() {
-    queryClient.invalidateQueries({ queryKey: ['diary'] });
-    queryClient.invalidateQueries({ queryKey: ['stats'] });
+    queryClient.invalidateQueries({ queryKey: keys.diary() });
+    queryClient.invalidateQueries({ queryKey: keys.stats() });
   }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

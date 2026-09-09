@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 
 import AppTabs from '@/components/app-tabs';
+import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { hasSeenOnboarding } from '@/lib/onboarding';
 import { getMyProfile } from '@/lib/profile';
@@ -10,7 +11,7 @@ import { getMyProfile } from '@/lib/profile';
 export default function AppLayout() {
   const router = useRouter();
   const { session } = useAuth();
-  const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: getMyProfile });
+  const { data: profile } = useQuery({ queryKey: keys.profile(), queryFn: getMyProfile });
   // One redirect per mount — avoids a second push if the profile query refetches.
   const redirected = useRef(false);
 
