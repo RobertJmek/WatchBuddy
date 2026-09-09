@@ -25,6 +25,15 @@ jobs:
       # `postinstall` runs patch-package against the committed patches/.
       - run: npm ci
 
+      # `expo-env.d.ts` is gitignored by Expo's own template (the file says so
+      # itself), but it is what pulls in the ambient types for `expo/types` —
+      # CSS modules among them. Without it `tsc` fails in CI on declarations
+      # that exist on every dev machine. This regenerates it through Expo's own
+      # generator; it rewrites tsconfig.json byte-identically, and the guard
+      # below is there so a future SDK silently changing it can't slip past.
+      - run: npx expo customize tsconfig.json
+      - run: git diff --exit-code tsconfig.json
+
       - run: npm run typecheck
 
       - run: npm run lint:ci
