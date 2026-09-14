@@ -75,6 +75,12 @@ Two design axes had real trade-offs:
 - Native tab behaviour differs across iOS/Android, so the tab (icon, badge) and
   the inbox aging must be device-tested on both.
 
+**Amended by [ADR 0021](0021-feed-segments.md) (2026-09-14):** notifications are no
+longer *pinned above* friends' activity — the Feed tab is split into two segments,
+**Activity | Notifications**, and marking read moved off tab focus and onto showing
+the Notifications segment. Everything this ADR decided about the data — the read-time
+fan-out, the watermark, the 48h read-aging — is unchanged.
+
 ## Update — 2026-07-23: window anchored to the watermark (migration 0011)
 
 The original filter `least(feed_seen_at, now() - 24h)` ages a seen row 24h from
