@@ -26,7 +26,7 @@ import { UserRow } from '@/components/user-row';
 import { Accent, AccentText, Danger, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
+import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { openTitle } from '@/lib/navigation';
 import {
@@ -231,6 +231,16 @@ export default function SearchScreen() {
 
   const [query, setQuery] = useState('');
   const trimmed = query.trim();
+  // The term the user explicitly submitted (button or the keyboard's Search
+  // key). It outranks the debounced live term, which is what lets 1-2 character
+  // titles ("It", "Up") be searched at all. It is never synced back to `query`
+  // in an effect — the `submitted === trimmed` test below self-invalidates it.
+  const [submitted, setSubmitted] = useState('');
+
+  const clearSearch = useCallback(() => {
+    setQuery('');
+    setSubmitted('');
+  }, [setSubmitted]);
 
   const inputRef = useRef<TextInput>(null);
   const trendingRef = useRef<ScrollView>(null);
@@ -241,12 +251,12 @@ export default function SearchScreen() {
   useEffect(() => {
     return subscribeTabReset('explore', () => {
       if (!focused) return;
-      setQuery('');
+      clearSearch();
       inputRef.current?.blur();
       Keyboard.dismiss();
       trendingRef.current?.scrollTo({ y: 0, animated: true });
     });
-  }, [focused]);
+  }, [focused, clearSearch]);
 
   // A leading '@' switches to people-search; the '@' is the trigger only and
   // the rest is the username/name query.
@@ -254,11 +264,26 @@ export default function SearchScreen() {
   const peopleTerm = isPeople ? trimmed.slice(1).trim() : '';
   const peopleDebounced = useDebouncedValue(peopleTerm, DEBOUNCE_MS);
 
-  const term = useDebouncedValue(trimmed, DEBOUNCE_MS);
-  const searching = !isPeople && term.length >= MIN_CHARS;
+  const debounced = useDebouncedValue(trimmed, DEBOUNCE_MS);
+  // Live type-ahead, unchanged: 3+ characters, settled for DEBOUNCE_MS. Both
+  // ends are checked so deleting down to 2 characters drops the results at once
+  // instead of leaving the previous term's list up for the debounce window.
+  const liveTerm =
+    trimmed.length >= MIN_CHARS && debounced.length >= MIN_CHARS ? debounced : '';
+  // A submit only counts while the box still holds exactly what was submitted;
+  // editing afterwards falls straight back to the live rules.
+  const term = submitted && submitted === trimmed ? submitted : liveTerm;
+  const searching = !isPeople && term.length > 0;
+
+  const submit = useCallback(() => {
+    if (!trimmed || isPeople) return;
+    setSubmitted(trimmed);
+    hapticTick();
+    Keyboard.dismiss();
+  }, [trimmed, isPeople, setSubmitted]);
 
   // people: '@' alone -> hint, else live people results.
-  // titles: empty -> trending feed; 1-2 chars -> hint; 3+ -> live results.
+  // titles: empty -> trending feed; nothing to search yet -> hint; else results.
   const mode: 'trending' | 'hint' | 'search' | 'people-hint' | 'people' =
     isPeople
       ? peopleTerm.length === 0
@@ -266,7 +291,7 @@ export default function SearchScreen() {
         : 'people'
       : trimmed.length === 0
         ? 'trending'
-        : trimmed.length < MIN_CHARS
+        : term.length === 0
           ? 'hint'
           : 'search';
 
@@ -471,7 +496,14 @@ export default function SearchScreen() {
         <View style={styles.inputRow}>
           <TextInput
             ref={inputRef}
-            style={[styles.input, { color: c.text, backgroundColor: c.backgroundElement }]}
+            style={[
+              styles.input,
+              { color: c.text, backgroundColor: c.backgroundElement },
+              // Reserve the icon gutter only once there is something to show in
+              // it, so the placeholder gets the full width of an empty box and
+              // the text doesn't reflow as the spinner comes and goes.
+              query.length > 0 ? styles.inputWithIcons : null,
+            ]}
             placeholder="Movies, TV, or @username"
             placeholderTextColor={c.textSecondary}
             autoCapitalize="none"
@@ -479,21 +511,31 @@ export default function SearchScreen() {
             returnKeyType="search"
             value={query}
             onChangeText={setQuery}
+            onSubmitEditing={submit}
           />
-          {((mode === 'search' && search.isFetching) ||
-            (mode === 'people' && people.isFetching)) && (
-            <ActivityIndicator style={styles.inputSpinner} />
-          )}
-          {query.length > 0 && (
-            <Pressable
-              style={styles.inputClear}
-              hitSlop={8}
-              onPress={() => setQuery('')}
-              accessibilityRole="button"
-              accessibilityLabel="Clear search">
-              <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
-            </Pressable>
-          )}
+          <View style={styles.inputIcons} pointerEvents="box-none">
+            {((mode === 'search' && search.isFetching) ||
+              (mode === 'people' && people.isFetching)) && <ActivityIndicator />}
+            {!isPeople && trimmed.length > 0 && (
+              <Pressable
+                style={search.isFetching && term === trimmed ? styles.iconBusy : undefined}
+                hitSlop={8}
+                onPress={submit}
+                accessibilityRole="button"
+                accessibilityLabel="Search">
+                <IconSymbol name="magnifyingglass" size={18} tintColor={c.textSecondary} />
+              </Pressable>
+            )}
+            {query.length > 0 && (
+              <Pressable
+                hitSlop={8}
+                onPress={clearSearch}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search">
+                <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {/* Errors only replace content when there's nothing cached to show. */}
@@ -506,7 +548,7 @@ export default function SearchScreen() {
 
         {mode === 'hint' && (
           <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
-            Type at least {MIN_CHARS} characters to search.
+            Keep typing, or tap search for short titles.
           </ThemedText>
         )}
 
@@ -629,12 +671,20 @@ const styles = StyleSheet.create({
   input: {
     borderRadius: Spacing.three,
     paddingLeft: Spacing.three,
-    paddingRight: Spacing.five + Spacing.four,
+    paddingRight: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 16,
   },
-  inputSpinner: { position: 'absolute', right: Spacing.five + Spacing.three },
-  inputClear: { position: 'absolute', right: Spacing.three },
+  // Room for the spinner, the search button and the clear button side by side.
+  inputWithIcons: { paddingRight: Spacing.six + Spacing.four },
+  inputIcons: {
+    position: 'absolute',
+    right: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  iconBusy: { opacity: 0.4 },
   dimmed: { opacity: 0.4 },
   list: { gap: Spacing.two, paddingVertical: Spacing.three },
   row: {
