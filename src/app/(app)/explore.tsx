@@ -233,14 +233,11 @@ export default function SearchScreen() {
   const trimmed = query.trim();
   // The term the user explicitly submitted (button or the keyboard's Search
   // key). It outranks the debounced live term, which is what lets 1-2 character
-  // titles ("It", "Up") be searched at all. It is never synced back to `query`
-  // in an effect — the `submitted === trimmed` test below self-invalidates it.
+  // titles ("It", "Up", "M") be searched at all. Editing the box clears it in
+  // the same batch as `setQuery` (see `onChangeText`), so it is non-empty only
+  // while it equals `trimmed` — by construction, not by a comparison that has
+  // to be repeated at every use. No effect syncs the two.
   const [submitted, setSubmitted] = useState('');
-
-  const clearSearch = useCallback(() => {
-    setQuery('');
-    setSubmitted('');
-  }, [setSubmitted]);
 
   const inputRef = useRef<TextInput>(null);
   const trendingRef = useRef<ScrollView>(null);
@@ -251,12 +248,13 @@ export default function SearchScreen() {
   useEffect(() => {
     return subscribeTabReset('explore', () => {
       if (!focused) return;
-      clearSearch();
+      setQuery('');
+      setSubmitted('');
       inputRef.current?.blur();
       Keyboard.dismiss();
       trendingRef.current?.scrollTo({ y: 0, animated: true });
     });
-  }, [focused, clearSearch]);
+  }, [focused]);
 
   // A leading '@' switches to people-search; the '@' is the trigger only and
   // the rest is the username/name query.
@@ -264,26 +262,18 @@ export default function SearchScreen() {
   const peopleTerm = isPeople ? trimmed.slice(1).trim() : '';
   const peopleDebounced = useDebouncedValue(peopleTerm, DEBOUNCE_MS);
 
+  // Live type-ahead, unchanged: 3+ characters, settled for DEBOUNCE_MS.
   const debounced = useDebouncedValue(trimmed, DEBOUNCE_MS);
-  // Live type-ahead, unchanged: 3+ characters, settled for DEBOUNCE_MS. Both
-  // ends are checked so deleting down to 2 characters drops the results at once
-  // instead of leaving the previous term's list up for the debounce window.
-  const liveTerm =
-    trimmed.length >= MIN_CHARS && debounced.length >= MIN_CHARS ? debounced : '';
-  // A submit only counts while the box still holds exactly what was submitted;
-  // editing afterwards falls straight back to the live rules.
-  const term = submitted && submitted === trimmed ? submitted : liveTerm;
+  const liveTerm = debounced.length >= MIN_CHARS ? debounced : '';
+  // One precedence rule, because `submitted` can only be non-empty while it
+  // equals `trimmed`. Nothing else has to re-derive that agreement.
+  const term = submitted || liveTerm;
   const searching = !isPeople && term.length > 0;
 
-  const submit = useCallback(() => {
-    if (!trimmed || isPeople) return;
-    setSubmitted(trimmed);
-    hapticTick();
-    Keyboard.dismiss();
-  }, [trimmed, isPeople, setSubmitted]);
-
   // people: '@' alone -> hint, else live people results.
-  // titles: empty -> trending feed; nothing to search yet -> hint; else results.
+  // titles: empty -> trending feed; 1-2 chars -> hint until submitted; else
+  // results. Keyed on the *typed* length, not on `term`: the debounce window
+  // must not bounce a long query back to the hint.
   const mode: 'trending' | 'hint' | 'search' | 'people-hint' | 'people' =
     isPeople
       ? peopleTerm.length === 0
@@ -291,7 +281,7 @@ export default function SearchScreen() {
         : 'people'
       : trimmed.length === 0
         ? 'trending'
-        : term.length === 0
+        : trimmed.length < MIN_CHARS && !submitted
           ? 'hint'
           : 'search';
 
@@ -301,6 +291,27 @@ export default function SearchScreen() {
     enabled: searching,
     placeholderData: keepPreviousData,
   });
+
+  // The box holds a query the rows on screen don't answer yet — the debounce
+  // window, mostly. Distinct from `isFetching` because during it the query is
+  // *disabled*: without it the list would flash "No results", and the previous
+  // term's rows would sit there undimmed, reading as current.
+  const settling = mode === 'search' && term !== trimmed;
+  const searchBusy = search.isFetching || settling;
+  // The submit button is dimmed while it is fetching the term already in the
+  // box; it stays pressable, because in that state it is the retry.
+  const submitBusy = search.isFetching && term === trimmed;
+
+  const submit = () => {
+    if (!trimmed || isPeople) return;
+    hapticTick();
+    Keyboard.dismiss();
+    // Submitting a term that is already the live one wouldn't change the query
+    // key, so nothing would be sent — which would make the button inert exactly
+    // where it is most wanted, as a retry after a failed request.
+    if (term === trimmed) void search.refetch();
+    else setSubmitted(trimmed);
+  };
 
   const people = useQuery({
     queryKey: keys.userSearch(peopleDebounced),
@@ -510,26 +521,37 @@ export default function SearchScreen() {
             autoCorrect={false}
             returnKeyType="search"
             value={query}
-            onChangeText={setQuery}
+            onChangeText={(t) => {
+              setQuery(t);
+              // Retire the submitted term on any edit, in the same batch. That
+              // is what keeps `submitted` equal to `trimmed` whenever it is
+              // set — without it, deleting back through a submitted value
+              // would silently re-arm it.
+              setSubmitted('');
+            }}
             onSubmitEditing={submit}
           />
           <View style={styles.inputIcons} pointerEvents="box-none">
-            {((mode === 'search' && search.isFetching) ||
+            {((mode === 'search' && searchBusy) ||
               (mode === 'people' && people.isFetching)) && <ActivityIndicator />}
             {!isPeople && trimmed.length > 0 && (
               <Pressable
-                style={search.isFetching && term === trimmed ? styles.iconBusy : undefined}
+                style={submitBusy ? styles.dimmed : undefined}
                 hitSlop={8}
                 onPress={submit}
                 accessibilityRole="button"
-                accessibilityLabel="Search">
+                accessibilityLabel="Search"
+                accessibilityState={{ busy: submitBusy }}>
                 <IconSymbol name="magnifyingglass" size={18} tintColor={c.textSecondary} />
               </Pressable>
             )}
             {query.length > 0 && (
               <Pressable
                 hitSlop={8}
-                onPress={clearSearch}
+                onPress={() => {
+                  setQuery('');
+                  setSubmitted('');
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="Clear search">
                 <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
@@ -584,9 +606,9 @@ export default function SearchScreen() {
             keyExtractor={(r) => `${r.media_type}-${r.tmdb_id}`}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
-            style={search.isFetching ? styles.dimmed : undefined}
+            style={searchBusy ? styles.dimmed : undefined}
             ListEmptyComponent={
-              !search.isFetching ? (
+              !searchBusy ? (
                 <EmptyState
                   icon="magnifyingglass"
                   title="No results"
@@ -675,8 +697,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     fontSize: 16,
   },
-  // Room for the spinner, the search button and the clear button side by side.
-  inputWithIcons: { paddingRight: Spacing.six + Spacing.four },
+  // Room for the spinner, the search button and the clear button side by side:
+  // the row's own right inset, three ~20px glyphs and the two gaps between them.
+  inputWithIcons: { paddingRight: Spacing.six + Spacing.five + Spacing.two },
   inputIcons: {
     position: 'absolute',
     right: Spacing.three,
@@ -684,7 +707,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
   },
-  iconBusy: { opacity: 0.4 },
   dimmed: { opacity: 0.4 },
   list: { gap: Spacing.two, paddingVertical: Spacing.three },
   row: {
