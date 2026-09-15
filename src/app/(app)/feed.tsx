@@ -3,50 +3,54 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { useFocusEffect, useIsFocused } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { RefreshControl, StyleSheet } from 'react-native';
 
-import { Button } from '@/components/button';
-import { DismissedNotice } from '@/components/dismissed-notice';
-import { EmptyState } from '@/components/empty-state';
-import { FeedRow } from '@/components/feed-row';
-import { NotificationRow } from '@/components/notification-row';
-import { SwipeToDismissRow } from '@/components/swipe-to-dismiss-row';
+import { ActivityList } from '@/components/activity-list';
+import { NotificationsList } from '@/components/notifications-list';
+import { SegmentedControl, type Segment } from '@/components/segmented-control';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { getFeed, markFeedSeen } from '@/lib/feed';
-import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
 import {
-  dismissNotification,
   getNotifications,
   markAllRead,
   subscribeToNotifications,
-  undismissNotification,
-  type NotificationItem,
 } from '@/lib/notifications';
 import { getFollowCounts } from '@/lib/social';
 
-/** How long an Undo strip stays before the dismissal is just… done. */
-const UNDO_MS = 4000;
+type SegmentKey = 'activity' | 'notifications';
 
-/** The row below `n`, which is what an Undo strip anchors itself above. */
-function nextId(list: NotificationItem[], n: NotificationItem): string | null {
-  const i = list.indexOf(n);
-  return i >= 0 && i + 1 < list.length ? list[i + 1].id : null;
-}
-
+/**
+ * The Feed tab, in two segments: **Activity** (what the people you follow are
+ * doing) and **Notifications** (what happened to you). They used to be one
+ * scroll surface with notifications pinned on top, which made a row that needs
+ * you look exactly like a row that is only news — and made the tab badge
+ * ambiguous, since it cleared on mere tab focus. See ADR 0021, amending 0006.
+ *
+ * Both lists stay **mounted** behind the segmented control, hidden with
+ * `display: none` rather than unmounted, so each keeps its own scroll offset and
+ * its loaded pages. That is also why this is not a pager: a horizontally
+ * swipeable pager would fight the swipe-to-dismiss gesture on every
+ * notification row.
+ *
+ * This screen owns the data (both queries, the refresh control, the realtime
+ * subscription, the seen watermark) and which segment is showing; the two lists
+ * own their rendering, and Notifications owns its dismiss/undo state.
+ */
 export default function FeedScreen() {
   const c = useTheme();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const myId = session?.user.id;
+
+  const [segment, setSegment] = useState<SegmentKey>('activity');
 
   const {
     data,
@@ -62,7 +66,7 @@ export default function FeedScreen() {
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
-  // Personal notifications (likes/replies on my reviews), pinned atop the feed.
+  // Personal notifications (likes/replies/follows), the second segment.
   const { data: notifications = [], refetch: refetchNotifications } = useQuery({
     queryKey: keys.notifications(),
     queryFn: getNotifications,
@@ -77,15 +81,28 @@ export default function FeedScreen() {
   });
 
   const items = data?.pages.flatMap((p) => p.items) ?? [];
+  const followsNobody = (counts?.following ?? 0) === 0;
 
   const [refreshing, setRefreshing] = useState(false);
+  // Pull-to-refresh refreshes the tab, not the segment: both sources, whichever
+  // list the gesture happened on.
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetch(), refetchNotifications()]);
     setRefreshing(false);
   }, [refetch, refetchNotifications]);
 
-  // Live-refresh the pinned notifications + tab badge as activity lands.
+  // One descriptor, two lists: React mounts a separate control in each.
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={c.tint}
+      colors={[c.tint]}
+    />
+  );
+
+  // Live-refresh the notifications + tab badge as activity lands.
   useEffect(() => {
     const uid = session?.user.id;
     if (!uid) return;
@@ -97,140 +114,44 @@ export default function FeedScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // On focus: refresh everything and clear the unread badge (rows keep their
-      // unread highlight until the next visit).
+      // On focus: refresh everything. Marking read is *not* here any more — see
+      // the effect below.
       refetch();
       refetchNotifications();
-      markAllRead()
-        .then(() =>
-          queryClient.invalidateQueries({ queryKey: keys.notifUnread() }),
-        )
-        .catch(() => {});
       // On blur: advance the seen watermark so what we just looked at ages out
       // (~24h) rather than mutating the list while we're reading it.
       return () => {
         markFeedSeen().catch(() => {});
       };
-    }, [refetch, refetchNotifications, queryClient]),
+    }, [refetch, refetchNotifications]),
   );
 
-  const followsNobody = (counts?.following ?? 0) === 0;
-
-  // Every row currently offering an Undo, in the order they were swiped. One per
-  // dismissal, not one in total: swiping three notifications away leaves three
-  // ways back, because each dismissal is its own committed act.
-  //
-  // A strip is anchored to `beforeId` — the id of the row it sat *above* — rather
-  // than to an index. Indices shift as neighbours are dismissed and as background
-  // refetches land; an anchor doesn't. A strip whose anchor is gone falls to the
-  // bottom of the block rather than to a wrong position.
-  const [undos, setUndos] = useState<
-    { item: NotificationItem; beforeId: string | null }[]
-  >([]);
-  const undoTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-
-  const forgetUndo = useCallback((id: string) => {
-    const timer = undoTimers.current.get(id);
-    if (timer) clearTimeout(timer);
-    undoTimers.current.delete(id);
-    setUndos((prev) => prev.filter((u) => u.item.id !== id));
-  }, []);
-
+  // Reading the notifications is what marks them read — not arriving on the
+  // tab. The badge used to clear the moment the Feed took focus, whether or not
+  // the notifications were ever looked at, which is most of why it stopped
+  // meaning anything. Rows keep their unread highlight until the next refetch,
+  // as before.
+  const isFocused = useIsFocused();
   useEffect(() => {
-    const timers = undoTimers.current;
-    return () => {
-      timers.forEach(clearTimeout);
-      timers.clear();
-    };
-  }, []);
+    if (!isFocused || segment !== 'notifications') return;
+    markAllRead()
+      .then(() => queryClient.invalidateQueries({ queryKey: keys.notifUnread() }))
+      .catch(() => {});
+  }, [isFocused, segment, queryClient]);
 
-  const onDismiss = useCallback(
-    async (item: NotificationItem, beforeId: string | null) => {
-      // Optimistic: the buzz and the disappearance happen on the gesture, not
-      // when Supabase answers. `hapticUndo` is the taking-something-back verb.
-      hapticUndo();
-      const previous =
-        queryClient.getQueryData<NotificationItem[]>(keys.notifications()) ?? [];
-      queryClient.setQueryData<NotificationItem[]>(keys.notifications(), (old) =>
-        (old ?? []).filter((n) => n.id !== item.id),
-      );
-      setUndos((prev) => [...prev, { item, beforeId }]);
-      undoTimers.current.set(
-        item.id,
-        setTimeout(() => forgetUndo(item.id), UNDO_MS),
-      );
-
-      try {
-        await dismissNotification(item.id);
-        // Dismissal writes read_at too, so the badge has to be re-counted.
-        queryClient.invalidateQueries({ queryKey: keys.notifUnread() });
-      } catch {
-        queryClient.setQueryData(keys.notifications(), previous);
-        forgetUndo(item.id);
-        hapticFailure();
-      }
+  // From the list already loaded, not a third query. The tab badge counts the
+  // same thing from `getUnreadCount`; both are invalidated on the same events,
+  // so in practice they agree.
+  const unread = notifications.filter((n) => n.unread).length;
+  const segments: Segment<SegmentKey>[] = [
+    { key: 'activity', label: 'Activity' },
+    {
+      key: 'notifications',
+      label: 'Notifications',
+      count: unread,
+      countLabel: `${unread} unread`,
     },
-    [queryClient, forgetUndo],
-  );
-
-  const onUndo = useCallback(
-    async (item: NotificationItem) => {
-      hapticSuccess();
-      forgetUndo(item.id);
-      // Put the row back **before** the write, the mirror image of the dismissal.
-      // It used to wait for a refetch to bring it back, which is why undoing
-      // looked like it did nothing until you pulled to refresh. Re-sorted the way
-      // the server sorts, so the row lands where it belongs rather than on top.
-      queryClient.setQueryData<NotificationItem[]>(keys.notifications(), (old) => {
-        const rest = old ?? [];
-        if (rest.some((n) => n.id === item.id)) return rest;
-        return [...rest, item].sort((a, b) =>
-          b.created_at.localeCompare(a.created_at),
-        );
-      });
-      try {
-        await undismissNotification(item.id);
-      } catch {
-        hapticFailure();
-      }
-      // Reconcile either way: on success this is a no-op, on failure it takes the
-      // row back off the list.
-      queryClient.invalidateQueries({ queryKey: keys.notifications() });
-      queryClient.invalidateQueries({ queryKey: keys.notifUnread() });
-    },
-    [forgetUndo, queryClient],
-  );
-
-  // The pinned block: each notification as a swipeable row, with every pending
-  // Undo strip standing where its row used to be.
-  const notificationRows: React.ReactNode[] = [];
-  const placed = new Set<string>();
-  for (const n of notifications) {
-    for (const u of undos) {
-      if (u.beforeId === n.id) {
-        placed.add(u.item.id);
-        notificationRows.push(
-          <DismissedNotice key={`undo-${u.item.id}`} onUndo={() => onUndo(u.item)} />,
-        );
-      }
-    }
-    notificationRows.push(
-      <SwipeToDismissRow key={n.id} onDismiss={() => onDismiss(n, nextId(notifications, n))}>
-        <NotificationRow
-          item={n}
-          onDismiss={() => onDismiss(n, nextId(notifications, n))}
-        />
-      </SwipeToDismissRow>,
-    );
-  }
-  // Strips for rows that were last, or whose anchor has since gone.
-  for (const u of undos) {
-    if (!placed.has(u.item.id)) {
-      notificationRows.push(
-        <DismissedNotice key={`undo-${u.item.id}`} onUndo={() => onUndo(u.item)} />,
-      );
-    }
-  }
+  ];
 
   return (
     <ThemedView style={styles.container}>
@@ -239,54 +160,26 @@ export default function FeedScreen() {
           Feed
         </ThemedText>
 
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.key}
-          renderItem={({ item }) => <FeedRow item={item} />}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          onEndReachedThreshold={0.5}
+        <SegmentedControl
+          segments={segments}
+          value={segment}
+          onChange={setSegment}
+        />
+
+        <ActivityList
+          items={items}
+          isLoading={isLoading}
+          followsNobody={followsNobody}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) fetchNextPage();
           }}
-          ListHeaderComponent={
-            notificationRows.length > 0 ? (
-              <View style={styles.notifications}>{notificationRows}</View>
-            ) : null
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={c.tint}
-              colors={[c.tint]}
-            />
-          }
-          ListEmptyComponent={
-            // Only speak to emptiness when the pinned block is empty too — the
-            // Undo strip counts, or dismissing the last notification would flash
-            // "your feed is empty" next to the way back from it.
-            isLoading || notificationRows.length > 0 ? null : followsNobody ? (
-              <View style={styles.emptyWrap}>
-                <EmptyState
-                  icon="person.2"
-                  title="Your feed is empty"
-                  hint="Follow friends to see what they watch and rate."
-                />
-                <Button
-                  title="Find people"
-                  variant="outline"
-                  onPress={() => router.push('/explore')}
-                />
-              </View>
-            ) : (
-              <EmptyState
-                icon="film"
-                title="You're all caught up"
-                hint="New activity from people you follow shows up here."
-              />
-            )
-          }
+          refreshControl={refreshControl}
+          visible={segment === 'activity'}
+        />
+        <NotificationsList
+          notifications={notifications}
+          refreshControl={refreshControl}
+          visible={segment === 'notifications'}
         />
       </TopSafeAreaView>
     </ThemedView>
@@ -297,7 +190,4 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1, paddingHorizontal: Spacing.three },
   heading: { marginTop: Spacing.three, marginBottom: Spacing.two },
-  list: { gap: Spacing.two, paddingVertical: Spacing.two, flexGrow: 1 },
-  notifications: { gap: Spacing.two, marginBottom: Spacing.two },
-  emptyWrap: { gap: Spacing.four, paddingHorizontal: Spacing.four },
 });
