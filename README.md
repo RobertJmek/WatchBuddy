@@ -31,7 +31,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 
 ### Discover
 - **Live search-as-you-type** across movies and TV (TMDB), backed by a server-side cache;
-  results span multiple TMDB pages for deep matches.
+  results span multiple TMDB pages for deep matches. Short titles (*It*, *Up*, *M*) are
+  reachable too — the magnifier button, or the keyboard's Search key, searches whatever is
+  in the box.
 - **Hot this week** — trending movies and TV shown by default on the Search tab as horizontal
   poster shelves; tap a shelf header to browse the whole feed as a grid.
 - **People search:** type `@` to find other users by username or name, and follow them.
