@@ -70,16 +70,16 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Breakdowns** — genre, decade, language, movie/TV split, library status, and top networks.
 
 ### Social & community
-- **Activity feed** (its own tab) — a reverse-chronological stream of what the people you
-  follow do: watches, ratings, reviews, follows, and review likes/replies (binge episodes
-  collapse into one "watched N episodes" row). It doubles as an **inbox**: your own
-  notifications (likes/replies on your reviews) pin to the top, and friends' activity shows
-  unseen-first — unseen items stay until you've seen them, then age out ~24h after you've
-  seen them.
+- **Activity feed** (its own tab, **Activity | Notifications**) — the *Activity* half is a
+  reverse-chronological stream of what the people you follow do: watches, ratings, reviews,
+  follows, and review likes/replies (binge episodes collapse into one "watched N episodes"
+  row). It is an **inbox**, not an endless timeline: activity shows unseen-first — unseen
+  items stay until you've seen them, then age out ~24h after you've seen them.
 - **In-app notifications** — likes and replies on your reviews, plus new followers, delivered
-  live over Supabase Realtime; surfaced pinned atop the feed with an unread badge on the tab.
-  **Swipe one right to dismiss it** (with a few seconds to undo); new activity on a dismissed
-  notification brings it back.
+  live over Supabase Realtime. They live on the feed tab's **own segment**, with the unread
+  count on both the tab badge and the segment label — and the badge clears when you actually
+  open that segment, not merely when you land on the tab. **Swipe one right to dismiss it**
+  (with a few seconds to undo); new activity on a dismissed notification brings it back.
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
 - **Public profiles** (`/user/[id]`) — avatar, bio, follower counts, a compact stats summary,
   a **taste summary** (top genres + favorite directors), and **Watching now / Favorites /
