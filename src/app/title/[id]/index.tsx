@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
+import { EdgeSwipeNav } from '@/components/edge-swipe-nav';
 import { FavoriteButton } from '@/components/favorite-button';
 import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryStatusBar } from '@/components/library-status-bar';
@@ -54,7 +56,24 @@ export default function TitleDetailScreen() {
     enabled: !!title,
   });
 
+  // Reached by the "See all" link and by a swipe from the right edge
+  // (EdgeSwipeNav). The reviews screen has its own empty state, so the swipe
+  // is always available once the title is known.
+  const openReviews = useCallback(() => {
+    if (!title) return;
+    router.push({
+      pathname: '/title/[id]/reviews',
+      params: {
+        id: String(title.tmdb_id),
+        titleId: title.id,
+        type: title.media_type,
+        name: title.title,
+      },
+    });
+  }, [router, title]);
+
   return (
+    <EdgeSwipeNav onSwipe={openReviews}>
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
@@ -246,19 +265,7 @@ export default function TitleDetailScreen() {
                       <ReviewRow key={r.userId} review={r} />
                     ))}
                     {ratingsQ.data.reviews.length > 3 && (
-                      <Pressable
-                        onPress={() =>
-                          router.push({
-                            pathname: '/title/[id]/reviews',
-                            params: {
-                              id: String(title.tmdb_id),
-                              titleId: title.id,
-                              type: title.media_type,
-                              name: title.title,
-                            },
-                          })
-                        }
-                        accessibilityRole="button">
+                      <Pressable onPress={openReviews} accessibilityRole="button">
                         <ThemedText type="smallBold" style={{ color: Accent }}>
                           See all {ratingsQ.data.reviews.length} reviews ›
                         </ThemedText>
@@ -272,6 +279,7 @@ export default function TitleDetailScreen() {
         )}
       </KeyboardAwareScrollView>
     </ThemedView>
+    </EdgeSwipeNav>
   );
 }
 

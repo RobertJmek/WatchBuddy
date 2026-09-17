@@ -73,7 +73,13 @@ function RootNavigator() {
         <Stack.Screen name="(app)" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="title/[id]" />
-        <Stack.Screen name="title/[id]/reviews" />
+        {/* Sibling of the title screen, reachable by an edge swipe
+            (EdgeSwipeNav): it slides in like the next page of a pager and the
+            back swipe slides it out the same way. */}
+        <Stack.Screen
+          name="title/[id]/reviews"
+          options={{ animation: 'slide_from_right', animationMatchesGesture: true }}
+        />
         {/* Reached from a title's review list and from a notification; they
             cover the tab bar. */}
         <Stack.Screen name="review/[ratingId]" />
