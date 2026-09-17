@@ -31,7 +31,13 @@ const COMMIT_DISTANCE = 60;
 const COMMIT_VELOCITY = 600;
 
 type Props = {
-  onSwipe: () => void;
+  /**
+   * Fires once per committed swipe. Pass `undefined` while there is nothing
+   * to navigate to (the sibling's params aren't known yet): the gesture is
+   * then disabled outright, instead of firing, doing nothing, and leaving
+   * `busy` set until the screen is next focused.
+   */
+  onSwipe?: () => void;
   children: ReactNode;
 };
 
@@ -51,12 +57,16 @@ export function EdgeSwipeNav({ onSwipe, children }: Props) {
      render, but its callback only ever runs from the gesture, which is
      exactly when reading `busy.current` is correct. */
   const pan = Gesture.Pan()
+    .enabled(!!onSwipe)
     .hitSlop({ right: 0, width: EDGE_WIDTH })
     .activeOffsetX(-ACTIVATE_DISTANCE)
     .failOffsetY([-14, 14])
     .runOnJS(true)
-    .onEnd((e) => {
-      if (busy.current) return;
+    .onEnd((e, success) => {
+      // `success` is false when another recognizer took the touch — the
+      // native swipe-back or the scroll view — and the pan was cancelled.
+      // Its translation may still be past the threshold; it must not count.
+      if (!success || busy.current || !onSwipe) return;
       if (
         e.translationX <= -COMMIT_DISTANCE ||
         e.velocityX <= -COMMIT_VELOCITY

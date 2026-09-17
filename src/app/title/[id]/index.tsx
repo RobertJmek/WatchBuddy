@@ -58,7 +58,8 @@ export default function TitleDetailScreen() {
 
   // Reached by the "See all" link and by a swipe from the right edge
   // (EdgeSwipeNav). The reviews screen has its own empty state, so the swipe
-  // is always available once the title is known.
+  // is available whenever the title is known — and disabled until then, so
+  // it can't fire into nothing.
   const openReviews = useCallback(() => {
     if (!title) return;
     router.push({
@@ -73,7 +74,7 @@ export default function TitleDetailScreen() {
   }, [router, title]);
 
   return (
-    <EdgeSwipeNav onSwipe={openReviews}>
+    <EdgeSwipeNav onSwipe={title ? openReviews : undefined}>
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
