@@ -51,6 +51,13 @@ function RootNavigator() {
       screenOptions={{
         headerShown: false,
         headerBackButtonDisplayMode: 'minimal',
+        // Headers are hidden, so the swipe is the only back affordance on
+        // iOS. Widen it from the left edge to the whole screen (iOS 26 does
+        // this by default; this makes iOS 18 and below match). Android keeps
+        // the OS back gesture. Screens that own a horizontal pan mid-screen
+        // (drag-to-rate on a title, swipe-to-log on a season) may need to opt
+        // out per screen if the two gestures fight on device.
+        fullScreenGestureEnabled: true,
       }}>
       {/* First screen = signed-out fallback. Expo Router redirects to the
           first available screen whenever a guard kicks the user out, so
