@@ -20,6 +20,8 @@ const GLYPHS = {
   'arrow.uturn': 'rotate-ccw',
   'line.3.horizontal.decrease': 'filter',
   'info.circle': 'info',
+  'rectangle.stack.fill': 'layers',
+  'person.crop.circle': 'user',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;
