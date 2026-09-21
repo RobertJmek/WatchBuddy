@@ -1,6 +1,6 @@
 # ADR 0022 — Swipe between screens: full-screen back, edge-swipe to a sibling
 
-**Status:** accepted · targets v1.19.0
+**Status:** accepted · targets v1.19.0 · amended by [0023](0023-gestures-everywhere.md) (v1.20.0: the tab pager is adopted, the edge strip is replaced by a full-width swipe, and the title/review screens become modals with a pull-down)
 
 ## Context
 

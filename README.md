@@ -108,8 +108,10 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   swipe-to-dismiss and the two-thumb filter sliders are all reachable from a screen reader.
 - **Offline** — read data (Library / Diary / Stats / profiles) is cached and persisted, so the
   app cold-opens and browses offline.
-- **Swipe navigation** — swipe back from anywhere on a pushed screen (iOS), and swipe in from
-  the right edge of a title to reach its reviews.
+- **Swipe navigation** — swipe between the four tabs and between the Feed's Activity and
+  Notifications; swipe right anywhere on a pushed screen to go back (both platforms); swipe
+  left on a title to reach its reviews; a title or a review thread opens from the bottom and
+  a pull-down at the top of the page closes it.
 - **Polish** — press/entry animations and skeleton loading states across all screens.
 
 ---
