@@ -52,6 +52,16 @@ import { emitTabReset } from '@/lib/tab-reset';
  * what `TabPagerProvider` is for (see `src/lib/tab-pager.tsx`).
  */
 
+/**
+ * The bar's order, left to right — and therefore the pager's. The navigator's
+ * own `state.routes` is *not* in this order: expo-router sorts a tab
+ * navigator's routes with `sortRoutes` (index and group routes first, then by
+ * name length), which puts `(library)` before `feed`. The triggers below and
+ * the pages in `PagedTabSlot` both follow this list, so a swipe reaches the
+ * neighbour the bar shows.
+ */
+const TAB_ORDER = ['feed', '(library)', 'explore', 'profile'] as const;
+
 export default function AppTabs() {
   // Unread personal notifications badge the Feed tab (their home).
   const { session } = useAuth();
@@ -131,39 +141,57 @@ export default function AppTabs() {
 }
 
 /**
- * All tab screens mounted side by side in a pager. Replaces `TabSlot`, which
- * renders only the focused one (the rest `display: none`). A page that is
- * swiped to is not "focused" until the pager settles and dispatches the jump,
- * so `useIsFocused` inside a screen (the Feed badge) still keys on the
- * navigation state, not on what is visible mid-drag.
+ * All tab screens mounted side by side in a pager, in `TAB_ORDER`. Replaces
+ * `TabSlot`, which renders only the focused one (the rest `display: none`).
+ * A page that is swiped to is not "focused" until the pager settles and
+ * dispatches the jump, so `useIsFocused` inside a screen (the Feed badge)
+ * still keys on the navigation state, not on what is visible mid-drag.
+ *
+ * A pager position and a route index are two different numbers here (see
+ * `TAB_ORDER`), translated by `pageOf` / `pages[position]` on the way in and
+ * out. `settled` holds a pager position.
  */
 function PagedTabSlot() {
   const { state, navigation, descriptors } = Navigator.useContext();
   const pager = useRef<PagerView>(null);
-  const index = state.index;
+
+  // The routes in bar order; one that isn't registered simply has no page.
+  const pages = useMemo(
+    () =>
+      TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(
+        (r) => r !== undefined,
+      ),
+    [state.routes],
+  );
+  const pageOf = useCallback(
+    (routeIndex: number) =>
+      pages.findIndex((r) => r.key === state.routes[routeIndex]?.key),
+    [pages, state.routes],
+  );
+  const page = pageOf(state.index);
 
   // The pager reports the page it settled on even when we asked for it, so
   // this ref is what stops a tab press from dispatching a second jump.
-  const settled = useRef(index);
+  const settled = useRef(page);
 
   // Tab press (or any other navigation) → pager follows.
   useEffect(() => {
-    if (settled.current === index) return;
-    settled.current = index;
-    pager.current?.setPage(index);
-  }, [index]);
+    if (page < 0 || settled.current === page) return;
+    settled.current = page;
+    pager.current?.setPage(page);
+  }, [page]);
 
   const onPageSelected = useCallback<NonNullable<PagerViewProps['onPageSelected']>>(
     (e) => {
       const position = e.nativeEvent.position;
       if (settled.current === position) return;
       settled.current = position;
-      const route = state.routes[position];
-      if (!route || state.index === position) return;
+      const route = pages[position];
+      if (!route || state.routes[state.index]?.key === route.key) return;
       // The same action `TabTrigger` dispatches when it has no trigger config.
       navigation.dispatch({ type: 'JUMP_TO', payload: { name: route.name } });
     },
-    [navigation, state],
+    [navigation, pages, state],
   );
 
   // The pager's own scroll, as a handler a JS pan inside a page can name — see
@@ -184,7 +212,7 @@ function PagedTabSlot() {
         <PagerView
           ref={pager}
           style={styles.pager}
-          initialPage={index}
+          initialPage={Math.max(page, 0)}
           // Keep all four pages attached. The default lets the pager detach
           // off-screen pages, and the Library page hosts a native Stack —
           // re-attaching one is not a path worth discovering on device. It
@@ -194,7 +222,7 @@ function PagedTabSlot() {
           overdrag={false}
           keyboardDismissMode="on-drag"
           onPageSelected={onPageSelected}>
-          {state.routes.map((route) => (
+          {pages.map((route) => (
             <View key={route.key} style={styles.page}>
               {descriptors[route.key].render()}
             </View>
