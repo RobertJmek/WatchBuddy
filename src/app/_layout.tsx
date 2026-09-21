@@ -12,17 +12,40 @@ import { focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { useEffect } from 'react';
-import { AppState, useColorScheme } from 'react-native';
+import { type ComponentProps, useEffect } from 'react';
+import { AppState, Platform, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { SwipeNav } from '@/components/swipe-nav';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { asyncStoragePersister, queryClient } from '@/lib/query';
 import {
   ThemePreferenceProvider,
   useThemePreference,
 } from '@/lib/theme-preference';
+
+type ScreenLayoutProps = Parameters<
+  NonNullable<ComponentProps<typeof Stack>['screenLayout']>
+>[0];
+
+/**
+ * Wraps every screen of the root stack. On Android the native stack has no
+ * swipe-back — only the OS edge gesture — so a rightward swipe anywhere on a
+ * pushed screen goes back from here. iOS already has the full-screen native
+ * one (`fullScreenGestureEnabled` below), so the pan stays disabled there.
+ * Screens that opt out of the native gesture (`gestureEnabled: false`) opt
+ * out of this one too, and the stack's first screen has nowhere to go.
+ */
+function StackScreenLayout({ navigation, options, children }: ScreenLayoutProps) {
+  const back =
+    Platform.OS === 'android' &&
+    options.gestureEnabled !== false &&
+    navigation.canGoBack()
+      ? () => navigation.goBack()
+      : undefined;
+  return <SwipeNav onSwipeRight={back}>{children}</SwipeNav>;
+}
 
 function RootNavigator() {
   const { session, initialized } = useAuth();
@@ -48,15 +71,17 @@ function RootNavigator() {
 
   return (
     <Stack
+      screenLayout={(props) => <StackScreenLayout {...props} />}
       screenOptions={{
         headerShown: false,
         headerBackButtonDisplayMode: 'minimal',
         // Headers are hidden, so the swipe is the only back affordance on
         // iOS. Widen it from the left edge to the whole screen (iOS 26 does
-        // this by default; this makes iOS 18 and below match). Android keeps
-        // the OS back gesture. Screens that own a horizontal pan mid-screen
-        // (drag-to-rate on a title, swipe-to-log on a season) may need to opt
-        // out per screen if the two gestures fight on device.
+        // this by default; this makes iOS 18 and below match). Android gets
+        // the same from `StackScreenLayout` above, on top of the OS back
+        // gesture. Screens that own a horizontal pan mid-screen (drag-to-rate
+        // on a title, swipe-to-log on a season) may need to opt out per
+        // screen if the two gestures fight on device.
         fullScreenGestureEnabled: true,
       }}>
       {/* First screen = signed-out fallback. Expo Router redirects to the
