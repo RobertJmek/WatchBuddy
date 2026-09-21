@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
-import { EdgeSwipeNav } from '@/components/edge-swipe-nav';
+import { SwipeNav } from '@/components/swipe-nav';
 import { FavoriteButton } from '@/components/favorite-button';
 import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryStatusBar } from '@/components/library-status-bar';
@@ -56,8 +56,8 @@ export default function TitleDetailScreen() {
     enabled: !!title,
   });
 
-  // Reached by the "See all" link and by a swipe from the right edge
-  // (EdgeSwipeNav). The reviews screen has its own empty state, so the swipe
+  // Reached by the "See all" link and by a leftward swipe anywhere on the
+  // screen (SwipeNav). The reviews screen has its own empty state, so the swipe
   // is available whenever the title is known — and disabled until then, so
   // it can't fire into nothing.
   const openReviews = useCallback(() => {
@@ -74,7 +74,7 @@ export default function TitleDetailScreen() {
   }, [router, title]);
 
   return (
-    <EdgeSwipeNav onSwipe={title ? openReviews : undefined}>
+    <SwipeNav onSwipeLeft={title ? openReviews : undefined}>
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
@@ -280,7 +280,7 @@ export default function TitleDetailScreen() {
         )}
       </KeyboardAwareScrollView>
     </ThemedView>
-    </EdgeSwipeNav>
+    </SwipeNav>
   );
 }
 

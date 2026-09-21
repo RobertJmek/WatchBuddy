@@ -73,8 +73,8 @@ function RootNavigator() {
         <Stack.Screen name="(app)" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="title/[id]" />
-        {/* Sibling of the title screen, reachable by an edge swipe
-            (EdgeSwipeNav): it slides in like the next page of a pager and the
+        {/* Sibling of the title screen, reachable by a leftward swipe
+            (SwipeNav): it slides in like the next page of a pager and the
             back swipe slides it out the same way. */}
         <Stack.Screen
           name="title/[id]/reviews"
