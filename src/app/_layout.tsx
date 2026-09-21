@@ -12,17 +12,54 @@ import { focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { useEffect } from 'react';
-import { AppState, useColorScheme } from 'react-native';
+import { type ComponentProps, useEffect } from 'react';
+import { AppState, Platform, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { SwipeNav } from '@/components/swipe-nav';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { asyncStoragePersister, queryClient } from '@/lib/query';
 import {
   ThemePreferenceProvider,
   useThemePreference,
 } from '@/lib/theme-preference';
+
+type ScreenLayoutProps = Parameters<
+  NonNullable<ComponentProps<typeof Stack>['screenLayout']>
+>[0];
+
+/**
+ * Screens that open from the bottom and close downward (a pull-down inside
+ * the screen, see `SwipeNav`'s `onPullDown`). Their native horizontal swipe is
+ * off: react-native-screens drives one direction per screen, and a sideways
+ * drag popping a sheet-style screen sideways is the wrong picture. The JS
+ * rightward swipe below stands in for it on both platforms.
+ */
+const MODAL_ROUTES = new Set(['title/[id]', 'review/[ratingId]']);
+const modalOptions = {
+  animation: 'slide_from_bottom',
+  gestureEnabled: false,
+} as const;
+
+/**
+ * Wraps every screen of the root stack with a rightward swipe that goes back
+ * wherever the native stack has none: on Android (which only has the OS edge
+ * gesture) and, on both platforms, on the modal routes above. iOS's own
+ * full-screen gesture (`fullScreenGestureEnabled` below) covers the rest.
+ * Screens that opt out of the native gesture (`gestureEnabled: false`) opt out
+ * of this one too, and the stack's first screen has nowhere to go.
+ */
+function StackScreenLayout({ route, navigation, options, children }: ScreenLayoutProps) {
+  const modal = MODAL_ROUTES.has(route.name);
+  const back =
+    (Platform.OS === 'android' || modal) &&
+    (modal || options.gestureEnabled !== false) &&
+    navigation.canGoBack()
+      ? () => navigation.goBack()
+      : undefined;
+  return <SwipeNav onSwipeRight={back}>{children}</SwipeNav>;
+}
 
 function RootNavigator() {
   const { session, initialized } = useAuth();
@@ -48,15 +85,17 @@ function RootNavigator() {
 
   return (
     <Stack
+      screenLayout={(props) => <StackScreenLayout {...props} />}
       screenOptions={{
         headerShown: false,
         headerBackButtonDisplayMode: 'minimal',
         // Headers are hidden, so the swipe is the only back affordance on
         // iOS. Widen it from the left edge to the whole screen (iOS 26 does
-        // this by default; this makes iOS 18 and below match). Android keeps
-        // the OS back gesture. Screens that own a horizontal pan mid-screen
-        // (drag-to-rate on a title, swipe-to-log on a season) may need to opt
-        // out per screen if the two gestures fight on device.
+        // this by default; this makes iOS 18 and below match). Android gets
+        // the same from `StackScreenLayout` above, on top of the OS back
+        // gesture. Screens that own a horizontal pan mid-screen (drag-to-rate
+        // on a title, swipe-to-log on a season) may need to opt out per
+        // screen if the two gestures fight on device.
         fullScreenGestureEnabled: true,
       }}>
       {/* First screen = signed-out fallback. Expo Router redirects to the
@@ -72,17 +111,17 @@ function RootNavigator() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="title/[id]" />
-        {/* Sibling of the title screen, reachable by an edge swipe
-            (EdgeSwipeNav): it slides in like the next page of a pager and the
-            back swipe slides it out the same way. */}
+        <Stack.Screen name="title/[id]" options={modalOptions} />
+        {/* Sibling of the title screen, reachable by a leftward swipe
+            (SwipeNav): it slides in like the next page of a pager and the
+            native back swipe slides it out the same way. */}
         <Stack.Screen
           name="title/[id]/reviews"
           options={{ animation: 'slide_from_right', animationMatchesGesture: true }}
         />
         {/* Reached from a title's review list and from a notification; they
             cover the tab bar. */}
-        <Stack.Screen name="review/[ratingId]" />
+        <Stack.Screen name="review/[ratingId]" options={modalOptions} />
         <Stack.Screen name="review/[ratingId]/likes" />
         <Stack.Screen name="season" />
         <Stack.Screen name="diary" />

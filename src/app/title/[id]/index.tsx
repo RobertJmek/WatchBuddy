@@ -9,9 +9,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
-import { EdgeSwipeNav } from '@/components/edge-swipe-nav';
+import { SwipeNav, useSwipeNavScroll } from '@/components/swipe-nav';
 import { FavoriteButton } from '@/components/favorite-button';
 import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryStatusBar } from '@/components/library-status-bar';
@@ -56,8 +57,8 @@ export default function TitleDetailScreen() {
     enabled: !!title,
   });
 
-  // Reached by the "See all" link and by a swipe from the right edge
-  // (EdgeSwipeNav). The reviews screen has its own empty state, so the swipe
+  // Reached by the "See all" link and by a leftward swipe anywhere on the
+  // screen (SwipeNav). The reviews screen has its own empty state, so the swipe
   // is available whenever the title is known — and disabled until then, so
   // it can't fire into nothing.
   const openReviews = useCallback(() => {
@@ -73,8 +74,16 @@ export default function TitleDetailScreen() {
     });
   }, [router, title]);
 
+  // This screen opens from the bottom (see `MODAL_ROUTES` in the root
+  // layout); a pull-down with the page at the top closes it the same way.
+  const scroll = useSwipeNavScroll();
+  const dismiss = useCallback(() => router.back(), [router]);
+
   return (
-    <EdgeSwipeNav onSwipe={title ? openReviews : undefined}>
+    <SwipeNav
+      onSwipeLeft={title ? openReviews : undefined}
+      onPullDown={dismiss}
+      scroll={scroll}>
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
@@ -96,9 +105,12 @@ export default function TitleDetailScreen() {
         instead. `bottomOffset` keeps the Save/Cancel row under the input
         visible too, rather than lifting only the field itself.
       */}
+      <GestureDetector gesture={scroll.native}>
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
-        bottomOffset={COMPOSER_ACTIONS_HEIGHT}>
+        bottomOffset={COMPOSER_ACTIONS_HEIGHT}
+        onScroll={scroll.onScroll}
+        scrollEventThrottle={scroll.scrollEventThrottle}>
         {loading && (
           <View style={{ gap: Spacing.two }}>
             <Skeleton style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 0 }} />
@@ -279,8 +291,9 @@ export default function TitleDetailScreen() {
           </>
         )}
       </KeyboardAwareScrollView>
+      </GestureDetector>
     </ThemedView>
-    </EdgeSwipeNav>
+    </SwipeNav>
   );
 }
 

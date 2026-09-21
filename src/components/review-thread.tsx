@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import {
   ActionSheetIOS,
@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import {
   KeyboardStickyView,
   useKeyboardState,
@@ -25,6 +26,7 @@ import {
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeleton } from '@/components/skeleton';
+import { SwipeNav, useSwipeNavScroll } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
@@ -267,9 +269,15 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
   const keyboard = useKeyboardState();
   const insets = useSafeAreaInsets();
 
+  // The thread opens from the bottom (`MODAL_ROUTES` in the root layout); a
+  // pull-down with the list at the top closes it the same way.
+  const scroll = useSwipeNavScroll();
+  const dismiss = useCallback(() => router.back(), [router]);
+
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Review' }} />
+      <SwipeNav onPullDown={dismiss} scroll={scroll}>
       <View style={styles.container}>
         {isLoading || !review ? (
           <View style={{ padding: Spacing.three, gap: Spacing.two }}>
@@ -278,9 +286,12 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
             ))}
           </View>
         ) : (
+          <GestureDetector gesture={scroll.native}>
           <FlatList
             data={data.replies}
             keyExtractor={(r) => r.id}
+            onScroll={scroll.onScroll}
+            scrollEventThrottle={scroll.scrollEventThrottle}
             contentContainerStyle={[
               styles.list,
               keyboard.isVisible && { paddingBottom: keyboard.height + 72 },
@@ -461,6 +472,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
               </View>
             )}
           />
+          </GestureDetector>
         )}
 
         {!editing && (
@@ -509,6 +521,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
         </KeyboardStickyView>
         )}
       </View>
+      </SwipeNav>
 
       {/* Android ⋯ menu: bottom sheet, dismissed by backdrop tap or Cancel. */}
       <Modal
