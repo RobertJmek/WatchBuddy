@@ -10,6 +10,7 @@ import { RefreshControl, StyleSheet } from 'react-native';
 import { ActivityList } from '@/components/activity-list';
 import { NotificationsList } from '@/components/notifications-list';
 import { SegmentedControl, type Segment } from '@/components/segmented-control';
+import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
@@ -17,6 +18,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getFeed, markFeedSeen } from '@/lib/feed';
+import { hapticToggle } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import {
   getNotifications,
@@ -24,6 +26,7 @@ import {
   subscribeToNotifications,
 } from '@/lib/notifications';
 import { getFollowCounts } from '@/lib/social';
+import { useTabPager } from '@/lib/tab-pager';
 
 type SegmentKey = 'activity' | 'notifications';
 
@@ -36,9 +39,12 @@ type SegmentKey = 'activity' | 'notifications';
  *
  * Both lists stay **mounted** behind the segmented control, hidden with
  * `display: none` rather than unmounted, so each keeps its own scroll offset and
- * its loaded pages. That is also why this is not a pager: a horizontally
- * swipeable pager would fight the swipe-to-dismiss gesture on every
- * notification row.
+ * its loaded pages. A swipe switches them too, but through the same `setSegment`
+ * — not a pager. A nested pager would take every touch-down away from the
+ * swipe-to-dismiss rows on Android, and this way a notification row (which
+ * activates sooner) still wins its rightward drag over the segment swipe.
+ * Only the direction that leads somewhere is enabled, so the other one falls
+ * through to the tab pager: swiping left on Notifications reaches Library.
  *
  * This screen owns the data (both queries, the refresh control, the realtime
  * subscription, the seen watermark) and which segment is showing; the two lists
@@ -51,6 +57,12 @@ export default function FeedScreen() {
   const myId = session?.user.id;
 
   const [segment, setSegment] = useState<SegmentKey>('activity');
+  // The same feedback as a tap on the control; only a real change gets here.
+  const select = useCallback((key: SegmentKey) => {
+    hapticToggle(true);
+    setSegment(key);
+  }, []);
+  const tabPager = useTabPager();
 
   const {
     data,
@@ -166,21 +178,30 @@ export default function FeedScreen() {
           onChange={setSegment}
         />
 
-        <ActivityList
-          items={items}
-          isLoading={isLoading}
-          followsNobody={followsNobody}
-          onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-          }}
-          refreshControl={refreshControl}
-          visible={segment === 'activity'}
-        />
-        <NotificationsList
-          notifications={notifications}
-          refreshControl={refreshControl}
-          visible={segment === 'notifications'}
-        />
+        <SwipeNav
+          // Under the pager's 16dp paging slop, above a row swipe's 10.
+          activateDistance={12}
+          blocks={tabPager?.native}
+          onSwipeLeft={segment === 'activity' ? () => select('notifications') : undefined}
+          onSwipeRight={
+            segment === 'notifications' ? () => select('activity') : undefined
+          }>
+          <ActivityList
+            items={items}
+            isLoading={isLoading}
+            followsNobody={followsNobody}
+            onEndReached={() => {
+              if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+            }}
+            refreshControl={refreshControl}
+            visible={segment === 'activity'}
+          />
+          <NotificationsList
+            notifications={notifications}
+            refreshControl={refreshControl}
+            visible={segment === 'notifications'}
+          />
+        </SwipeNav>
       </TopSafeAreaView>
     </ThemedView>
   );
