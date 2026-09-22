@@ -30,8 +30,9 @@ type ScreenLayoutProps = Parameters<
 >[0];
 
 /**
- * Screens that open from the bottom and close downward (a pull-down inside
- * the screen, see `SwipeNav`'s `onPullDown`). Their native horizontal swipe is
+ * Screens that open from the bottom and close downward (on iOS, pulling the
+ * page past its top — `src/lib/pull-to-dismiss.ts`; on Android, back or the
+ * swipe right below). Their native horizontal swipe is
  * off: react-native-screens drives one direction per screen, and a sideways
  * drag popping a sheet-style screen sideways is the wrong picture. The JS
  * rightward swipe below stands in for it on both platforms.

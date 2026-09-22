@@ -179,8 +179,8 @@ export default function FeedScreen() {
         />
 
         <SwipeNav
-          // Under the pager's 16dp paging slop, above a row swipe's 10.
-          activateDistance={12}
+          // The default 12pt sits under the pager's 16dp paging slop and above
+          // a row swipe's 10, which is what lets this beat the tab pager.
           blocks={tabPager?.native}
           onSwipeLeft={segment === 'activity' ? () => select('notifications') : undefined}
           onSwipeRight={
