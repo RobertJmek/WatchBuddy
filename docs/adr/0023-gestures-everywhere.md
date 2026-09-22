@@ -153,3 +153,48 @@ above the modal (`slide_from_right` + `animationMatchesGesture`, as in 0022).
   accessibility equivalent: every swipe here duplicates a control that exists
   (tab buttons, the segmented control, headers, "See all reviews").
 - No SQL, no edge-function change.
+
+## Amendment — v1.20.1: what Android showed
+
+Robert's Android phone reported two things: a title screen that **would not
+scroll**, and swipes that **did not start**. Both reproduced on an Android
+emulator running the released v1.20.0 APK (driven by `adb shell input swipe`,
+which delivers real `MotionEvent`s), and four separate causes came out of it.
+
+1. **The pull-down pan froze the title's scroll.** The `Gesture.Native()` that
+   was meant to be the scroll view's handler was attached to
+   `KeyboardAwareScrollView`'s outermost host view. In its default
+   `mode="insets"` that is a `ClippingScrollViewDecoratorView` (a
+   `ReactViewGroup`) *wrapping* the ScrollView
+   (`react-native-keyboard-controller/src/components/ScrollViewWithBottomPadding`).
+   The pan was therefore simultaneous with the wrapper, not the scroll; once it
+   activated, the RNGH root intercepted and the real ScrollView was cancelled.
+   The review thread's plain `FlatList` did not have the wrapper, which is why
+   only titles froze.
+   **Decision (Robert's call): pull-down is no longer a pan.** On iOS it is the
+   scroll view's own rubber-band overscroll, read in `onScrollEndDrag`
+   (`src/lib/pull-to-dismiss.ts`, 80pt past the top). On Android there is none,
+   and the two modal routes close with back or the right-swipe. No gesture
+   handler sits over either scroll view any more.
+2. **The Feed's segment swipe worked once.** `SwipeNav` set a `busy` flag on
+   fire and cleared it on focus. That guards a push or a pop, but a segment
+   switch never changes focus, so the second segment swipe was ignored until
+   you left the tab. The guard is now `navigation.isFocused()` at fire time: a
+   push or pop drops focus immediately, a segment switch does not.
+3. **Two nested `SwipeNav`s: the outer one never fires.** The title screen has
+   its own (left → reviews) inside the root layout's back-swipe wrapper. The
+   inner one fails a rightward drag at 8pt as designed, and on Android the
+   outer one still never activated, so the title had no back-swipe. The title's
+   `SwipeNav` now owns both directions. Rule: a screen that adds a `SwipeNav`
+   gives it `onSwipeRight` too.
+4. **20pt was too far on Android.** A vertical `ReactScrollView` intercepts at
+   8dp of *vertical* travel, so a swipe had to stay within ~22° of horizontal
+   to reach 20pt first. The activation distance is now **12pt** everywhere,
+   still above `Swipeable` rows (10) and the rating bar (~6), and still under
+   the pager's 16dp slop. That widens the usable swipe to ~34°. The threshold
+   table in *Priority by threshold* above now reads 12, not 20.
+
+The device list shrinks accordingly: "pull-down feel on both" becomes "iOS
+overscroll-to-close on the title and the thread". Two things were confirmed on
+the emulator: the rating bar keeps a drag that starts on it, and a poster shelf
+keeps a drag that starts on it, both ahead of the screen swipe.

@@ -13,7 +13,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { GestureDetector } from 'react-native-gesture-handler';
 import {
   KeyboardStickyView,
   useKeyboardState,
@@ -26,13 +25,13 @@ import {
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeleton } from '@/components/skeleton';
-import { SwipeNav, useSwipeNavScroll } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
+import { usePullToDismiss } from '@/lib/pull-to-dismiss';
 import { likeReview, setRating, unlikeReview } from '@/lib/ratings';
 import {
   addReply,
@@ -269,15 +268,14 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
   const keyboard = useKeyboardState();
   const insets = useSafeAreaInsets();
 
-  // The thread opens from the bottom (`MODAL_ROUTES` in the root layout); a
-  // pull-down with the list at the top closes it the same way.
-  const scroll = useSwipeNavScroll();
+  // The thread opens from the bottom (`MODAL_ROUTES` in the root layout); on
+  // iOS, pulling the list down past its top closes it the same way.
   const dismiss = useCallback(() => router.back(), [router]);
+  const pullToDismiss = usePullToDismiss(dismiss);
 
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Review' }} />
-      <SwipeNav onPullDown={dismiss} scroll={scroll}>
       <View style={styles.container}>
         {isLoading || !review ? (
           <View style={{ padding: Spacing.three, gap: Spacing.two }}>
@@ -286,12 +284,10 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
             ))}
           </View>
         ) : (
-          <GestureDetector gesture={scroll.native}>
           <FlatList
             data={data.replies}
             keyExtractor={(r) => r.id}
-            onScroll={scroll.onScroll}
-            scrollEventThrottle={scroll.scrollEventThrottle}
+            {...pullToDismiss}
             contentContainerStyle={[
               styles.list,
               keyboard.isVisible && { paddingBottom: keyboard.height + 72 },
@@ -472,7 +468,6 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
               </View>
             )}
           />
-          </GestureDetector>
         )}
 
         {!editing && (
@@ -521,7 +516,6 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
         </KeyboardStickyView>
         )}
       </View>
-      </SwipeNav>
 
       {/* Android ⋯ menu: bottom sheet, dismissed by backdrop tap or Cancel. */}
       <Modal

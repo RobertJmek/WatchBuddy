@@ -9,10 +9,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
-import { SwipeNav, useSwipeNavScroll } from '@/components/swipe-nav';
+import { SwipeNav } from '@/components/swipe-nav';
 import { FavoriteButton } from '@/components/favorite-button';
 import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryStatusBar } from '@/components/library-status-bar';
@@ -28,6 +27,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import { imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
+import { usePullToDismiss } from '@/lib/pull-to-dismiss';
 
 // Roughly the Save/Cancel row below the review composer, plus breathing room.
 // Without it the keyboard stops flush against the input and swallows the very
@@ -75,15 +75,16 @@ export default function TitleDetailScreen() {
   }, [router, title]);
 
   // This screen opens from the bottom (see `MODAL_ROUTES` in the root
-  // layout); a pull-down with the page at the top closes it the same way.
-  const scroll = useSwipeNavScroll();
+  // layout); on iOS, pulling the page down past its top closes it the same way.
   const dismiss = useCallback(() => router.back(), [router]);
+  const pullToDismiss = usePullToDismiss(dismiss);
 
   return (
-    <SwipeNav
-      onSwipeLeft={title ? openReviews : undefined}
-      onPullDown={dismiss}
-      scroll={scroll}>
+    // Back is repeated here on purpose: the root layout's back-swipe wraps
+    // this screen in a second SwipeNav, and with two nested, the outer one
+    // never takes the drag (seen on Android). The inner one has to own both
+    // directions.
+    <SwipeNav onSwipeLeft={title ? openReviews : undefined} onSwipeRight={dismiss}>
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
@@ -105,12 +106,10 @@ export default function TitleDetailScreen() {
         instead. `bottomOffset` keeps the Save/Cancel row under the input
         visible too, rather than lifting only the field itself.
       */}
-      <GestureDetector gesture={scroll.native}>
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
         bottomOffset={COMPOSER_ACTIONS_HEIGHT}
-        onScroll={scroll.onScroll}
-        scrollEventThrottle={scroll.scrollEventThrottle}>
+        {...pullToDismiss}>
         {loading && (
           <View style={{ gap: Spacing.two }}>
             <Skeleton style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 0 }} />
@@ -291,7 +290,6 @@ export default function TitleDetailScreen() {
           </>
         )}
       </KeyboardAwareScrollView>
-      </GestureDetector>
     </ThemedView>
     </SwipeNav>
   );

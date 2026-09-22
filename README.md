@@ -110,8 +110,8 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   app cold-opens and browses offline.
 - **Swipe navigation** — swipe between the four tabs and between the Feed's Activity and
   Notifications; swipe right anywhere on a pushed screen to go back (both platforms); swipe
-  left on a title to reach its reviews; a title or a review thread opens from the bottom and
-  a pull-down at the top of the page closes it.
+  left on a title to reach its reviews; a title or a review thread opens from the bottom and,
+  on iOS, pulling the page down past its top closes it.
 - **Polish** — press/entry animations and skeleton loading states across all screens.
 
 ---
