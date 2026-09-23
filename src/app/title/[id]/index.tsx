@@ -75,16 +75,21 @@ export default function TitleDetailScreen() {
   }, [router, title]);
 
   // This screen opens from the bottom (see `MODAL_ROUTES` in the root
-  // layout); on iOS, pulling the page down past its top closes it the same way.
+  // layout); pulling it down closes it the same way — past the top on iOS,
+  // from the backdrop on Android (`usePullToDismiss`).
   const dismiss = useCallback(() => router.back(), [router]);
-  const pullToDismiss = usePullToDismiss(dismiss);
+  const { scrollHandler, atTop } = usePullToDismiss(dismiss);
 
   return (
     // Back is repeated here on purpose: the root layout's back-swipe wraps
     // this screen in a second SwipeNav, and with two nested, the outer one
     // never takes the drag (seen on Android). The inner one has to own both
     // directions.
-    <SwipeNav onSwipeLeft={title ? openReviews : undefined} onSwipeRight={dismiss}>
+    <SwipeNav
+      onSwipeLeft={title ? openReviews : undefined}
+      onSwipeRight={dismiss}
+      // Android: pull down from the backdrop, never from the content below it.
+      pullDown={{ onPull: dismiss, zoneHeight: BACKDROP_HEIGHT, atTop }}>
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
@@ -109,7 +114,7 @@ export default function TitleDetailScreen() {
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
         bottomOffset={COMPOSER_ACTIONS_HEIGHT}
-        {...pullToDismiss}>
+        onScroll={scrollHandler}>
         {loading && (
           <View style={{ gap: Spacing.two }}>
             <Skeleton style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 0 }} />
@@ -296,12 +301,13 @@ export default function TitleDetailScreen() {
 }
 
 const POSTER_W = 110;
+const BACKDROP_HEIGHT = 320;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { paddingBottom: Spacing.six },
   backdropWrap: {
-    height: 320,
+    height: BACKDROP_HEIGHT,
     justifyContent: 'flex-end',
     backgroundColor: Hero.letterbox,
   },
