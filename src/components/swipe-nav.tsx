@@ -1,12 +1,13 @@
 import { useNavigation } from 'expo-router';
 import { type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, type NativeGesture } from 'react-native-gesture-handler';
 
 /**
  * Swipe *shortcuts* between screens: a horizontal drag anywhere on the screen
- * fires `onSwipeLeft` / `onSwipeRight` once, at release. (Closing a modal by
- * pulling it down is not a pan — see `src/lib/pull-to-dismiss.ts`.) The
+ * fires `onSwipeLeft` / `onSwipeRight` once, at release, and on Android a
+ * downward drag that starts in the screen's top zone fires `pullDown.onPull`
+ * (iOS closes by overscroll instead — see `src/lib/pull-to-dismiss.ts`). The
  * caller does the navigation (`router.push` / `router.back`), so every
  * transition stays the native stack's — nothing is animated in JS.
  *
@@ -35,6 +36,15 @@ import { Gesture, GestureDetector, type NativeGesture } from 'react-native-gestu
  * A direction with no handler *fails early* (`failOffsetX` at 8pt) instead of
  * merely not firing, so the scroll around this one — the tab pager — can take
  * the drag.
+ *
+ * The Android pull-down lives in this same detector (a `Gesture.Race`), never
+ * in a second one, and never over the scrolling content: it only accepts
+ * touches that *start* in the top `zoneHeight` points (`hitSlop`), only while
+ * the caller says the page is at the top, and it activates at 6pt — under the
+ * ScrollView's 8dp claim, which at the top would otherwise take the drag as
+ * an overscroll. An upward drag fails it at 4pt, so the page still scrolls.
+ * v1.20.0 laid a pan *over* the scroll view with a `Gesture.Native()` and froze
+ * it (ADR 0023, amendment 1); nothing here touches the scroll view.
  */
 
 /** Travel that turns a horizontal touch into this pan. */
@@ -45,6 +55,19 @@ const FAIL_DISTANCE = 8;
 const COMMIT_DISTANCE = 60;
 /** …or a flick faster than this (pt/s), whatever the distance. */
 const COMMIT_VELOCITY = 600;
+/** Downward travel that turns a touch in the top zone into a pull. */
+const PULL_ACTIVATE = 6;
+/** Downward travel (or speed, pt/s) at release that closes the screen. */
+const PULL_COMMIT_DISTANCE = 80;
+const PULL_COMMIT_VELOCITY = 800;
+
+export type PullDown = {
+  onPull: () => void;
+  /** Height of the top zone a pull may start in, in points from the top of this view. */
+  zoneHeight: number;
+  /** Whether the screen's scrollable is at its top; the pull is off otherwise. */
+  atTop: boolean;
+};
 
 type Props = {
   /**
@@ -56,6 +79,8 @@ type Props = {
   onSwipeRight?: () => void;
   /** A native gesture this pan must beat — the tab pager's, inside a tab. */
   blocks?: NativeGesture | null;
+  /** Android only: close the screen by pulling down from its top zone. */
+  pullDown?: PullDown;
   /** Override the horizontal activation distance (inside the tab pager it must stay under the pager's 16dp slop). */
   activateDistance?: number;
   children: ReactNode;
@@ -65,6 +90,7 @@ export function SwipeNav({
   onSwipeLeft,
   onSwipeRight,
   blocks,
+  pullDown,
   activateDistance = ACTIVATE_DISTANCE,
   children,
 }: Props) {
@@ -110,8 +136,23 @@ export function SwipeNav({
   }
   if (blocks) horizontal = horizontal.blocksExternalGesture(blocks);
 
+  const pull = Gesture.Pan()
+    .enabled(Platform.OS === 'android' && !!pullDown && pullDown.atTop)
+    .hitSlop({ top: 0, height: pullDown?.zoneHeight ?? 0 })
+    .activeOffsetY(PULL_ACTIVATE)
+    .failOffsetY(-4)
+    .failOffsetX([-FAIL_DISTANCE, FAIL_DISTANCE])
+    .runOnJS(true)
+    .onEnd((e, success) => {
+      if (!success || !pullDown) return;
+      if (e.translationY >= PULL_COMMIT_DISTANCE || e.velocityY >= PULL_COMMIT_VELOCITY) {
+        fire(pullDown.onPull);
+      }
+    });
+  const gesture = pullDown ? Gesture.Race(pull, horizontal) : horizontal;
+
   return (
-    <GestureDetector gesture={horizontal}>
+    <GestureDetector gesture={gesture}>
       <View style={styles.fill}>{children}</View>
     </GestureDetector>
   );

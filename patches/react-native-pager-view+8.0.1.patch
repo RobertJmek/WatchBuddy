@@ -1,0 +1,80 @@
+diff --git a/node_modules/react-native-pager-view/android/src/main/java/com/reactnativepagerview/NestedScrollableHost.kt b/node_modules/react-native-pager-view/android/src/main/java/com/reactnativepagerview/NestedScrollableHost.kt
+index 87b58d0..91376ae 100644
+--- a/node_modules/react-native-pager-view/android/src/main/java/com/reactnativepagerview/NestedScrollableHost.kt
++++ b/node_modules/react-native-pager-view/android/src/main/java/com/reactnativepagerview/NestedScrollableHost.kt
+@@ -5,6 +5,7 @@ import android.util.AttributeSet
+ import android.view.MotionEvent
+ import android.view.View
+ import android.view.ViewConfiguration
++import android.view.ViewGroup
+ import android.widget.FrameLayout
+ import androidx.viewpager2.widget.ViewPager2
+ import androidx.viewpager2.widget.ViewPager2.ORIENTATION_HORIZONTAL
+@@ -98,6 +99,67 @@ class NestedScrollableHost : FrameLayout {
+     }
+   }
+ 
++  // WatchBuddy patch: a touch that starts on a horizontal scroller inside a page
++  // (a poster shelf) belongs to that scroller, however fast it moves.
++  //
++  // ViewPager2 intercepts at its paging slop (16dp) and a horizontal ScrollView
++  // claims at 8dp, but a parent sees every MOVE before its children and Android
++  // batches MOVEs once per frame: on a quick flick the first MOVE is already past
++  // 16dp, the pager takes it, and the shelf never gets to claim. So decide at
++  // ACTION_DOWN instead: switch the pager's user input off for that gesture only.
++  // In dispatchTouchEvent because once the shelf disallows interception, this
++  // host's onInterceptTouchEvent never sees the UP.
++  private var disabledForGesture = false
++  private val hitLocation = IntArray(2)
++
++  override fun dispatchTouchEvent(e: MotionEvent): Boolean {
++    val pager = if (childCount > 0) getChildAt(0) as? ViewPager2 else null
++    if (pager == null || pager.orientation != ORIENTATION_HORIZONTAL) {
++      return super.dispatchTouchEvent(e)
++    }
++    when (e.actionMasked) {
++      MotionEvent.ACTION_DOWN -> {
++        restoreUserInput(pager)
++        // Only when it is on: a JS setScrollEnabled(false) must survive the gesture.
++        val pages = if (pager.childCount > 0) pager.getChildAt(0) as? ViewGroup else null
++        if (pager.isUserInputEnabled && pages != null &&
++          horizontalScrollerUnder(pages, e.rawX, e.rawY)
++        ) {
++          pager.isUserInputEnabled = false
++          disabledForGesture = true
++        }
++      }
++      MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
++        val handled = super.dispatchTouchEvent(e)
++        restoreUserInput(pager)
++        return handled
++      }
++    }
++    return super.dispatchTouchEvent(e)
++  }
++
++  private fun restoreUserInput(pager: ViewPager2) {
++    if (disabledForGesture) {
++      pager.isUserInputEnabled = true
++      disabledForGesture = false
++    }
++  }
++
++  /** Whether a descendant of `root` under the point can scroll horizontally. */
++  private fun horizontalScrollerUnder(root: ViewGroup, x: Float, y: Float): Boolean {
++    for (i in root.childCount - 1 downTo 0) {
++      val child = root.getChildAt(i)
++      if (child.visibility != View.VISIBLE) continue
++      child.getLocationOnScreen(hitLocation)
++      if (x < hitLocation[0] || x >= hitLocation[0] + child.width ||
++        y < hitLocation[1] || y >= hitLocation[1] + child.height
++      ) continue
++      if (child.canScrollHorizontally(1) || child.canScrollHorizontally(-1)) return true
++      if (child is ViewGroup && horizontalScrollerUnder(child, x, y)) return true
++    }
++    return false
++  }
++
+   override fun onTouchEvent(e: MotionEvent): Boolean {
+     if (e.actionMasked == MotionEvent.ACTION_UP) {
+       if (nativeGestureStarted) {

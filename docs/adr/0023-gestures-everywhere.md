@@ -198,3 +198,53 @@ The device list shrinks accordingly: "pull-down feel on both" becomes "iOS
 overscroll-to-close on the title and the thread". Two things were confirmed on
 the emulator: the rating bar keeps a drag that starts on it, and a poster shelf
 keeps a drag that starts on it, both ahead of the screen swipe.
+
+## Amendment 2 — v1.20.2: shelves own their touches; Android pull-down from the top zone
+
+Two more reports from Robert's Android phone on v1.20.1, both reproduced or
+confirmed on the Android emulator.
+
+**Scrolling a Hot shelf switched tabs.** Measured on the released 1.20.1 APK:
+10 of 10 fast flicks (40ms) on the Hot Movies shelf changed the tab, and so
+did an ordinary 150ms swipe. Only a slow 400ms drag scrolled the shelf. The
+cause is not the thresholds but the order in which views see a move.
+ViewPager2 intercepts at its paging slop (16dp,
+`setScrollingTouchSlop(TOUCH_SLOP_PAGING)` in viewpager2 1.1.0) and a
+horizontal ScrollView claims at 8dp. A parent sees every `ACTION_MOVE` before
+its children, though, and Android batches moves once per frame, so on any
+brisk swipe the first move is already past 16dp. The pager takes it before the
+shelf can claim. react-native-pager-view's `NestedScrollableHost` handles this
+only for a *nested pager*.
+**Decision:** a `patch-package` patch on react-native-pager-view
+(`patches/react-native-pager-view+8.0.1.patch`). The pager's host decides at
+`ACTION_DOWN`: if a view that can scroll horizontally is under the finger, the
+pager's user input is off for that gesture, and it is restored on UP/CANCEL in
+`dispatchTouchEvent`. A drag that starts on a shelf is the shelf's; one that
+starts anywhere else still pages. After the patch: 0/10 fast flicks and 0/3
+swipes at 400/150/80ms changed the tab; 8/8 swipes from empty space and a
+swipe from the tip text still paged. RNGH pans (rows, rating bar, the Feed
+segment swipe) were never affected: the RNGH root is above the pager and
+intercepts first.
+
+**Pull-down on Android, from the top zone only (Robert's call).** 1.20.1 made
+pull-down iOS-only. It is back on Android as a pan inside the screen's own
+`SwipeNav` (`pullDown` prop), raced against the horizontal pan in the same
+detector, never in a second one. It accepts only touches that start in the
+top zone (`hitSlop` height: the 320pt backdrop on a title, 200pt of the review
+card on a thread), only while the page is at its top, and activates at 6pt,
+under the ScrollView's 8dp claim. An upward drag fails it at 4pt. The review
+thread now has its own `SwipeNav`, so it also owns `onSwipeRight` (the
+no-nesting rule from amendment 1).
+
+**`atTop`, and the iOS overscroll, have to come from a Reanimated worklet.**
+`KeyboardAwareScrollView` registers its own worklet for every native scroll
+event (`useScrollState`), and Reanimated then consumes those events on the UI
+thread: a JS `onScroll` / `onScrollEndDrag` prop on it is never called. So the
+1.20.1 iOS overscroll-to-close **never fired on a title** (the thread's plain
+`FlatList` was fine). The first cut of the Android pull also closed a
+scrolled title for the same reason: `atTop` never left `true`.
+`usePullToDismiss` is now a `useAnimatedScrollHandler`, the thread's list is an
+`Animated.FlatList`, and the handler crosses to JS only when `atTop` changes.
+Emulator check on a long title (*Dexter*): scroll down, drag down from the top
+of the screen → it scrolls back, no close; at the top, pull from the backdrop
+→ closes; pull from the synopsis → nothing.

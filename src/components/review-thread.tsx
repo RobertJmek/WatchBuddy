@@ -5,7 +5,6 @@ import * as Clipboard from 'expo-clipboard';
 import {
   ActionSheetIOS,
   Alert,
-  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import {
   KeyboardStickyView,
   useKeyboardState,
 } from 'react-native-keyboard-controller';
+import Animated from 'react-native-reanimated';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -25,6 +25,7 @@ import {
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeleton } from '@/components/skeleton';
+import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
@@ -268,14 +269,20 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
   const keyboard = useKeyboardState();
   const insets = useSafeAreaInsets();
 
-  // The thread opens from the bottom (`MODAL_ROUTES` in the root layout); on
-  // iOS, pulling the list down past its top closes it the same way.
+  // The thread opens from the bottom (`MODAL_ROUTES` in the root layout);
+  // pulling it down closes it the same way — past the top on iOS, from the
+  // review card at the top on Android (`usePullToDismiss`).
   const dismiss = useCallback(() => router.back(), [router]);
-  const pullToDismiss = usePullToDismiss(dismiss);
+  const { scrollHandler, atTop } = usePullToDismiss(dismiss);
 
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Review' }} />
+      {/* Its own SwipeNav (for the pull) must also own back: nested inside the
+          root layout's, the outer one never fires. */}
+      <SwipeNav
+        onSwipeRight={dismiss}
+        pullDown={{ onPull: dismiss, zoneHeight: PULL_ZONE_HEIGHT, atTop }}>
       <View style={styles.container}>
         {isLoading || !review ? (
           <View style={{ padding: Spacing.three, gap: Spacing.two }}>
@@ -284,10 +291,10 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
             ))}
           </View>
         ) : (
-          <FlatList
+          <Animated.FlatList
             data={data.replies}
             keyExtractor={(r) => r.id}
-            {...pullToDismiss}
+            onScroll={scrollHandler}
             contentContainerStyle={[
               styles.list,
               keyboard.isVisible && { paddingBottom: keyboard.height + 72 },
@@ -516,6 +523,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
         </KeyboardStickyView>
         )}
       </View>
+      </SwipeNav>
 
       {/* Android ⋯ menu: bottom sheet, dismissed by backdrop tap or Cancel. */}
       <Modal
@@ -563,6 +571,9 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
     </ThemedView>
   );
 }
+
+/** Android: a pull may start in this much of the top of the thread (the review card). */
+const PULL_ZONE_HEIGHT = 200;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
