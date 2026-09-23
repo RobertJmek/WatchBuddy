@@ -1,7 +1,6 @@
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useIsFocused, useRouter } from 'expo-router';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -16,49 +15,25 @@ import {
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
-import { PressScale } from '@/components/press-scale';
+import { SearchRow } from '@/components/search-row';
 import { ShelfSkeleton } from '@/components/skeleton';
-import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
 import { UserRow } from '@/components/user-row';
-import { Accent, AccentText, Danger, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Danger, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
+import { hapticTick } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { openTitle } from '@/lib/navigation';
-import {
-  getLibraryStatus,
-  removeFromLibrary,
-  setLibraryStatus,
-  type LibraryStatus,
-} from '@/lib/library';
 import { searchUsers } from '@/lib/social';
 import { subscribeTabReset } from '@/lib/tab-reset';
-import {
-  fetchAllEpisodes,
-  getTitle,
-  getTrending,
-  imageUrl,
-  searchTitles,
-  titleQueryOptions,
-  type SearchResult,
-} from '@/lib/tmdb';
-import {
-  logManyEpisodeWatches,
-  logMovieWatch,
-  removeEpisodeWatchesByIds,
-  removeMovieWatch,
-} from '@/lib/watches';
+import { getTrending, searchTitles, type SearchResult } from '@/lib/tmdb';
+import { itemKey, useSearchLog } from '@/lib/use-search-log';
 
 const MIN_CHARS = 3;
 const DEBOUNCE_MS = 500;
-
-function year(r: SearchResult) {
-  return r.release_date ? r.release_date.slice(0, 4) : '—';
-}
 
 function toPosterItem(r: SearchResult): PosterItem {
   return {
@@ -69,160 +44,6 @@ function toPosterItem(r: SearchResult): PosterItem {
     poster_path: r.poster_path,
   };
 }
-
-/**
- * One swipe-logged Search row, remembered for the session. Holds exactly the
- * rows the swipe inserted so undo reverses them precisely — and, for movies, the
- * pre-log Library status so undo can restore it (logMovieWatch forces Completed).
- */
-type LoggedEntry = {
-  kind: 'movie' | 'tv';
-  titleId: string;
-  watchIds: string[];
-  priorStatus: LibraryStatus | null;
-  /** True while the optimistic ✓ is shown but the DB write hasn't landed yet. */
-  pending: boolean;
-};
-
-/** Identity of a search result in the session-log map, and as a list key. */
-const itemKey = (r: SearchResult) => `${r.media_type}-${r.tmdb_id}`;
-
-/** The swipe reveal's label and the custom action's label, from one place. */
-function logLabel(item: SearchResult) {
-  return item.media_type === 'tv' ? 'Log whole series' : 'Log watch';
-}
-
-/**
- * Memoized, and its props are shaped for it: the handlers take the item rather
- * than closing over it, so the parent can hold them stable across a keystroke.
- * Without that, every character typed into the search box re-rendered every
- * result row and its gesture handler.
- */
-const ResultRow = memo(function ResultRow({
-  item,
-  bg,
-  router,
-  logged,
-  pending,
-  onUndoTap,
-  onLog,
-}: {
-  item: SearchResult;
-  bg: string;
-  router: ReturnType<typeof useRouter>;
-  /** True while this row is marked logged from a swipe this session. */
-  logged: boolean;
-  /** True while the DB write behind the optimistic ✓ hasn't landed yet. */
-  pending: boolean;
-  /** Tapping the checkmark undoes the session log (same as swipe-left). */
-  onUndoTap: (item: SearchResult) => void;
-  /** Swipe-right's action, offered here too — see the accessibility note below. */
-  onLog: (item: SearchResult) => void;
-}) {
-  const queryClient = useQueryClient();
-  return (
-    <PressScale
-      style={[styles.row, { backgroundColor: bg }]}
-      // The swipe's two directions, as custom actions. They live on this
-      // element and not on `SwipeToLogRow`'s child wrapper because a screen
-      // reader only exposes the actions of the element it has *focused*, and
-      // this `PressScale` is the row's focusable node. Logging is the one that
-      // matters: unlike undo (the ✓) it has no tap equivalent here at all.
-      accessibilityActions={
-        logged
-          ? [
-              { name: 'log', label: logLabel(item) },
-              { name: 'undo', label: 'Undo' },
-            ]
-          : [{ name: 'log', label: logLabel(item) }]
-      }
-      onAccessibilityAction={({ nativeEvent }) => {
-        if (nativeEvent.actionName === 'log') onLog(item);
-        else if (nativeEvent.actionName === 'undo') onUndoTap(item);
-      }}
-      // Warm the detail cache while the finger is still down.
-      onPressIn={() =>
-        queryClient.prefetchQuery(titleQueryOptions(item.tmdb_id, item.media_type))
-      }
-      onPress={() =>
-        openTitle(router, {
-          tmdbId: item.tmdb_id,
-          mediaType: item.media_type,
-          name: item.title,
-        })
-      }>
-      <Image
-        style={styles.poster}
-        source={{ uri: imageUrl(item.poster_path, 'w185') ?? undefined }}
-        contentFit="cover"
-        transition={150}
-      />
-      <ThemedView style={styles.rowText}>
-        <ThemedText type="smallBold" numberOfLines={2}>
-          {item.title}
-        </ThemedText>
-        <ThemedText type="small">
-          {item.media_type === 'tv' ? 'TV' : 'Movie'} · {year(item)}
-        </ThemedText>
-      </ThemedView>
-      {logged ? (
-        // Its own Pressable captures the touch, so tapping the check undoes
-        // instead of opening the title (RN doesn't bubble to the parent).
-        // Shown instantly on swipe (optimistic); dimmed until the write lands.
-        <Pressable
-          style={[styles.check, pending && styles.checkPending]}
-          hitSlop={8}
-          onPress={() => onUndoTap(item)}
-          accessibilityRole="button"
-          accessibilityLabel="Undo this watch"
-          accessibilityState={{ busy: pending }}>
-          <IconSymbol name="checkmark" size={18} tintColor={AccentText} />
-        </Pressable>
-      ) : null}
-    </PressScale>
-  );
-});
-
-/**
- * One search result: the swipe wrapper plus the row. Memoized as a unit so a
- * keystroke re-renders neither — `SwipeToLogRow`'s own memo can't help while
- * its `onLog` is a fresh closure, and the closure has to live somewhere.
- */
-const SearchRow = memo(function SearchRow({
-  item,
-  bg,
-  router,
-  logged,
-  pending,
-  onLog,
-  onUndo,
-}: {
-  item: SearchResult;
-  bg: string;
-  router: ReturnType<typeof useRouter>;
-  logged: boolean;
-  pending: boolean;
-  onLog: (item: SearchResult) => void;
-  onUndo: (item: SearchResult) => void;
-}) {
-  return (
-    <SwipeToLogRow
-      onLog={() => onLog(item)}
-      logLabel={logLabel(item)}
-      longLog={item.media_type === 'tv'}
-      onUndo={logged ? () => onUndo(item) : undefined}>
-      <ResultRow
-        item={item}
-        bg={bg}
-        router={router}
-        logged={logged}
-        pending={pending}
-        onUndoTap={onUndo}
-        onLog={onLog}
-      />
-    </SwipeToLogRow>
-  );
-});
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -366,137 +187,7 @@ export default function SearchScreen() {
     [router],
   );
 
-  // --- swipe-to-log (session-scoped, optimistic) --------------------------
-  const queryClient = useQueryClient();
-  const [logged, setLogged] = useState<Map<string, LoggedEntry>>(new Map());
-  // Cancel tokens for in-flight logs, so an undo tapped *before* the DB write
-  // finishes can cancel it — the write, once done, rolls itself back.
-  const inflight = useRef(new Map<string, { cancelled: boolean }>());
-  // The two handlers below are handed to memoized rows, so they have to stay
-  // referentially stable — which means they can't close over `logged`. They read
-  // it through here instead. (Same mailbox pattern as `range-slider`.)
-  const loggedRef = useRef(logged);
-  // eslint-disable-next-line react-hooks/refs -- a mailbox, not render state
-  loggedRef.current = logged;
-
-  const invalidateWatchData = useCallback(
-    (titleId?: string) => {
-      queryClient.invalidateQueries({ queryKey: keys.diary() });
-      queryClient.invalidateQueries({ queryKey: keys.stats() });
-      if (titleId) {
-        // A movie log/undo also moves its Library status → refresh those views.
-        queryClient.invalidateQueries({ queryKey: keys.library() });
-        queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
-      }
-    },
-    [queryClient],
-  );
-
-  /** Delete exactly the rows an entry inserted (+ restore a movie's status). */
-  const reverseEntry = useCallback(async function reverseEntry(entry: LoggedEntry) {
-    if (entry.kind === 'movie') {
-      await removeMovieWatch(entry.watchIds[0]);
-      if (entry.priorStatus)
-        await setLibraryStatus(entry.titleId, entry.priorStatus);
-      else await removeFromLibrary(entry.titleId);
-      invalidateWatchData(entry.titleId);
-    } else {
-      await removeEpisodeWatchesByIds(entry.watchIds);
-      invalidateWatchData();
-    }
-  }, [invalidateWatchData]);
-
-  const logItem = useCallback(function logItem(item: SearchResult) {
-    const key = itemKey(item);
-    if (loggedRef.current.has(key)) return;
-    const kind: LoggedEntry['kind'] = item.media_type === 'tv' ? 'tv' : 'movie';
-    // Optimistic: show the ✓ instantly; the DB write runs in the background.
-    setLogged((prev) =>
-      new Map(prev).set(key, {
-        kind,
-        titleId: '',
-        watchIds: [],
-        priorStatus: null,
-        pending: true,
-      }),
-    );
-    hapticSuccess();
-    const token = { cancelled: false };
-    inflight.current.set(key, token);
-    void (async () => {
-      try {
-        // Same read-through the row already prefetches onPressIn → usually warm.
-        const { title, seasons } = await getTitle(item.tmdb_id, item.media_type);
-        let entry: LoggedEntry;
-        if (item.media_type === 'tv') {
-          const seasonNumbers = seasons
-            .map((s) => s.season_number)
-            .filter((n) => n >= 1) // exclude Specials (season 0)
-            .sort((a, b) => a - b);
-          const episodes = await fetchAllEpisodes(item.tmdb_id, seasonNumbers);
-          const ids = await logManyEpisodeWatches(
-            episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
-          );
-          entry = {
-            kind: 'tv',
-            titleId: title.id,
-            watchIds: ids,
-            priorStatus: null,
-            pending: false,
-          };
-        } else {
-          const priorStatus = await getLibraryStatus(title.id);
-          const watchId = await logMovieWatch(title.id);
-          entry = {
-            kind: 'movie',
-            titleId: title.id,
-            watchIds: [watchId],
-            priorStatus,
-            pending: false,
-          };
-        }
-        inflight.current.delete(key);
-        if (token.cancelled) {
-          // Undone while the write was in flight → roll it straight back.
-          await reverseEntry(entry);
-          return;
-        }
-        // Swap the pending entry for the resolved one (with real ids for undo).
-        setLogged((prev) => (prev.has(key) ? new Map(prev).set(key, entry) : prev));
-        invalidateWatchData(entry.kind === 'movie' ? entry.titleId : undefined);
-      } catch {
-        inflight.current.delete(key);
-        // Roll the optimistic ✓ back on failure.
-        setLogged((prev) => {
-          const next = new Map(prev);
-          next.delete(key);
-          return next;
-        });
-        hapticFailure();
-      }
-    })();
-  }, [invalidateWatchData, reverseEntry]);
-
-  const undoItem = useCallback(function undoItem(item: SearchResult) {
-    const key = itemKey(item);
-    const entry = loggedRef.current.get(key);
-    if (!entry) return;
-    // Optimistic: drop the ✓ instantly.
-    setLogged((prev) => {
-      const next = new Map(prev);
-      next.delete(key);
-      return next;
-    });
-    hapticUndo();
-    const token = inflight.current.get(key);
-    if (token) {
-      // Still writing — cancel; the log's completion handler rolls it back.
-      token.cancelled = true;
-      return;
-    }
-    // Resolved entry → delete its rows now.
-    void reverseEntry(entry).catch(() => {});
-  }, [reverseEntry]);
+  const { logged, logItem, undoItem } = useSearchLog();
 
   return (
     <ThemedView style={styles.container}>
@@ -709,31 +400,6 @@ const styles = StyleSheet.create({
   },
   dimmed: { opacity: 0.4 },
   list: { gap: Spacing.two, paddingVertical: Spacing.three },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-    alignItems: 'center',
-    padding: Spacing.two,
-    borderRadius: Spacing.three,
-  },
-  poster: {
-    width: 52,
-    height: 78,
-    borderRadius: 4,
-    backgroundColor: PlaceholderBg,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.35)',
-  },
-  rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
-  check: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkPending: { opacity: 0.55 },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   error: { color: Danger, marginTop: Spacing.three },
 });
