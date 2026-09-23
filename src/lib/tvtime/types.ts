@@ -69,7 +69,7 @@ export type UnresolvedItem = {
 /** The user's manual pick for an unresolved item (or a CLI-style override). */
 export type MatchOverride = { tmdbId: number; mediaType: MediaType };
 
-export type ImportPhase =
+type ImportPhase =
   | 'prefetch'
   | 'shows'
   | 'episodes'

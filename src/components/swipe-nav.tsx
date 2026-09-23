@@ -61,7 +61,7 @@ const PULL_ACTIVATE = 6;
 const PULL_COMMIT_DISTANCE = 80;
 const PULL_COMMIT_VELOCITY = 800;
 
-export type PullDown = {
+type PullDown = {
   onPull: () => void;
   /** Height of the top zone a pull may start in, in points from the top of this view. */
   zoneHeight: number;

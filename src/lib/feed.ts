@@ -19,7 +19,7 @@ type FeedBase = { key: string; createdAt: string; actor: FeedActor };
  * like + tap-through to the thread); every other event is a compact row.
  */
 /** Enough to navigate to and label a title (`/title/[id]` takes the TMDB id). */
-export type FeedTitle = {
+type FeedTitle = {
   tmdbId: number;
   mediaType: 'movie' | 'tv';
   name: string;

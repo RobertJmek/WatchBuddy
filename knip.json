@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "scripts/generate-logo.mjs"
+  ],
+  "ignore": [
+    "supabase/functions/**"
+  ],
+  "ignoreDependencies": [
+    "expo-updates"
+  ]
+}

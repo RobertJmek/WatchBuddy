@@ -14,11 +14,7 @@ export {
   prefetchEpisodeWatchState,
   prefetchMovieWatchState,
 } from '@/lib/tvtime/db';
-export type {
-  EpisodeWatchState,
-  MovieWatchState,
-  WatchInsert,
-} from '@/lib/tvtime/db';
+export type { WatchInsert } from '@/lib/tvtime/db';
 
 const PAGE = 1000;
 

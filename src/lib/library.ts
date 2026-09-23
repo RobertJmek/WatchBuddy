@@ -16,13 +16,6 @@ export const LIBRARY_STATUSES: { value: LibraryStatus; label: string }[] = [
   { value: 'dropped', label: 'Dropped' },
 ];
 
-export type LibraryItem = {
-  id: string;
-  title_id: string;
-  status: LibraryStatus;
-  created_at: string;
-};
-
 export type LibraryEntry = {
   id: string;
   status: LibraryStatus;
