@@ -1,6 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -11,17 +10,15 @@ import {
 } from 'react-native';
 
 import { EmptyState } from '@/components/empty-state';
-import { PressScale } from '@/components/press-scale';
+import { GridPoster } from '@/components/grid-poster';
 import { GridSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { PlaceholderBg, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
-import { openTitle } from '@/lib/navigation';
 import {
   getTrendingPage,
-  imageUrl,
   type MediaType,
   type SearchResult,
 } from '@/lib/tmdb';
@@ -47,7 +44,6 @@ const MAX_PAGES = 10;
  * one pages a remote feed and has nothing to filter.
  */
 export default function TrendingSectionScreen() {
-  const router = useRouter();
   const c = useTheme();
   const { type, label } = useLocalSearchParams<{
     type?: MediaType;
@@ -86,33 +82,15 @@ export default function TrendingSectionScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: SearchResult }) => (
-      <PressScale
-        style={{ width: cardW }}
-        onPress={() =>
-          openTitle(router, {
-            tmdbId: item.tmdb_id,
-            mediaType: item.media_type,
-            name: item.title,
-          })
-        }
-        accessibilityRole="button"
-        accessibilityLabel={item.title}>
-        <Image
-          style={{
-            width: cardW,
-            height: cardW * 1.5,
-            borderRadius: 4,
-            backgroundColor: PlaceholderBg,
-            borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.35)',
-          }}
-          source={{ uri: imageUrl(item.poster_path, 'w342') ?? undefined }}
-          contentFit="cover"
-          transition={150}
-        />
-      </PressScale>
+      <GridPoster
+        width={cardW}
+        tmdbId={item.tmdb_id}
+        mediaType={item.media_type}
+        name={item.title}
+        posterPath={item.poster_path}
+      />
     ),
-    [cardW, router],
+    [cardW],
   );
 
   return (

@@ -4,29 +4,7 @@
 // rows reference, so the export is self-describing.
 
 import { supabase } from '@/lib/supabase';
-import { requireViewer, selectMine } from '@/lib/viewer';
-
-const PAGE = 1000;
-
-// makeQuery resolves to `{ q: builder }` — the same wrapper trick as
-// selectMine. Resolving to a bare builder would let `await` collapse
-// (execute) it and hand back `{ data, error }` instead of the chainable.
-async function allPages<T>(
-  makeQuery: () => Promise<{ q: any }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let page = 0; ; page++) {
-    const { q } = await makeQuery();
-    const { data, error } = await q.range(page * PAGE, (page + 1) * PAGE - 1);
-    if (error) throw error;
-    rows.push(...((data ?? []) as T[]));
-    if ((data?.length ?? 0) < PAGE) break;
-  }
-  return rows;
-}
-
-const allMine = <T>(table: string, columns: string) =>
-  allPages<T>(() => selectMine(table, columns));
+import { allPages, requireViewer, selectAllMine } from '@/lib/viewer';
 
 /** Every row the user owns, plus lookups for the catalog ids they reference. */
 export async function buildExport(): Promise<Record<string, unknown>> {
@@ -45,13 +23,13 @@ export async function buildExport(): Promise<Record<string, unknown>> {
     followers,
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
-    allMine<any>('library_items', '*'),
-    allMine<any>('episode_watches', '*'),
-    allMine<any>('movie_watches', '*'),
-    allMine<any>('ratings', '*'),
-    allMine<any>('review_likes', '*'),
-    allMine<any>('review_replies', '*'),
-    allMine<any>('notifications', '*'),
+    selectAllMine<any>('library_items', '*'),
+    selectAllMine<any>('episode_watches', '*'),
+    selectAllMine<any>('movie_watches', '*'),
+    selectAllMine<any>('ratings', '*'),
+    selectAllMine<any>('review_likes', '*'),
+    selectAllMine<any>('review_replies', '*'),
+    selectAllMine<any>('notifications', '*'),
     allPages<any>(async () => ({
       q: supabase.from('follows').select('*').eq('follower_id', uid),
     })),

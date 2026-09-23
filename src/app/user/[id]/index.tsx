@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -13,10 +12,11 @@ import {
 import { Avatar } from '@/components/avatar';
 import { FollowButton } from '@/components/follow-button';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
-import { RowSkeleton, Skeleton } from '@/components/skeleton';
+import { RowSkeletonList, Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
+import { DiaryRow } from '@/components/diary-row';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
@@ -25,16 +25,8 @@ import { getLibraryFor, type LibraryEntry } from '@/lib/library';
 import { getProfileById } from '@/lib/profile';
 import { getFollowCounts, getFollowState } from '@/lib/social';
 import { getStats } from '@/lib/stats';
-import { imageUrl } from '@/lib/tmdb';
 import { getDiary } from '@/lib/watches';
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
 
 function StatCard({ value, label }: { value: string; label: string }) {
   const c = useTheme();
@@ -272,11 +264,7 @@ export default function UserProfileScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: '' }} />
       {profileQ.isLoading ? (
-        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <RowSkeleton key={i} />
-          ))}
-        </View>
+        <RowSkeletonList />
       ) : (
         <FlatList
           data={diaryQ.data ?? []}
@@ -299,35 +287,7 @@ export default function UserProfileScreen() {
             ) : null
           }
           renderItem={({ item }) => (
-            <Pressable
-              style={[styles.row, { backgroundColor: c.backgroundElement }]}
-              onPress={() =>
-                openTitle(router, {
-                  tmdbId: item.tmdbId,
-                  mediaType: item.mediaType,
-                  name: item.titleName,
-                })
-              }>
-              <Image
-                style={styles.poster}
-                source={{ uri: imageUrl(item.posterPath, 'w185') ?? undefined }}
-                contentFit="cover"
-                transition={150}
-              />
-              <ThemedView style={styles.rowText}>
-                <ThemedText type="smallBold" numberOfLines={1}>
-                  {item.titleName}
-                </ThemedText>
-                {item.subtitle ? (
-                  <ThemedText type="small" numberOfLines={1}>
-                    {item.subtitle}
-                  </ThemedText>
-                ) : null}
-                <ThemedText type="small" style={styles.date}>
-                  {formatDate(item.watched_at)}
-                </ThemedText>
-              </ThemedView>
-            </Pressable>
+            <DiaryRow item={item} large />
           )}
         />
       )}
@@ -376,15 +336,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   shelves: { alignSelf: 'stretch', gap: Spacing.four, marginTop: Spacing.three },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-    alignItems: 'center',
-    padding: Spacing.two,
-    borderRadius: Spacing.three,
-  },
-  poster: { width: 52, height: 78, borderRadius: Spacing.one, backgroundColor: PlaceholderBg },
-  rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
-  date: { opacity: 0.6 },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });

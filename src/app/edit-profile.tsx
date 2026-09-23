@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { File, Paths } from 'expo-file-system';
-import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
@@ -16,7 +15,7 @@ import {
 
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
-import { RowSkeleton } from '@/components/skeleton';
+import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
@@ -26,12 +25,12 @@ import { useAuth } from '@/lib/auth-context';
 import { buildExport } from '@/lib/export';
 import {
   getMyProfile,
-  updateProfile,
-  uploadAvatar,
-  UsernameTakenError,
+  pickAvatarImage,
+  saveProfile,
+  saveProfileErrorMessage,
+  usernameError,
+  type PickedImage,
 } from '@/lib/profile';
-
-const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
 export default function EditProfileScreen() {
   const c = useTheme();
@@ -78,7 +77,7 @@ export default function EditProfileScreen() {
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
-  const [picked, setPicked] = useState<{ uri: string; mimeType?: string } | null>(
+  const [picked, setPicked] = useState<PickedImage | null>(
     null,
   );
   const [saving, setSaving] = useState(false);
@@ -132,21 +131,8 @@ export default function EditProfileScreen() {
   const avatarUri = picked?.uri ?? profile?.avatar_url ?? null;
 
   async function pickAvatar() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Photo access is needed to choose a picture.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      setPicked({ uri: asset.uri, mimeType: asset.mimeType ?? undefined });
-    }
+    const image = await pickAvatarImage();
+    if (image) setPicked(image);
   }
 
   async function handleSave() {
@@ -154,29 +140,27 @@ export default function EditProfileScreen() {
     const handle = username.trim().toLowerCase();
     const about = bio.trim();
 
-    if (handle && !USERNAME_RE.test(handle)) {
-      setError('Username must be 3–20 characters: a–z, 0–9 or _.');
+    const invalid = usernameError(handle);
+    if (invalid) {
+      setError(invalid);
       return;
     }
 
     setError(null);
     setSaving(true);
     try {
-      const avatar_url = picked
-        ? await uploadAvatar(picked.uri, picked.mimeType)
-        : undefined;
-      await updateProfile({
-        display_name: name || null,
-        username: handle || null,
-        bio: about || null,
-        ...(avatar_url ? { avatar_url } : {}),
-      });
+      await saveProfile(
+        {
+          display_name: name || null,
+          username: handle || null,
+          bio: about || null,
+        },
+        picked,
+      );
       queryClient.invalidateQueries({ queryKey: keys.profile() });
       router.back();
     } catch (e) {
-      setError(
-        e instanceof UsernameTakenError ? e.message : 'Could not save. Try again.',
-      );
+      setError(saveProfileErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -191,11 +175,7 @@ export default function EditProfileScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Edit Profile' }} />
       {isLoading ? (
-        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <RowSkeleton key={i} />
-          ))}
-        </View>
+        <RowSkeletonList />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.avatarSection}>

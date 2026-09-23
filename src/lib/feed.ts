@@ -1,4 +1,4 @@
-import { type ReviewItem } from '@/lib/ratings';
+import { hydrateReviews, type ReviewItem } from '@/lib/ratings';
 import { parseFeedRows } from '@/lib/rpc-shape';
 import { supabase } from '@/lib/supabase';
 import { currentViewer, updateMine } from '@/lib/viewer';
@@ -90,7 +90,7 @@ export async function getFeed({
           .select('id, tmdb_id, media_type, title')
           .in('id', [...titleIds])
       : Promise.resolve({ data: [], error: null } as any),
-    hydrateReviews(reviewRatingIds, viewerId),
+    reviewsById(reviewRatingIds, viewerId),
   ]);
   if (profilesRes.error) throw profilesRes.error;
   if (titlesRes.error) throw titlesRes.error;
@@ -183,12 +183,8 @@ export async function markFeedSeen() {
   if (error) throw error;
 }
 
-/**
- * Build `ReviewItem`s for a set of rating ids (author, follow state, likes,
- * replies) — the same composition `getTitleRatings` does, keyed by rating id
- * so feed review rows get the exact shape `ReviewRow` expects.
- */
-async function hydrateReviews(
+/** `ReviewItem`s for a set of rating ids, keyed by id (see `hydrateReviews`). */
+async function reviewsById(
   ratingIds: string[],
   viewerId: string | null,
 ): Promise<Map<string, ReviewItem>> {
@@ -205,67 +201,6 @@ async function hydrateReviews(
   );
   if (rows.length === 0) return out;
 
-  const authorIds = [...new Set(rows.map((r) => r.user_id))];
-  const ids = rows.map((r) => r.id);
-
-  const [profilesRes, followsRes, likesRes, repliesRes] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id, username, display_name, avatar_url')
-      .in('id', authorIds),
-    viewerId
-      ? supabase
-          .from('follows')
-          .select('followee_id')
-          .eq('follower_id', viewerId)
-          .in('followee_id', authorIds)
-      : Promise.resolve({ data: [], error: null } as any),
-    supabase.from('review_likes').select('rating_id, user_id').in('rating_id', ids),
-    supabase
-      .from('review_replies')
-      .select('rating_id')
-      .is('deleted_at', null)
-      .in('rating_id', ids),
-  ]);
-  if (profilesRes.error) throw profilesRes.error;
-  if (followsRes.error) throw followsRes.error;
-  if (likesRes.error) throw likesRes.error;
-  if (repliesRes.error) throw repliesRes.error;
-
-  const replyCounts = new Map<string, number>();
-  for (const r of (repliesRes.data ?? []) as any[]) {
-    replyCounts.set(r.rating_id, (replyCounts.get(r.rating_id) ?? 0) + 1);
-  }
-  const likeCounts = new Map<string, number>();
-  const likedByMe = new Set<string>();
-  for (const l of (likesRes.data ?? []) as any[]) {
-    likeCounts.set(l.rating_id, (likeCounts.get(l.rating_id) ?? 0) + 1);
-    if (l.user_id === viewerId) likedByMe.add(l.rating_id);
-  }
-  const profileById = new Map<string, any>(
-    (profilesRes.data ?? []).map((p: any) => [p.id, p]),
-  );
-  const following = new Set(
-    (followsRes.data ?? []).map((f: any) => f.followee_id),
-  );
-
-  for (const r of rows) {
-    const p = profileById.get(r.user_id);
-    out.set(r.id, {
-      ratingId: r.id,
-      userId: r.user_id,
-      username: p?.username ?? null,
-      display_name: p?.display_name ?? null,
-      avatar_url: p?.avatar_url ?? null,
-      is_following: following.has(r.user_id),
-      isMine: r.user_id === viewerId,
-      value: r.value,
-      review: r.review.trim(),
-      updated_at: r.updated_at,
-      likeCount: likeCounts.get(r.id) ?? 0,
-      likedByMe: likedByMe.has(r.id),
-      replyCount: replyCounts.get(r.id) ?? 0,
-    });
-  }
+  for (const item of await hydrateReviews(rows, viewerId)) out.set(item.ratingId, item);
   return out;
 }
