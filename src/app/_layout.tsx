@@ -18,12 +18,32 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { SwipeNav } from '@/components/swipe-nav';
+import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { asyncStoragePersister, queryClient } from '@/lib/query';
 import {
   ThemePreferenceProvider,
   useThemePreference,
 } from '@/lib/theme-preference';
+
+// React Navigation paints native headers with `colors.card`, which is pure
+// white in its DefaultTheme — a white bar above every cream screen that shows
+// a header. Derive the navigation theme from the app's own palette instead.
+function navTheme(base: typeof DefaultTheme, c: (typeof Colors)['light' | 'dark']) {
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: c.tint,
+      background: c.background,
+      card: c.background,
+      text: c.text,
+      border: c.border,
+    },
+  };
+}
+const NavLight = navTheme(DefaultTheme, Colors.light);
+const NavDark = navTheme(DarkTheme, Colors.dark);
 
 type ScreenLayoutProps = Parameters<
   NonNullable<ComponentProps<typeof Stack>['screenLayout']>
@@ -162,7 +182,7 @@ export default function RootLayout() {
         persistOptions={{ persister: asyncStoragePersister }}>
         <ThemePreferenceProvider>
           <AuthProvider>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <ThemeProvider value={colorScheme === 'dark' ? NavDark : NavLight}>
               <KeyboardProvider>
                 <RootNavigator />
               </KeyboardProvider>
