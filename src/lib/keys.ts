@@ -52,6 +52,8 @@ export const keys = {
 
   // --- catalog & search ---------------------------------------------------
   libraryStatus: (titleId: string) => ['libraryStatus', titleId] as const,
+  /** Your own watches of one movie (the title screen's "Watched N×"). */
+  movieWatches: (titleId: string) => ['movieWatches', titleId] as const,
   genres: () => ['genres'] as const,
   search: (term: string) => ['search', term] as const,
   userSearch: (term: string) => ['userSearch', term] as const,

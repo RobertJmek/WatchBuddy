@@ -1,5 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,7 +10,6 @@ import {
   getMovieWatches,
   logMovieWatch,
   removeMovieWatch,
-  type MovieWatch,
 } from '@/lib/watches';
 
 const ACTIVE = Accent;
@@ -21,27 +20,18 @@ function formatDate(iso: string) {
 
 export function MovieWatchBar({ titleId }: { titleId: string }) {
   const queryClient = useQueryClient();
-  const [watches, setWatches] = useState<MovieWatch[]>([]);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    try {
-      setWatches(await getMovieWatches(titleId));
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // A fetch on mount: `load` sets its own loading flag before awaiting, and is
-  // redefined every render, so the fetch is keyed on the title instead.
-  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
-  useEffect(() => {
-    load();
-  }, [titleId]);
-  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+  // A query rather than local state, so a watch logged from elsewhere on the
+  // screen — rating the title, or marking it Completed (ADR 0024) — shows up.
+  const watchesQ = useQuery({
+    queryKey: keys.movieWatches(titleId),
+    queryFn: () => getMovieWatches(titleId),
+  });
+  const watches = watchesQ.data ?? [];
+  const loading = watchesQ.isLoading;
+  const load = () =>
+    queryClient.invalidateQueries({ queryKey: keys.movieWatches(titleId) });
 
   async function log() {
     if (busy) return;

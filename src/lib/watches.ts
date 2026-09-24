@@ -1,5 +1,11 @@
-import { setLibraryStatus } from '@/lib/library';
+import {
+  getLibraryStatus,
+  removeFromLibrary,
+  setLibraryStatus,
+  type LibraryStatus,
+} from '@/lib/library';
 import { supabase } from '@/lib/supabase';
+import { fetchAllEpisodes, getTitle } from '@/lib/tmdb';
 import {
   currentViewer,
   deleteMine,
@@ -113,6 +119,80 @@ export async function removeMovieWatch(watchId: string) {
   const { q } = await deleteMine('movie_watches');
   const { error } = await q.eq('id', watchId);
   if (error) throw error;
+}
+
+// --- implied watches ------------------------------------------------------
+
+/**
+ * What an implied watch wrote, so the caller can undo exactly that. For a movie
+ * `priorStatus` is the Library status before the log, since `logMovieWatch`
+ * forces Completed.
+ */
+export type ImpliedWatch =
+  | { kind: 'movie'; titleId: string; watchIds: string[]; priorStatus: LibraryStatus | null }
+  | { kind: 'tv'; titleId: string; watchIds: string[] };
+
+/** Today as `YYYY-MM-DD` in local time — the shape TMDB's `air_date` uses. */
+function localToday() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Make sure a title counts as watched, without ever logging a second time.
+ * Called when the viewer rates a title or marks it Completed (ADR 0024).
+ *
+ * - Movie: logs one watch only if there is none yet.
+ * - Series: logs every *aired* episode (Specials excluded) that has no watch.
+ *   With `onlyIfUntouched` — the rating path — it does nothing as soon as any
+ *   episode has been watched: rating a show you're halfway through is an
+ *   opinion, not a claim you've finished it.
+ *
+ * Deliberately not called from `setRating` / `setLibraryStatus`: the importers
+ * and the Search undo write those too, and must not log anything.
+ *
+ * Returns null when nothing was written.
+ */
+export async function ensureWatched(
+  title: { id: string; tmdbId: number; mediaType: 'movie' | 'tv' },
+  opts: { onlyIfUntouched: boolean },
+): Promise<ImpliedWatch | null> {
+  if (title.mediaType === 'movie') {
+    if ((await getMovieWatches(title.id)).length > 0) return null;
+    const priorStatus = await getLibraryStatus(title.id);
+    const watchId = await logMovieWatch(title.id);
+    return { kind: 'movie', titleId: title.id, watchIds: [watchId], priorStatus };
+  }
+
+  const counts = await getEpisodeWatchCounts(title.id);
+  if (opts.onlyIfUntouched && counts.size > 0) return null;
+  const { seasons } = await getTitle(title.tmdbId, 'tv');
+  const seasonNumbers = seasons
+    .map((s) => s.season_number)
+    .filter((n) => n >= 1) // exclude Specials (season 0)
+    .sort((a, b) => a - b);
+  const today = localToday();
+  const episodes = (await fetchAllEpisodes(title.tmdbId, seasonNumbers)).filter(
+    // An unknown air date counts as not aired yet.
+    (e) => !counts.has(e.id) && e.air_date != null && e.air_date <= today,
+  );
+  if (episodes.length === 0) return null;
+  const watchIds = await logManyEpisodeWatches(
+    episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
+  );
+  return { kind: 'tv', titleId: title.id, watchIds };
+}
+
+/** Reverse exactly what `ensureWatched` wrote (+ restore a movie's status). */
+export async function undoImpliedWatch(w: ImpliedWatch) {
+  if (w.kind === 'movie') {
+    await removeMovieWatch(w.watchIds[0]);
+    if (w.priorStatus) await setLibraryStatus(w.titleId, w.priorStatus);
+    else await removeFromLibrary(w.titleId);
+  } else {
+    await removeEpisodeWatchesByIds(w.watchIds);
+  }
 }
 
 // --- diary (combined chronological history) -----------------------------
