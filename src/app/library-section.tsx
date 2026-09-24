@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -13,11 +12,11 @@ import {
 import { FilterChips } from '@/components/filter-chips';
 import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryFilterSheet } from '@/components/library-filter-sheet';
-import { PressScale } from '@/components/press-scale';
+import { GridPoster } from '@/components/grid-poster';
 import { GridSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { PlaceholderBg, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getGenres } from '@/lib/genres';
 import { keys } from '@/lib/keys';
@@ -34,15 +33,12 @@ import {
   isActive,
   yearBounds,
 } from '@/lib/library-filter';
-import { openTitle } from '@/lib/navigation';
-import { imageUrl } from '@/lib/tmdb';
 
 const COLS = 3;
 const GAP = Spacing.two;
 const PAD = Spacing.three;
 
 export default function LibrarySectionScreen() {
-  const router = useRouter();
   const c = useTheme();
   const params = useLocalSearchParams<{
     status?: LibraryStatus;
@@ -100,33 +96,15 @@ export default function LibrarySectionScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: MyLibraryEntry }) => (
-      <PressScale
-        style={{ width: cardW }}
-        onPress={() =>
-          openTitle(router, {
-            tmdbId: item.title!.tmdb_id,
-            mediaType: item.title!.media_type,
-            name: item.title!.title,
-          })
-        }
-        accessibilityRole="button"
-        accessibilityLabel={item.title!.title}>
-        <Image
-          style={{
-            width: cardW,
-            height: cardW * 1.5,
-            borderRadius: 4,
-            backgroundColor: PlaceholderBg,
-            borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.35)',
-          }}
-          source={{ uri: imageUrl(item.title!.poster_path, 'w342') ?? undefined }}
-          contentFit="cover"
-          transition={150}
-        />
-      </PressScale>
+      <GridPoster
+        width={cardW}
+        tmdbId={item.title!.tmdb_id}
+        mediaType={item.title!.media_type}
+        name={item.title!.title}
+        posterPath={item.title!.poster_path}
+      />
     ),
-    [cardW, router],
+    [cardW],
   );
 
   return (

@@ -1,7 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   Modal,
@@ -17,11 +16,11 @@ import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 
 import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
-import { PressScale } from '@/components/press-scale';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
+import { DiaryRow } from '@/components/diary-row';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -30,8 +29,6 @@ import {
   type DiaryPeriod,
 } from '@/lib/diary-period';
 import { keys } from '@/lib/keys';
-import { openTitle } from '@/lib/navigation';
-import { imageUrl } from '@/lib/tmdb';
 import {
   getDiary,
   updateWatchDay,
@@ -51,16 +48,8 @@ function formatDay(d: Date) {
   });
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
 
 export default function DiaryScreen() {
-  const router = useRouter();
   const c = useTheme();
   const [period, setPeriod] = useState<DiaryPeriod>('all');
   const [searching, setSearching] = useState(false);
@@ -383,43 +372,7 @@ export default function DiaryScreen() {
           renderItem={({ item, index }) => (
             <Animated.View
               entering={FadeInDown.delay(Math.min(index, 12) * 30).duration(220)}>
-            <PressScale
-              style={[styles.row, { backgroundColor: c.backgroundElement }]}
-              onPress={() =>
-                openTitle(router, {
-                  tmdbId: item.tmdbId,
-                  mediaType: item.mediaType,
-                  name: item.titleName,
-                })
-              }>
-              <Image
-                style={styles.poster}
-                source={{ uri: imageUrl(item.posterPath, 'w185') ?? undefined }}
-                contentFit="cover"
-                transition={150}
-              />
-              <ThemedView style={styles.rowText}>
-                <ThemedText type="smallBold" numberOfLines={1}>
-                  {item.titleName}
-                </ThemedText>
-                {item.subtitle && (
-                  <ThemedText type="small" numberOfLines={1}>
-                    {item.subtitle}
-                  </ThemedText>
-                )}
-                <ThemedText type="small" style={styles.date}>
-                  {formatDate(item.watched_at)}
-                </ThemedText>
-              </ThemedView>
-              <Pressable
-                hitSlop={8}
-                style={styles.editBtn}
-                onPress={() => setEditing(item)}
-                accessibilityRole="button"
-                accessibilityLabel="Change the date this was watched">
-                <IconSymbol name="calendar" size={18} tintColor={c.textSecondary} />
-              </Pressable>
-            </PressScale>
+              <DiaryRow item={item} onEdit={setEditing} />
             </Animated.View>
           )}
         />
@@ -431,7 +384,6 @@ export default function DiaryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   chipBar: { flexGrow: 0 },
-  editBtn: { alignSelf: 'center', paddingHorizontal: Spacing.two },
   searchRow: {
     justifyContent: 'center',
     marginHorizontal: Spacing.three,
@@ -491,20 +443,5 @@ const styles = StyleSheet.create({
   },
   doneText: { color: AccentText, fontWeight: '700' },
   list: { padding: Spacing.three, gap: Spacing.two },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-    alignItems: 'center',
-    padding: Spacing.two,
-    borderRadius: Spacing.three,
-  },
-  poster: {
-    width: 44,
-    height: 66,
-    borderRadius: Spacing.one,
-    backgroundColor: PlaceholderBg,
-  },
-  rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
-  date: { opacity: 0.6 },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });

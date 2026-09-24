@@ -52,6 +52,17 @@ export function RowSkeleton() {
   );
 }
 
+/** A padded column of `RowSkeleton`s — the loading state of every list screen. */
+export function RowSkeletonList({ count = 5 }: { count?: number }) {
+  return (
+    <View style={styles.rowList}>
+      {Array.from({ length: count }, (_, i) => (
+        <RowSkeleton key={i} />
+      ))}
+    </View>
+  );
+}
+
 /** Placeholder for a 3-column poster grid (library sections, watchlists). */
 export function GridSkeleton({ rows = 3 }: { rows?: number }) {
   return (
@@ -64,6 +75,7 @@ export function GridSkeleton({ rows = 3 }: { rows?: number }) {
 }
 
 const styles = StyleSheet.create({
+  rowList: { padding: Spacing.three, gap: Spacing.two },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

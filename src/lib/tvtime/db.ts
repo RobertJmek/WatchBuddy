@@ -10,27 +10,14 @@
 
 import { supabase } from '@/lib/supabase';
 import type { LibraryStatus } from '@/lib/library';
-import { requireViewer, selectMine } from '@/lib/viewer';
+import { requireViewer, selectAllMine } from '@/lib/viewer';
 
-const PAGE = 1000;
 const INSERT_CHUNK = 500;
 
 /** TV Time's "YYYY-MM-DD HH:MM:SS" (UTC) → ISO timestamp for Postgres. */
 export function toIsoTimestamp(tvTime: string): string {
   const d = new Date(tvTime.replace(' ', 'T') + 'Z');
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-}
-
-async function selectAllMine<T>(table: string, columns: string): Promise<T[]> {
-  const all: T[] = [];
-  for (let page = 0; ; page++) {
-    const { q } = await selectMine(table, columns);
-    const { data, error } = await q.range(page * PAGE, (page + 1) * PAGE - 1);
-    if (error) throw error;
-    all.push(...((data ?? []) as T[]));
-    if ((data?.length ?? 0) < PAGE) break;
-  }
-  return all;
 }
 
 export type EpisodeWatchState = {
