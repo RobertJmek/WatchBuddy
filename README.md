@@ -52,6 +52,8 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   other.
 - **Episode-level check-off**, with **rewatch logging per episode, per season, and per series**.
 - **Movie watch logging** (rewatches included).
+- **Rating or completing counts as watched** — a first rating, or marking a title Completed,
+  logs the watch for you (a movie once; a series' aired, unwatched episodes), with an Undo.
 - **Swipe to log** — swipe a Search result (or a season's episode) **right** to log a watch,
   **left** to undo; a movie logs one watch, a whole series logs with a longer swipe.
 - A dated **Diary** of everything you've watched, filterable by **day / week / month / year /

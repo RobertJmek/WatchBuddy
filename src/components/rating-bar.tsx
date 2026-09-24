@@ -16,6 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { IconSymbol } from '@/components/icon-symbol';
+import { ImpliedWatchNote, useImpliedWatch } from '@/components/implied-watch-note';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -93,9 +94,11 @@ function RatingChip({
 
 export function RatingBar({
   titleId,
+  tmdbId,
   mediaType,
 }: {
   titleId: string;
+  tmdbId: number;
   mediaType: 'movie' | 'tv';
 }) {
   const entityType = entityTypeFor(mediaType);
@@ -119,6 +122,8 @@ export function RatingBar({
   const [hovered, setHovered] = useState<number | null>(null);
   const lastHovered = useRef<number | null>(null);
   const cellWidth = rowWidth / VALUES.length;
+
+  const implied = useImpliedWatch({ id: titleId, tmdbId, mediaType });
 
   function valueFromX(x: number) {
     if (!cellWidth) return null;
@@ -204,6 +209,10 @@ export function RatingBar({
       // changed or cleared value has to reach it. Only this path matters —
       // editing a review's text keeps the value, so it can't move the axis.
       queryClient.invalidateQueries({ queryKey: keys.library() });
+      // A first rating means you've seen it (ADR 0024). Changing or clearing a
+      // rating never logs anything, and neither does rating a show you've
+      // already started — hence `onlyIfUntouched`.
+      if (!clear && previous == null) void implied.mark({ onlyIfUntouched: true });
     } catch {
       setValue(previous);
       hapticFailure();
@@ -270,6 +279,8 @@ export function RatingBar({
           </View>
         </GestureDetector>
       </View>
+
+      <ImpliedWatchNote note={implied.note} onUndo={implied.undo} />
 
       {value != null &&
         (editing ? (

@@ -216,7 +216,11 @@ export default function TitleDetailScreen() {
 
             {/* Body */}
             <View style={styles.body}>
-              <LibraryStatusBar titleId={title.id} />
+              <LibraryStatusBar
+                titleId={title.id}
+                tmdbId={title.tmdb_id}
+                mediaType={title.media_type}
+              />
 
               {title.media_type === 'movie' && (
                 <MovieWatchBar titleId={title.id} />
@@ -227,7 +231,11 @@ export default function TitleDetailScreen() {
 
               <View style={[styles.divider, { backgroundColor: c.border }]} />
 
-              <RatingBar titleId={title.id} mediaType={title.media_type} />
+              <RatingBar
+                titleId={title.id}
+                tmdbId={title.tmdb_id}
+                mediaType={title.media_type}
+              />
 
               {title.overview ? (
                 <ThemedText style={styles.overview}>
