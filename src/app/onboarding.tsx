@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,13 +20,12 @@ import { useAuth } from '@/lib/auth-context';
 import { markOnboardingSeen } from '@/lib/onboarding';
 import {
   getMyProfile,
-  updateProfile,
-  uploadAvatar,
-  UsernameTakenError,
+  pickAvatarImage,
+  saveProfile,
+  saveProfileErrorMessage,
+  usernameError,
+  type PickedImage,
 } from '@/lib/profile';
-
-// Same rule the Edit Profile screen enforces: 3–20 chars, a–z / 0–9 / _.
-const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
 export default function OnboardingScreen() {
   const c = useTheme();
@@ -44,7 +41,7 @@ export default function OnboardingScreen() {
 
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
-  const [picked, setPicked] = useState<{ uri: string; mimeType?: string } | null>(
+  const [picked, setPicked] = useState<PickedImage | null>(
     null,
   );
   const [saving, setSaving] = useState(false);
@@ -78,21 +75,8 @@ export default function OnboardingScreen() {
   }
 
   async function pickAvatar() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Photo access is needed to choose a picture.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      setPicked({ uri: asset.uri, mimeType: asset.mimeType ?? undefined });
-    }
+    const image = await pickAvatarImage();
+    if (image) setPicked(image);
   }
 
   async function handleContinue() {
@@ -100,29 +84,27 @@ export default function OnboardingScreen() {
     const handle = username.trim().toLowerCase();
 
     // Username is suggested, not required — but if given it must be valid/free.
-    if (handle && !USERNAME_RE.test(handle)) {
-      setError('Username must be 3–20 characters: a–z, 0–9 or _.');
+    const invalid = usernameError(handle);
+    if (invalid) {
+      setError(invalid);
       return;
     }
 
     setError(null);
     setSaving(true);
     try {
-      const avatar_url = picked
-        ? await uploadAvatar(picked.uri, picked.mimeType)
-        : undefined;
-      await updateProfile({
-        display_name: name || null,
-        username: handle || null,
-        bio: profile?.bio ?? null,
-        ...(avatar_url ? { avatar_url } : {}),
-      });
+      await saveProfile(
+        {
+          display_name: name || null,
+          username: handle || null,
+          bio: profile?.bio ?? null,
+        },
+        picked,
+      );
       queryClient.invalidateQueries({ queryKey: keys.profile() });
       await finish();
     } catch (e) {
-      setError(
-        e instanceof UsernameTakenError ? e.message : 'Could not save. Try again.',
-      );
+      setError(saveProfileErrorMessage(e));
       setSaving(false);
     }
   }

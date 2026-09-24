@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet } from 'react-native';
 
 import { EmptyState } from '@/components/empty-state';
-import { RowSkeleton } from '@/components/skeleton';
+import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { UserRow } from '@/components/user-row';
@@ -21,11 +21,7 @@ export function ReviewLikes({ ratingId }: { ratingId: string }) {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Liked by' }} />
       {isLoading ? (
-        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
-          {[0, 1, 2].map((i) => (
-            <RowSkeleton key={i} />
-          ))}
-        </View>
+        <RowSkeletonList count={3} />
       ) : (
         <FlatList
           data={data ?? []}

@@ -10,21 +10,25 @@
 // skips everything already inserted. Never allow two concurrent runs — with no
 // unique constraints on the watch tables, overlap would duplicate rows.
 
-import { fetchSeason, findByExternalId, getTitle } from '@/lib/tmdb';
-import type { TitleRow } from '@/lib/tmdb';
-import { setFavorite } from '@/lib/library';
-
+import {
+  ImportCancelled,
+  mapWithConcurrency,
+  throwIfAborted,
+  withRetry,
+} from '@/lib/import-core/run';
 import {
   insertEpisodeWatches,
   insertMovieWatch,
   movieAtKey,
   prefetchEpisodeWatchState,
-  prefetchLibrary,
   prefetchMovieWatchState,
-  setLibraryStatusIfAbsent,
-  toIsoTimestamp,
-} from './db';
-import type { WatchInsert } from './db';
+  type WatchInsert,
+} from '@/lib/import-core/watches';
+import { setFavorite } from '@/lib/library';
+import { fetchSeason, findByExternalId, getTitle } from '@/lib/tmdb';
+import type { TitleRow } from '@/lib/tmdb';
+
+import { prefetchLibrary, setLibraryStatusIfAbsent, toIsoTimestamp } from './db';
 import { movieKey, resolveMovie, resolveShow } from './resolve';
 import { inferStatus } from './status';
 import type {
@@ -34,53 +38,6 @@ import type {
   MatchOverride,
   UnresolvedItem,
 } from './types';
-
-export class ImportCancelled extends Error {
-  constructor() {
-    super('Import cancelled');
-    this.name = 'ImportCancelled';
-  }
-}
-
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw new ImportCancelled();
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Retry transient proxy failures (cold starts, network blips). */
-async function withRetry<T>(fn: () => Promise<T>, signal?: AbortSignal): Promise<T> {
-  let delay = 1000;
-  for (let attempt = 0; ; attempt++) {
-    throwIfAborted(signal);
-    try {
-      return await fn();
-    } catch (e) {
-      if (e instanceof ImportCancelled || attempt >= 2) throw e;
-      await sleep(delay);
-      delay *= 3;
-    }
-  }
-}
-
-/** Run `fn` over `items` with a small worker pool, preserving order. */
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T, index: number) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    for (;;) {
-      const i = next++;
-      if (i >= items.length) return;
-      results[i] = await fn(items[i], i);
-    }
-  });
-  await Promise.all(workers);
-  return results;
-}
 
 // ---------------------------------------------------------------------------
 // Resolution (runs before any writes; feeds the manual-match queue)
