@@ -140,6 +140,19 @@ function localToday() {
 }
 
 /**
+ * Aired = has an air date on or before today (local). An unknown date counts
+ * as not aired. Every *bulk* log (whole series, whole season, the Search swipe,
+ * an implied watch) keeps only aired episodes; a single-episode `+` doesn't ask.
+ */
+function isAired(e: { air_date: string | null }): boolean {
+  return e.air_date != null && e.air_date <= localToday();
+}
+
+export function airedOnly<T extends { air_date: string | null }>(eps: T[]): T[] {
+  return eps.filter(isAired);
+}
+
+/**
  * Make sure a title counts as watched, without ever logging a second time.
  * Called when the viewer rates a title or marks it Completed (ADR 0024).
  *
@@ -172,11 +185,9 @@ export async function ensureWatched(
     .map((s) => s.season_number)
     .filter((n) => n >= 1) // exclude Specials (season 0)
     .sort((a, b) => a - b);
-  const today = localToday();
-  const episodes = (await fetchAllEpisodes(title.tmdbId, seasonNumbers)).filter(
-    // An unknown air date counts as not aired yet.
-    (e) => !counts.has(e.id) && e.air_date != null && e.air_date <= today,
-  );
+  const episodes = airedOnly(
+    await fetchAllEpisodes(title.tmdbId, seasonNumbers),
+  ).filter((e) => !counts.has(e.id));
   if (episodes.length === 0) return null;
   const watchIds = await logManyEpisodeWatches(
     episodes.map((e) => ({ id: e.id, title_id: e.title_id })),

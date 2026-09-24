@@ -7,7 +7,7 @@ import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { fetchAllEpisodes, type SeasonRow } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
-import { logManyEpisodeWatches } from '@/lib/watches';
+import { airedOnly, logManyEpisodeWatches } from '@/lib/watches';
 
 const ACTIVE = Accent;
 
@@ -33,7 +33,12 @@ export function TvWatchBar({
     setBusy(true);
     setMessage(null);
     try {
-      const episodes = await fetchAllEpisodes(tmdbId, seasonNumbers);
+      const episodes = airedOnly(await fetchAllEpisodes(tmdbId, seasonNumbers));
+      if (episodes.length === 0) {
+        setMessage('No aired episodes yet');
+        hapticFailure();
+        return;
+      }
       await logManyEpisodeWatches(
         episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
       );
