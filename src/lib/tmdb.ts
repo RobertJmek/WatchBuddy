@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export const TMDB_IMAGE = 'https://image.tmdb.org/t/p';
+const TMDB_IMAGE = 'https://image.tmdb.org/t/p';
 
 /** Build a full poster/still URL from a TMDB path, or null. */
 export function imageUrl(path: string | null, size = 'w342'): string | null {
@@ -126,7 +126,7 @@ export function getTrending() {
   return invoke<TrendingFeed>({ action: 'trending' });
 }
 
-export type TrendingPage = {
+type TrendingPage = {
   results: SearchResult[];
   page: number;
   totalPages: number;
@@ -139,7 +139,7 @@ export type TrendingPage = {
  * continued. Deliberately a separate query key from `['trending']` — one is a
  * whole-feed snapshot, the other an accumulating page list.
  */
-export function getTrendingPage(mediaType: MediaType, page: number) {
+export function getTrendingPage(mediaType: MediaType, page: number): Promise<TrendingPage> {
   return invoke<{ results: SearchResult[]; page: number; total_pages: number }>({
     action: 'trending',
     media_type: mediaType,
@@ -157,7 +157,7 @@ export function getTrendingPage(mediaType: MediaType, page: number) {
   });
 }
 
-export function fetchTitle(tmdbId: number, mediaType: MediaType) {
+function fetchTitle(tmdbId: number, mediaType: MediaType) {
   return invoke<{ title: TitleRow; seasons: SeasonRow[] }>({
     action: 'title',
     tmdb_id: tmdbId,

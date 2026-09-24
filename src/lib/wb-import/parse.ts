@@ -8,7 +8,7 @@
 import type { EpisodeWatchPlan, MovieWatchPlan, WbImportPlan } from './types';
 
 /** The newest export shape this importer understands. */
-export const SUPPORTED_SCHEMA_VERSION = 1;
+const SUPPORTED_SCHEMA_VERSION = 1;
 
 export class WbImportParseError extends Error {
   constructor(message: string) {

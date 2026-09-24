@@ -51,7 +51,7 @@ export function isActive(f: LibraryFilter): boolean {
 }
 
 /** The release year of an entry, or null when it has no date. */
-export function yearOf(e: MyLibraryEntry): number | null {
+function yearOf(e: MyLibraryEntry): number | null {
   const d = e.title?.release_date;
   if (!d) return null;
   const y = Number(d.slice(0, 4));

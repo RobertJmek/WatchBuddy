@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   check:
-    name: typecheck + lint
+    name: typecheck + lint + knip
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,3 +37,6 @@ jobs:
       - run: npm run typecheck
 
       - run: npm run lint:ci
+
+      # Unused files, exports and dependencies. Keeps dead code from creeping back.
+      - run: npm run knip

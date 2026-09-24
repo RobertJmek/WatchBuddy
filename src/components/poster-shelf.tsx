@@ -19,7 +19,7 @@ export type PosterItem = {
   poster_path: string | null;
 };
 
-export function PosterCard({
+function PosterCard({
   posterPath,
   /** The title's name — the only thing a screen reader can announce for a poster. */
   label,

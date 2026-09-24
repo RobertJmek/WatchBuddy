@@ -31,7 +31,7 @@ export type WbImportPlan = {
   unmatchedInExport: number;
 };
 
-export type WbImportPhase = 'prefetch' | 'resolve' | 'episodes' | 'movies';
+type WbImportPhase = 'prefetch' | 'resolve' | 'episodes' | 'movies';
 
 export type WbImportProgress = {
   phase: WbImportPhase;
