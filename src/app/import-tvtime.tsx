@@ -2,9 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { Image } from 'expo-image';
-import { useKeepAwake } from 'expo-keep-awake';
 import { Stack } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -14,14 +13,15 @@ import {
 } from 'react-native';
 
 import { Button } from '@/components/button';
+import { ImportBusy, ImportRunning, useImportRun } from '@/components/import-steps';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Danger, PlaceholderBg, Spacing } from '@/constants/theme';
+import { Danger, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { importErrorMessage } from '@/lib/import-core/run';
 import { queryClient } from '@/lib/query';
 import { imageUrl, searchTitles, type SearchResult } from '@/lib/tmdb';
 import {
-  ImportCancelled,
   resolveAll,
   runImport,
   type Resolution,
@@ -82,16 +82,6 @@ async function saveOverride(key: string, match: MatchOverride) {
   } catch {
     // Best-effort persistence — the in-memory pick still applies to this run.
   }
-}
-
-function ProgressBar({ done, total }: { done: number; total: number }) {
-  const c = useTheme();
-  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
-  return (
-    <View style={[styles.barTrack, { backgroundColor: c.border }]}>
-      <View style={[styles.barFill, { width: `${pct}%` }]} />
-    </View>
-  );
 }
 
 /** One unresolved title: search results from the proxy, tap to match. */
@@ -176,22 +166,9 @@ function MatchCard({
 export default function ImportTvTimeScreen() {
   const c = useTheme();
   const [state, setState] = useState<Step>({ step: 'idle', error: null });
-  const abortRef = useRef<AbortController | null>(null);
-  // A multi-minute import shouldn't die because the screen locked.
-  useKeepAwake();
+  const run = useImportRun();
 
-  useEffect(() => () => abortRef.current?.abort(), []);
-
-  const fail = (e: unknown) =>
-    setState({
-      step: 'idle',
-      error:
-        e instanceof ImportCancelled
-          ? null
-          : e instanceof Error
-            ? e.message
-            : 'Something went wrong. Please try again.',
-    });
+  const fail = (e: unknown) => setState({ step: 'idle', error: importErrorMessage(e) });
 
   async function pickZip() {
     const picked = await DocumentPicker.getDocumentAsync({
@@ -211,13 +188,12 @@ export default function ImportTvTimeScreen() {
   }
 
   async function resolve(plan: ImportPlan) {
-    const controller = new AbortController();
-    abortRef.current = controller;
+    const signal = run.start();
     setState({ step: 'resolving', plan, progress: null });
     try {
       const overrides = await loadOverrides();
       const resolution = await resolveAll(plan, overrides, {
-        signal: controller.signal,
+        signal,
         onProgress: (progress) => setState({ step: 'resolving', plan, progress }),
       });
       if (resolution.unresolved.length > 0) {
@@ -255,12 +231,11 @@ export default function ImportTvTimeScreen() {
   async function startImport() {
     if (state.step !== 'confirm') return;
     const { plan, resolution } = state;
-    const controller = new AbortController();
-    abortRef.current = controller;
+    const signal = run.start();
     setState({ step: 'importing', plan, progress: null });
     try {
       const summary = await runImport(plan, resolution, {
-        signal: controller.signal,
+        signal,
         onProgress: (progress) => setState({ step: 'importing', plan, progress }),
       });
       // The import bypassed the app's mutation paths — refresh everything.
@@ -294,33 +269,15 @@ export default function ImportTvTimeScreen() {
           </>
         )}
 
-        {state.step === 'parsing' && (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" />
-            <ThemedText style={{ color: c.textSecondary }}>
-              Reading your export…
-            </ThemedText>
-          </View>
-        )}
+        {state.step === 'parsing' && <ImportBusy label="Reading your export…" />}
 
         {state.step === 'resolving' && (
-          <>
-            <ThemedText type="subtitle">Matching titles</ThemedText>
-            <ThemedText type="small" style={{ color: c.textSecondary }}>
-              {state.progress
-                ? `${state.progress.done}/${state.progress.total} · ${state.progress.label}`
-                : 'Starting…'}
-            </ThemedText>
-            <ProgressBar
-              done={state.progress?.done ?? 0}
-              total={state.progress?.total ?? 1}
-            />
-            <Button
-              title="Cancel"
-              variant="outline"
-              onPress={() => abortRef.current?.abort()}
-            />
-          </>
+          <ImportRunning
+            title="Matching titles"
+            detail={state.progress && `${state.progress.done}/${state.progress.total} · ${state.progress.label}`}
+            progress={state.progress}
+            onCancel={run.cancel}
+          />
         )}
 
         {state.step === 'matching' && (
@@ -355,23 +312,13 @@ export default function ImportTvTimeScreen() {
         )}
 
         {state.step === 'importing' && (
-          <>
-            <ThemedText type="subtitle">Importing…</ThemedText>
-            <ThemedText type="small" style={{ color: c.textSecondary }}>
-              {state.progress
-                ? `${PHASE_LABEL[state.progress.phase]}${state.progress.label ? ` · ${state.progress.label}` : ''}`
-                : 'Starting…'}
-            </ThemedText>
-            <ProgressBar
-              done={state.progress?.done ?? 0}
-              total={state.progress?.total ?? 1}
-            />
-            <Button
-              title="Cancel"
-              variant="outline"
-              onPress={() => abortRef.current?.abort()}
-            />
-          </>
+          <ImportRunning
+            title="Importing…"
+            detail={state.progress &&
+              `${PHASE_LABEL[state.progress.phase]}${state.progress.label ? ` · ${state.progress.label}` : ''}`}
+            progress={state.progress}
+            onCancel={run.cancel}
+          />
         )}
 
         {state.step === 'done' && (
@@ -410,10 +357,7 @@ export default function ImportTvTimeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three },
-  center: { alignItems: 'center', gap: Spacing.three, marginTop: Spacing.six },
   error: { color: Danger },
-  barTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  barFill: { height: 6, borderRadius: 3, backgroundColor: Accent },
   matchCard: {
     borderWidth: 1,
     borderRadius: 12,

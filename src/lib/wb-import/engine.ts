@@ -11,19 +11,23 @@
 // skips everything already inserted. Never allow two concurrent runs — with no
 // unique constraints on the watch tables, overlap would duplicate rows.
 
-import { fetchSeason, getTitle } from '@/lib/tmdb';
-import { ImportCancelled } from '@/lib/tvtime/engine';
-
 import {
-  episodeRewatchAtKey,
+  ImportCancelled,
+  mapWithConcurrency,
+  throwIfAborted,
+  withRetry,
+} from '@/lib/import-core/run';
+import {
   insertEpisodeWatches,
   insertMovieWatch,
   movieAtKey,
-  prefetchEpisodeRewatchAtKeys,
   prefetchEpisodeWatchState,
   prefetchMovieWatchState,
-} from './db';
-import type { WatchInsert } from './db';
+  type WatchInsert,
+} from '@/lib/import-core/watches';
+import { fetchSeason, getTitle } from '@/lib/tmdb';
+
+import { episodeRewatchAtKey, prefetchEpisodeRewatchAtKeys } from './db';
 import type {
   EpisodeWatchPlan,
   WbImportPlan,
@@ -31,46 +35,6 @@ import type {
   WbImportSummary,
   WbResolveProgress,
 } from './types';
-
-export { ImportCancelled };
-
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) throw new ImportCancelled();
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Retry transient proxy failures (cold starts, network blips). */
-async function withRetry<T>(fn: () => Promise<T>, signal?: AbortSignal): Promise<T> {
-  let delay = 1000;
-  for (let attempt = 0; ; attempt++) {
-    throwIfAborted(signal);
-    try {
-      return await fn();
-    } catch (e) {
-      if (e instanceof ImportCancelled || attempt >= 2) throw e;
-      await sleep(delay);
-      delay *= 3;
-    }
-  }
-}
-
-/** Run `fn` over `items` with a small worker pool. */
-async function forEachWithConcurrency<T>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<void>,
-): Promise<void> {
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    for (;;) {
-      const i = next++;
-      if (i >= items.length) return;
-      await fn(items[i]);
-    }
-  });
-  await Promise.all(workers);
-}
 
 // ---------------------------------------------------------------------------
 // Resolution (runs before any writes)
@@ -111,7 +75,7 @@ export async function resolvePlan(
 
   const resolution: WbResolution = { titleIdByTmdb: new Map(), unresolved: 0 };
   let done = 0;
-  await forEachWithConcurrency(refs, 3, async ({ tmdbId, mediaType }) => {
+  await mapWithConcurrency(refs, 3, async ({ tmdbId, mediaType }) => {
     throwIfAborted(signal);
     try {
       const { title } = await withRetry(() => getTitle(tmdbId, mediaType), signal);
@@ -173,7 +137,7 @@ export async function runImport(
   const groups = [...bySeason.entries()];
   let done = 0;
   progress({ phase: 'episodes', done, total: groups.length, label: '' });
-  await forEachWithConcurrency(groups, 3, async ([key, group]) => {
+  await mapWithConcurrency(groups, 3, async ([key, group]) => {
     throwIfAborted(signal);
     const [tmdbStr, seasonStr] = key.split('|');
     const tmdbId = Number(tmdbStr);
