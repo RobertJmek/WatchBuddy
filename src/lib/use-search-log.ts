@@ -11,6 +11,7 @@ import {
 } from '@/lib/library';
 import { fetchAllEpisodes, getTitle, type SearchResult } from '@/lib/tmdb';
 import {
+  airedOnly,
   logManyEpisodeWatches,
   logMovieWatch,
   removeEpisodeWatchesByIds,
@@ -106,7 +107,11 @@ export function useSearchLog() {
             .map((s) => s.season_number)
             .filter((n) => n >= 1) // exclude Specials (season 0)
             .sort((a, b) => a - b);
-          const episodes = await fetchAllEpisodes(item.tmdb_id, seasonNumbers);
+          const episodes = airedOnly(
+            await fetchAllEpisodes(item.tmdb_id, seasonNumbers),
+          );
+          // Nothing aired yet → nothing to log; the catch rolls the ✓ back.
+          if (episodes.length === 0) throw new Error('no aired episodes');
           const ids = await logManyEpisodeWatches(
             episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
           );

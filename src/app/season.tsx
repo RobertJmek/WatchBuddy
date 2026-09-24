@@ -18,6 +18,7 @@ import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/hapt
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
 import {
+  airedOnly,
   getEpisodeWatchCounts,
   logEpisodeWatch,
   logManyEpisodeWatches,
@@ -98,24 +99,28 @@ export default function SeasonScreen() {
     }
   }
 
+  // A whole-season log covers only what has aired (see `isAired`); a single
+  // episode's `+` is still yours to press on anything.
+  const aired = airedOnly(episodes);
+
   async function logWholeSeason() {
-    if (seasonBusy || episodes.length === 0) return;
+    if (seasonBusy || aired.length === 0) return;
     setSeasonBusy(true);
     hapticSuccess();
     setCounts((c) => {
       const next = { ...c };
-      for (const e of episodes) next[e.id] = (next[e.id] ?? 0) + 1;
+      for (const e of aired) next[e.id] = (next[e.id] ?? 0) + 1;
       return next;
     });
     try {
       await logManyEpisodeWatches(
-        episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
+        aired.map((e) => ({ id: e.id, title_id: e.title_id })),
       );
       invalidateWatchData();
     } catch {
       setCounts((c) => {
         const next = { ...c };
-        for (const e of episodes) next[e.id] = Math.max(0, (next[e.id] ?? 0) - 1);
+        for (const e of aired) next[e.id] = Math.max(0, (next[e.id] ?? 0) - 1);
         return next;
       });
       hapticFailure();
@@ -144,12 +149,18 @@ export default function SeasonScreen() {
                 {watchedCount} / {episodes.length} watched
               </ThemedText>
               <Pressable
-                style={[styles.seasonButton, seasonBusy && styles.busy]}
+                style={[
+                  styles.seasonButton,
+                  (seasonBusy || aired.length === 0) && styles.busy,
+                ]}
                 onPress={logWholeSeason}
-                disabled={seasonBusy}
+                disabled={seasonBusy || aired.length === 0}
                 accessibilityRole="button"
                 accessibilityLabel="Log whole season"
-                accessibilityState={{ disabled: seasonBusy, busy: seasonBusy }}>
+                accessibilityState={{
+                  disabled: seasonBusy || aired.length === 0,
+                  busy: seasonBusy,
+                }}>
                 <ThemedText style={styles.seasonButtonText}>
                   ＋ Log whole season
                 </ThemedText>
