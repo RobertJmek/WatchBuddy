@@ -77,6 +77,37 @@ export async function selectMine(
   return { q: table(name).select(columns).eq(owner, uid) };
 }
 
+const PAGE = 1000;
+
+/**
+ * Every row a query matches, fetched in pages of 1000 (PostgREST's row cap).
+ * `makeQuery` resolves to `{ q }` for the same thenable reason as `selectMine`,
+ * and is called once per page because a builder can only be executed once.
+ */
+export async function allPages<T>(makeQuery: () => Promise<{ q: any }>): Promise<T[]> {
+  const rows: T[] = [];
+  for (let page = 0; ; page++) {
+    const { q } = await makeQuery();
+    const { data, error } = await q.range(page * PAGE, (page + 1) * PAGE - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as T[]));
+    if ((data?.length ?? 0) < PAGE) break;
+  }
+  return rows;
+}
+
+/** Every row of `selectMine(name, columns)`, optionally narrowed by `refine`. */
+export function selectAllMine<T>(
+  name: string,
+  columns = '*',
+  refine: (q: any) => any = (q) => q,
+): Promise<T[]> {
+  return allPages<T>(async () => {
+    const { q } = await selectMine(name, columns);
+    return { q: refine(q) };
+  });
+}
+
 /**
  * An UPDATE already scoped to the signed-in viewer. Same `{ q }` wrapping and
  * the same reason as `selectMine`.

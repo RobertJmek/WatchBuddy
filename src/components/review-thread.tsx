@@ -24,7 +24,7 @@ import {
 
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
-import { RowSkeleton } from '@/components/skeleton';
+import { RowSkeletonList } from '@/components/skeleton';
 import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -285,11 +285,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
         pullDown={{ onPull: dismiss, zoneHeight: PULL_ZONE_HEIGHT, atTop }}>
       <View style={styles.container}>
         {isLoading || !review ? (
-          <View style={{ padding: Spacing.three, gap: Spacing.two }}>
-            {[0, 1, 2].map((i) => (
-              <RowSkeleton key={i} />
-            ))}
-          </View>
+          <RowSkeletonList count={3} />
         ) : (
           <Animated.FlatList
             data={data.replies}

@@ -172,6 +172,20 @@ const TITLE_CACHE_TTL_MS = 168 * 3600_000;
 // extra edge call that the server then answers from cache.
 const IMDB_RECHECK_MS = 24 * 3600_000;
 
+/** A title served from the catalog cache, with its cached seasons for TV. */
+async function cachedDetail(
+  title: TitleRow,
+  mediaType: MediaType,
+): Promise<{ title: TitleRow; seasons: SeasonRow[] }> {
+  if (mediaType !== 'tv') return { title, seasons: [] };
+  const { data: seasons } = await supabase
+    .from('seasons')
+    .select('*')
+    .eq('title_id', title.id)
+    .order('season_number');
+  return { title, seasons: seasons ?? [] };
+}
+
 /**
  * Read-through title fetch: serve straight from the Postgres cache when fresh
  * (a fast PostgREST read — no edge-function cold start), falling back to the
@@ -202,13 +216,7 @@ export async function getTitle(
         Date.now() - new Date(cached.imdb_checked_at).getTime() >
           IMDB_RECHECK_MS);
     if (fresh && !couldBackfillImdb) {
-      if (mediaType !== 'tv') return { title: cached, seasons: [] };
-      const { data: seasons } = await supabase
-        .from('seasons')
-        .select('*')
-        .eq('title_id', cached.id)
-        .order('season_number');
-      return { title: cached, seasons: seasons ?? [] };
+      return cachedDetail(cached, mediaType);
     }
   }
 
@@ -217,13 +225,7 @@ export async function getTitle(
   } catch (e) {
     // TMDB (or the function) is down — a stale copy beats an error screen.
     if (cached) {
-      if (mediaType !== 'tv') return { title: cached, seasons: [] };
-      const { data: seasons } = await supabase
-        .from('seasons')
-        .select('*')
-        .eq('title_id', cached.id)
-        .order('season_number');
-      return { title: cached, seasons: seasons ?? [] };
+      return cachedDetail(cached, mediaType);
     }
     throw e;
   }

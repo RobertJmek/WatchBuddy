@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { ReviewRow } from '@/components/review-row';
-import { RowSkeleton } from '@/components/skeleton';
+import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing, Type } from '@/constants/theme';
@@ -49,11 +49,7 @@ export default function ReviewsScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Reviews' }} />
       {isLoading ? (
-        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
-          {[0, 1, 2, 3, 4].map((i) => (
-            <RowSkeleton key={i} />
-          ))}
-        </View>
+        <RowSkeletonList />
       ) : (
         <FlatList
           data={reviews}

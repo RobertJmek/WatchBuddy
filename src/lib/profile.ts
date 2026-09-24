@@ -1,3 +1,6 @@
+import * as ImagePicker from 'expo-image-picker';
+import { Alert } from 'react-native';
+
 import { supabase } from '@/lib/supabase';
 import { currentViewer, requireViewer, updateMine } from '@/lib/viewer';
 
@@ -17,7 +20,38 @@ export type ProfileUpdate = {
 };
 
 /** Thrown when a username update collides with the unique constraint. */
-export class UsernameTakenError extends Error {
+/** A username the app accepts: 3–20 chars, a–z / 0–9 / _. */
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+
+/** The error to show for a non-empty, invalid username, or null when it's fine. */
+export function usernameError(handle: string): string | null {
+  return handle && !USERNAME_RE.test(handle)
+    ? 'Username must be 3–20 characters: a–z, 0–9 or _.'
+    : null;
+}
+
+/** An image the user picked but hasn't uploaded yet. */
+export type PickedImage = { uri: string; mimeType?: string };
+
+/** Let the user pick a square avatar from their library; null if they don't. */
+export async function pickAvatarImage(): Promise<PickedImage | null> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) {
+    Alert.alert('Photo access is needed to choose a picture.');
+    return null;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.7,
+  });
+  if (result.canceled) return null;
+  const asset = result.assets[0];
+  return { uri: asset.uri, mimeType: asset.mimeType ?? undefined };
+}
+
+class UsernameTakenError extends Error {
   constructor() {
     super('That username is already taken.');
     this.name = 'UsernameTakenError';
@@ -53,7 +87,7 @@ export async function getProfileById(id: string): Promise<Profile | null> {
  * Upload a picked image to the user's avatar folder and return its public URL
  * (cache-busted so the new image shows immediately after an overwrite).
  */
-export async function uploadAvatar(
+async function uploadAvatar(
   uri: string,
   mimeType?: string | null,
 ): Promise<string> {
@@ -75,7 +109,7 @@ export async function uploadAvatar(
 }
 
 /** Update the signed-in user's profile. */
-export async function updateProfile(update: ProfileUpdate): Promise<void> {
+async function updateProfile(update: ProfileUpdate): Promise<void> {
   // `profiles` is owned by its primary key, not a `user_id` column.
   const { q } = await updateMine('profiles', update, 'id');
 
@@ -85,4 +119,21 @@ export async function updateProfile(update: ProfileUpdate): Promise<void> {
     if (error.code === '23505') throw new UsernameTakenError();
     throw error;
   }
+}
+
+/**
+ * Save the profile form: upload the picked avatar (if any), then write the
+ * fields. Throws `UsernameTakenError` when the username is someone else's.
+ */
+export async function saveProfile(
+  fields: Omit<ProfileUpdate, 'avatar_url'>,
+  picked: PickedImage | null,
+): Promise<void> {
+  const avatar_url = picked ? await uploadAvatar(picked.uri, picked.mimeType) : undefined;
+  await updateProfile({ ...fields, ...(avatar_url ? { avatar_url } : {}) });
+}
+
+/** User-facing text for a failed `saveProfile`. */
+export function saveProfileErrorMessage(e: unknown): string {
+  return e instanceof UsernameTakenError ? e.message : 'Could not save. Try again.';
 }

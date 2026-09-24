@@ -1,19 +1,19 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
-import { useKeepAwake } from 'expo-keep-awake';
 import { Stack } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { Button } from '@/components/button';
+import { ImportBusy, ImportRunning, useImportRun } from '@/components/import-steps';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Danger, Spacing } from '@/constants/theme';
+import { Danger, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { importErrorMessage } from '@/lib/import-core/run';
 import { queryClient } from '@/lib/query';
 import { parseExport, WbImportParseError } from '@/lib/wb-import/parse';
 import {
-  ImportCancelled,
   resolvePlan,
   runImport,
   type WbResolution,
@@ -40,35 +40,12 @@ const PHASE_LABEL: Record<WbImportProgress['phase'], string> = {
   movies: 'Importing movies',
 };
 
-function ProgressBar({ done, total }: { done: number; total: number }) {
-  const c = useTheme();
-  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
-  return (
-    <View style={[styles.barTrack, { backgroundColor: c.border }]}>
-      <View style={[styles.barFill, { width: `${pct}%` }]} />
-    </View>
-  );
-}
-
 export default function ImportWatchBuddyScreen() {
   const c = useTheme();
   const [state, setState] = useState<Step>({ step: 'idle', error: null });
-  const abortRef = useRef<AbortController | null>(null);
-  // A multi-minute import shouldn't die because the screen locked.
-  useKeepAwake();
+  const run = useImportRun();
 
-  useEffect(() => () => abortRef.current?.abort(), []);
-
-  const fail = (e: unknown) =>
-    setState({
-      step: 'idle',
-      error:
-        e instanceof ImportCancelled
-          ? null
-          : e instanceof Error
-            ? e.message
-            : 'Something went wrong. Please try again.',
-    });
+  const fail = (e: unknown) => setState({ step: 'idle', error: importErrorMessage(e) });
 
   async function pickJson() {
     const picked = await DocumentPicker.getDocumentAsync({
@@ -92,12 +69,11 @@ export default function ImportWatchBuddyScreen() {
   }
 
   async function resolve(plan: WbImportPlan) {
-    const controller = new AbortController();
-    abortRef.current = controller;
+    const signal = run.start();
     setState({ step: 'resolving', plan, progress: null });
     try {
       const resolution = await resolvePlan(plan, {
-        signal: controller.signal,
+        signal,
         onProgress: (progress) => setState({ step: 'resolving', plan, progress }),
       });
       setState({ step: 'confirm', plan, resolution });
@@ -109,12 +85,11 @@ export default function ImportWatchBuddyScreen() {
   async function startImport() {
     if (state.step !== 'confirm') return;
     const { plan, resolution } = state;
-    const controller = new AbortController();
-    abortRef.current = controller;
+    const signal = run.start();
     setState({ step: 'importing', plan, progress: null });
     try {
       const summary = await runImport(plan, resolution, {
-        signal: controller.signal,
+        signal,
         onProgress: (progress) => setState({ step: 'importing', plan, progress }),
       });
       // The import bypassed the app's mutation paths — refresh everything.
@@ -152,33 +127,15 @@ export default function ImportWatchBuddyScreen() {
           </>
         )}
 
-        {state.step === 'parsing' && (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" />
-            <ThemedText style={{ color: c.textSecondary }}>
-              Reading the export…
-            </ThemedText>
-          </View>
-        )}
+        {state.step === 'parsing' && <ImportBusy label="Reading the export…" />}
 
         {state.step === 'resolving' && (
-          <>
-            <ThemedText type="subtitle">Matching titles</ThemedText>
-            <ThemedText type="small" style={{ color: c.textSecondary }}>
-              {state.progress
-                ? `${state.progress.done}/${state.progress.total}`
-                : 'Starting…'}
-            </ThemedText>
-            <ProgressBar
-              done={state.progress?.done ?? 0}
-              total={state.progress?.total ?? 1}
-            />
-            <Button
-              title="Cancel"
-              variant="outline"
-              onPress={() => abortRef.current?.abort()}
-            />
-          </>
+          <ImportRunning
+            title="Matching titles"
+            detail={state.progress && `${state.progress.done}/${state.progress.total}`}
+            progress={state.progress}
+            onCancel={run.cancel}
+          />
         )}
 
         {state.step === 'confirm' && (
@@ -201,21 +158,12 @@ export default function ImportWatchBuddyScreen() {
         )}
 
         {state.step === 'importing' && (
-          <>
-            <ThemedText type="subtitle">Importing…</ThemedText>
-            <ThemedText type="small" style={{ color: c.textSecondary }}>
-              {state.progress ? PHASE_LABEL[state.progress.phase] : 'Starting…'}
-            </ThemedText>
-            <ProgressBar
-              done={state.progress?.done ?? 0}
-              total={state.progress?.total ?? 1}
-            />
-            <Button
-              title="Cancel"
-              variant="outline"
-              onPress={() => abortRef.current?.abort()}
-            />
-          </>
+          <ImportRunning
+            title="Importing…"
+            detail={state.progress && PHASE_LABEL[state.progress.phase]}
+            progress={state.progress}
+            onCancel={run.cancel}
+          />
         )}
 
         {state.step === 'done' && (
@@ -252,8 +200,5 @@ export default function ImportWatchBuddyScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three },
-  center: { alignItems: 'center', gap: Spacing.three, marginTop: Spacing.six },
   error: { color: Danger },
-  barTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  barFill: { height: 6, borderRadius: 3, backgroundColor: Accent },
 });
