@@ -39,6 +39,16 @@ status that triggered it.
 `keys.movieWatches(titleId)`, so a watch logged by the rating shows up in
 "Watched N×" on the same screen.
 
+### The aired rule covers every bulk log
+
+`ensureWatched` keeps only **aired** episodes, and the same rule
+(`airedOnly` in `watches.ts`) now applies to every other bulk log: "Log whole
+series", "Log whole season" (disabled when nothing in the season has aired),
+and the series swipe in Search (which rolls its ✓ back when there is nothing
+to log). Before, all three logged future episodes of a show still airing. A
+single episode's `+` stays unrestricted: it is an explicit choice about one
+episode, and TMDB's dates can lag behind a real release.
+
 ## Why not inside `setRating` / `setLibraryStatus`, or a trigger
 
 - The Search swipe-to-log undo restores a prior `completed` status through
@@ -57,5 +67,3 @@ status that triggered it.
   in one go, the same as "Log whole series".
 - The feed shows the watch alongside the rating, as it would if you'd logged it
   by hand.
-- "Log whole series" still logs unaired episodes; `ensureWatched` does not.
-  Aligning the two is a separate change.
