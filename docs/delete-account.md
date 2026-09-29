@@ -8,7 +8,7 @@ time. Deletion is immediate and permanent.
 1. Open WatchBuddy, go to the **Profile** tab and tap **Edit Profile**.
 2. Scroll to the bottom and tap **Delete account…**
 3. Confirm twice. Your profile, library, watch history, ratings, reviews, favorites
-   and follows are erased and you are signed out.
+   follows, blocks and the reports you filed are erased and you are signed out.
 
 ## By request
 
@@ -22,4 +22,5 @@ stating the email you signed up with. Deletion requests are honored within
 
 Everything tied to your account: sign-in identity (email), profile (name,
 username, bio, avatar), library entries, watch history, ratings, reviews,
-favorites and follow relationships. Nothing is retained afterwards.
+favorites, follow relationships, blocks and the reports you filed. Nothing is
+retained afterwards.

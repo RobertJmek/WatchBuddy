@@ -90,6 +90,12 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   beside the TMDB/IMDb badges.
 - **Community reviews** — read everyone's written reviews on a title, with **people you follow
   surfaced first**; preview on the detail screen and a full `See all` reviews screen.
+- **Report and block** — every review, reply and profile has a **⋯** menu with **Report**
+  (spam, harassment, spoilers or other; the item disappears for you at once) and **Block**.
+  A block is **mutual**: you stop seeing each other's reviews, replies, likes and activity,
+  you stop following each other, and neither of you can follow, reply to or like the other.
+  It is enforced in the database, so it holds even on older builds. Manage it under
+  **Edit profile → Blocked accounts**. Reports land in a table the developer reviews.
 
 ### Account & platform
 - **Auth** — passwordless email one-time code, plus Google sign-in (OAuth).
@@ -143,13 +149,13 @@ src/
     (app)/                 Authenticated tabs: Feed, Library, Search, Profile
     title/[id]/            Title detail (index) + community reviews
     user/[id]/             Public profile (index) + followers / following
-    season, diary, stats, edit-profile, library-section, about, sign-in
+    season, diary, stats, edit-profile, blocked, library-section, about, sign-in
     import-data (chooser) → import-tvtime / import-watchbuddy
   components/              Reusable UI (avatar, poster shelf, watch bars, rating/review rows,
                            follow button, user row, …)
   lib/                     supabase client, query client, TMDB client, and data modules
                            (library, library-filter, watches, ratings, stats, social,
-                           profile, genres, export, …)
+                           profile, genres, export, moderation, …)
     keys.ts                Every TanStack Query key, one root per resource
     navigation.ts          openTitle() — the one place that knows the title route
     tvtime/                In-app TV Time import engine (parse, resolve, status, db, engine)
@@ -166,7 +172,8 @@ supabase/
                            0015 like_count compat shim,
                            0016 notification dismissal,
                            0017 backend hardening, 0018 rate limits,
-                           0019 rate-limit execute grant)
+                           0019 rate-limit execute grant,
+                           0020 blocks + reports)
   functions/               Edge Functions (tmdb-proxy, delete-account)
 ```
 
@@ -203,7 +210,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
   `0012_ratings_entity_index` → `0013_get_stats_rpc` → `0014_follow_notifications` →
   `0015_like_count_compat` → `0016_notification_dismiss` →
   `0017_backend_hardening` → `0018_rate_limits` →
-  `0019_rate_limit_execute_grant`.
+  `0019_rate_limit_execute_grant` → `0020_blocks_reports`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
