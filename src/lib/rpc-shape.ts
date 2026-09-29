@@ -98,3 +98,18 @@ export function parseRawStats(data: unknown): RawStats {
 
   return raw as unknown as RawStats;
 }
+
+/**
+ * The uuids an id-list RPC (`hidden_user_ids`) returned, or a throw naming what
+ * was wrong. A `setof uuid` comes back as a JSON array of strings, and null when
+ * empty. This one feeds a filter — a non-string slipping through would quietly
+ * stop hiding somebody — so it is checked like the two above.
+ */
+export function parseIdList(data: unknown, rpc: string): string[] {
+  if (data == null) return [];
+  if (!Array.isArray(data)) throw new Error(`${rpc} returned an unexpected shape`);
+  for (const id of data) {
+    if (typeof id !== 'string') throw new Error(`${rpc} returned a non-id row`);
+  }
+  return data as string[];
+}

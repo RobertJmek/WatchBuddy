@@ -44,6 +44,22 @@ export type ReviewThread = {
 };
 
 /**
+ * The review is not visible to the viewer: deleted, reported by them, or its
+ * author and the viewer have blocked each other. The read policies make such a
+ * row simply absent, which surfaces here as `.single()` finding nothing.
+ *
+ * A distinct type because the screen must treat it differently from a network
+ * failure: with a cached copy of the thread still in the persisted query cache,
+ * a plain error would leave the hidden review on screen.
+ */
+export class ReviewUnavailableError extends Error {
+  constructor() {
+    super('This review is not available');
+    this.name = 'ReviewUnavailableError';
+  }
+}
+
+/**
  * A review plus its full reply thread. The tree is stored with arbitrary
  * nesting but rendered as two levels: every descendant of a top-level reply
  * flattens under it (chronologically) with an @mention of its direct parent.
@@ -76,6 +92,8 @@ export async function getReviewThread(ratingId: string): Promise<ReviewThread> {
           .eq('user_id', viewerId)
       : Promise.resolve({ count: 0, error: null }),
   ]);
+  // PGRST116: `.single()` matched no row — hidden by the read policies, or gone.
+  if (ratingRes.error?.code === 'PGRST116') throw new ReviewUnavailableError();
   if (ratingRes.error) throw ratingRes.error;
   if (repliesRes.error) throw repliesRes.error;
   if (likeCountRes.error) throw likeCountRes.error;

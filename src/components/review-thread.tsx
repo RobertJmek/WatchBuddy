@@ -2,16 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
-import {
-  ActionSheetIOS,
-  Alert,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import {
   KeyboardStickyView,
   useKeyboardState,
@@ -22,8 +13,11 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+import type { MenuAction } from '@/components/action-menu';
 import { Avatar } from '@/components/avatar';
+import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
+import { handleOf, useModerationMenu } from '@/components/moderation-menu';
 import { RowSkeletonList } from '@/components/skeleton';
 import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
@@ -35,6 +29,7 @@ import { keys } from '@/lib/keys';
 import { usePullToDismiss } from '@/lib/pull-to-dismiss';
 import { likeReview, setRating, unlikeReview } from '@/lib/ratings';
 import {
+  ReviewUnavailableError,
   addReply,
   deleteReply,
   getReviewThread,
@@ -44,9 +39,6 @@ import {
 function nameOf(r: { display_name: string | null; username: string | null }) {
   return r.display_name?.trim() || (r.username ? `@${r.username}` : 'User');
 }
-
-/** One row in the ⋯ menu — shared by reply rows and the review card. */
-type MenuAction = { label: string; destructive?: boolean; run: () => void };
 
 /**
  * A review plus its reply thread and like footer. Mounted by /review/[ratingId],
@@ -59,16 +51,23 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: keys.reviewThread(ratingId),
     queryFn: () => getReviewThread(ratingId),
+    // A hidden review stays hidden; asking again only delays the message.
+    retry: (count, err) => !(err instanceof ReviewUnavailableError) && count < 1,
   });
+  // Hidden from you (reported, or blocked either way) beats any cached copy of
+  // the thread — the cache is persisted for a week. A plain failure only takes
+  // over the screen when there is nothing to show.
+  const unavailable = error instanceof ReviewUnavailableError || (isError && !data);
 
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<ReplyItem | null>(null);
   const [sending, setSending] = useState(false);
-  // Android ⋯ menu: the action list currently shown in the bottom sheet.
-  const [menuActions, setMenuActions] = useState<MenuAction[] | null>(null);
+  // The ⋯ menus (iOS action sheet / Android bottom sheet) and the Report / Block
+  // flows they offer on other people's replies and reviews.
+  const { menu, openMenu, report, block } = useModerationMenu();
 
   // Inline review editing (own review only).
   const [editing, setEditing] = useState(false);
@@ -109,25 +108,20 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
         destructive: true,
         run: () => confirmDelete(item),
       });
+    } else {
+      // Someone else's reply. Reporting hides it for you at once (the thread
+      // refetches); blocking drops all of their replies from the list.
+      const author = { id: item.userId, username: item.username, name: nameOf(item) };
+      actions.push(
+        { label: 'Report', run: () => report('reply', item.id) },
+        {
+          label: `Block ${handleOf(author)}`,
+          destructive: true,
+          run: () => block(author),
+        },
+      );
     }
     return actions;
-  }
-
-  // Native action sheet on iOS, themed bottom-sheet Modal on Android.
-  function openMenu(actions: MenuAction[]) {
-    if (Platform.OS === 'ios') {
-      const di = actions.findIndex((a) => a.destructive);
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [...actions.map((a) => a.label), 'Cancel'],
-          cancelButtonIndex: actions.length,
-          destructiveButtonIndex: di >= 0 ? di : undefined,
-        },
-        (i) => actions[i]?.run(),
-      );
-    } else {
-      setMenuActions(actions);
-    }
   }
 
   const openReplyMenu = (item: ReplyItem) => openMenu(actionsFor(item));
@@ -164,6 +158,25 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
     openMenu([
       { label: 'Edit', run: startEditing },
       { label: 'Delete', destructive: true, run: confirmDeleteReview },
+    ]);
+  }
+
+  // Someone else's review. Either action hides the whole review from you, so the
+  // thread it was the header of has nothing left to show — leave it.
+  function openOthersReviewMenu() {
+    if (!review) return;
+    const author = {
+      id: review.userId,
+      username: review.username,
+      name: nameOf(review),
+    };
+    openMenu([
+      { label: 'Report', run: () => report('review', review.ratingId, () => router.back()) },
+      {
+        label: `Block ${handleOf(author)}`,
+        destructive: true,
+        run: () => block(author, () => router.back()),
+      },
     ]);
   }
 
@@ -284,7 +297,15 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
         onSwipeRight={dismiss}
         pullDown={{ onPull: dismiss, zoneHeight: PULL_ZONE_HEIGHT, atTop }}>
       <View style={styles.container}>
-        {isLoading || !review ? (
+        {unavailable ? (
+          // The review is gone or hidden from you (removed, reported, or its
+          // author and you have blocked each other) — a skeleton would spin forever.
+          <EmptyState
+            icon="bubble"
+            title="This review isn't available"
+            hint="It may have been removed."
+          />
+        ) : isLoading || !review ? (
           <RowSkeletonList count={3} />
         ) : (
           <Animated.FlatList
@@ -325,10 +346,10 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
                       {review.value}
                     </ThemedText>
                   </View>
-                  {review.isMine && !editing && (
+                  {!editing && (
                     <Pressable
                       hitSlop={10}
-                      onPress={openReviewMenu}
+                      onPress={review.isMine ? openReviewMenu : openOthersReviewMenu}
                       accessibilityRole="button"
                       accessibilityLabel="Review options">
                       <IconSymbol
@@ -521,49 +542,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
       </View>
       </SwipeNav>
 
-      {/* Android ⋯ menu: bottom sheet, dismissed by backdrop tap or Cancel. */}
-      <Modal
-        visible={menuActions != null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuActions(null)}>
-        <Pressable
-          style={styles.backdrop}
-          onPress={() => setMenuActions(null)}
-          accessibilityRole="button"
-          accessibilityLabel="Close menu">
-          <Pressable
-            style={[styles.sheet, { backgroundColor: c.backgroundElement }]}
-            onPress={(e) => e.stopPropagation()}>
-            {menuActions?.map((a) => (
-              <Pressable
-                key={a.label}
-                style={({ pressed }) => [
-                  styles.sheetRow,
-                  pressed && { backgroundColor: c.backgroundSelected },
-                ]}
-                onPress={() => {
-                  setMenuActions(null);
-                  a.run();
-                }}>
-                <ThemedText
-                  style={a.destructive ? styles.sheetDestructive : undefined}>
-                  {a.label}
-                </ThemedText>
-              </Pressable>
-            ))}
-            <View style={[styles.sheetDivider, { backgroundColor: c.border }]} />
-            <Pressable
-              style={({ pressed }) => [
-                styles.sheetRow,
-                pressed && { backgroundColor: c.backgroundSelected },
-              ]}
-              onPress={() => setMenuActions(null)}>
-              <ThemedText style={{ color: c.textSecondary }}>Cancel</ThemedText>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {menu}
     </ThemedView>
   );
 }
@@ -661,24 +640,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendDisabled: { opacity: 0.5 },
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  sheet: {
-    borderTopLeftRadius: Spacing.four,
-    borderTopRightRadius: Spacing.four,
-    paddingVertical: Spacing.two,
-    paddingBottom: Spacing.five,
-  },
-  sheetRow: {
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
-  },
-  sheetDestructive: { color: '#e5484d' },
-  sheetDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: Spacing.one,
-  },
 });
