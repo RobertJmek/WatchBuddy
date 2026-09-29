@@ -1,3 +1,4 @@
+import { getHiddenUserIds } from '@/lib/moderation';
 import { supabase } from '@/lib/supabase';
 import { requireViewer } from '@/lib/viewer';
 
@@ -49,8 +50,13 @@ async function fetchProfiles(
 
 /**
  * Search people by case-insensitive prefix on username OR display_name,
- * excluding the signed-in user. Wildcard/`or` metacharacters are stripped so
- * the typed text can't change the query shape.
+ * excluding the signed-in user and anyone blocked either way. Wildcard/`or`
+ * metacharacters are stripped so the typed text can't change the query shape.
+ *
+ * `profiles` is open-read on purpose (see ADR 0025), so unlike every other list
+ * a block does not thin this one out on the server: it is filtered here, from
+ * the hidden set. That can leave fewer than 20 rows, which is fine for a
+ * type-ahead and keeps the two requests parallel.
  */
 export async function searchUsers(query: string): Promise<UserResult[]> {
   const viewerId = await requireViewer();
@@ -58,14 +64,19 @@ export async function searchUsers(query: string): Promise<UserResult[]> {
   if (term.length === 0) return [];
   const pattern = `${term}%`;
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, avatar_url')
-    .or(`username.ilike.${pattern},display_name.ilike.${pattern}`)
-    .neq('id', viewerId)
-    .limit(20);
+  const [{ data, error }, hiddenIds] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url')
+      .or(`username.ilike.${pattern},display_name.ilike.${pattern}`)
+      .neq('id', viewerId)
+      .limit(20),
+    getHiddenUserIds(),
+  ]);
   if (error) throw error;
-  return annotateFollowing(viewerId, (data ?? []) as any[]);
+  const hidden = new Set(hiddenIds);
+  const rows = ((data ?? []) as any[]).filter((r) => !hidden.has(r.id));
+  return annotateFollowing(viewerId, rows);
 }
 
 /** Follow a user. No-ops if the edge already exists (unique violation ignored). */

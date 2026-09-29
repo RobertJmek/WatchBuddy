@@ -10,7 +10,11 @@ import {
 } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { Button } from '@/components/button';
+import { EmptyState } from '@/components/empty-state';
 import { FollowButton } from '@/components/follow-button';
+import { IconSymbol } from '@/components/icon-symbol';
+import { handleOf, useModerationMenu } from '@/components/moderation-menu';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { RowSkeletonList, Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
@@ -22,6 +26,7 @@ import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { openTitle } from '@/lib/navigation';
 import { getLibraryFor, type LibraryEntry } from '@/lib/library';
+import { getBlockStatus } from '@/lib/moderation';
 import { getProfileById } from '@/lib/profile';
 import { getFollowCounts, getFollowState } from '@/lib/social';
 import { getStats } from '@/lib/stats';
@@ -72,6 +77,16 @@ export default function UserProfileScreen() {
     queryKey: keys.library(id),
     queryFn: () => getLibraryFor(id),
   });
+  // Blocked by you / hidden from you / neither (ADR 0025). Always refetched on
+  // open: a cached 'none' from before they blocked you would show a profile
+  // whose data the server has already stopped sending.
+  const statusQ = useQuery({
+    queryKey: keys.blockStatus(id),
+    queryFn: () => getBlockStatus(id),
+    enabled: !isMe,
+    staleTime: 0,
+  });
+  const { menu, openMenu, report, block, unblock } = useModerationMenu();
 
   // Optimistic follower count: shift by the difference between the button's
   // current state and the state we originally loaded.
@@ -136,6 +151,42 @@ export default function UserProfileScreen() {
     profile?.display_name?.trim() ||
     (profile?.username ? `@${profile.username}` : 'User');
   const stats = statsQ.data;
+
+  // Someone who blocked you is `unavailable`; someone you blocked is `blocked`.
+  // A failed status lookup (say, a backend without blocks yet) reads as `none` —
+  // the server hides the data either way.
+  const status = isMe ? 'none' : (statusQ.data ?? 'none');
+  // Wait for this mount's own answer: a persisted 'none' is not one, and
+  // `isLoading` is false while it sits in the cache.
+  const statusLoading = !isMe && !statusQ.isFetchedAfterMount;
+  const subject = { id, username: profile?.username ?? null, name };
+  // Someone who blocked you can still be reported — otherwise blocking you right
+  // after harassing you would leave nothing reportable. Blocking them back keeps
+  // the pair apart if they later unblock. Neither names them: this state shows
+  // no name, so the confirmation must not either.
+  const anonymous = { id, username: null, name: 'this account' };
+  const openOptions = () =>
+    openMenu(
+      status === 'blocked'
+        ? [{ label: `Unblock ${handleOf(subject)}`, run: () => void unblock(subject) }]
+        : status === 'unavailable'
+          ? [
+              { label: 'Report profile', run: () => report('user', id) },
+              {
+                label: 'Block this account',
+                destructive: true,
+                run: () => block(anonymous),
+              },
+            ]
+          : [
+              { label: 'Report profile', run: () => report('user', id) },
+              {
+                label: `Block ${handleOf(subject)}`,
+                destructive: true,
+                run: () => block(subject),
+              },
+            ],
+    );
 
   const header = (
     <View style={styles.header}>
@@ -262,9 +313,46 @@ export default function UserProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: '' }} />
-      {profileQ.isLoading ? (
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: '',
+          // Nothing to offer on your own profile. One you cannot open still
+          // gets Report and Block (see `openOptions`).
+          headerRight:
+            isMe
+              ? undefined
+              : () => (
+                  <Pressable
+                    onPress={openOptions}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Profile options">
+                    <IconSymbol name="ellipsis" size={20} tintColor={c.textSecondary} />
+                  </Pressable>
+                ),
+        }}
+      />
+      {profileQ.isLoading || statusLoading ? (
         <RowSkeletonList />
+      ) : status === 'unavailable' ? (
+        // Deliberately says nothing about why — and shows no name or picture.
+        <EmptyState icon="person.crop.circle" title="This profile isn't available" />
+      ) : status === 'blocked' ? (
+        <View style={styles.blocked}>
+          <Avatar uri={profile?.avatar_url} name={name} size={88} />
+          <ThemedText type="title">{name}</ThemedText>
+          <ThemedText style={[styles.blockedText, { color: c.textSecondary }]}>
+            You blocked {handleOf(subject)}. You can&apos;t see each other&apos;s
+            reviews, replies or activity.
+          </ThemedText>
+          <Button
+            title="Unblock"
+            variant="outline"
+            style={styles.unblockBtn}
+            onPress={() => void unblock(subject)}
+          />
+        </View>
       ) : (
         <FlatList
           data={diaryQ.data ?? []}
@@ -291,6 +379,7 @@ export default function UserProfileScreen() {
           )}
         />
       )}
+      {menu}
     </ThemedView>
   );
 }
@@ -337,4 +426,12 @@ const styles = StyleSheet.create({
   },
   shelves: { alignSelf: 'stretch', gap: Spacing.four, marginTop: Spacing.three },
   empty: { textAlign: 'center', marginTop: Spacing.five },
+  blocked: {
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.four,
+    marginTop: Spacing.four,
+  },
+  blockedText: { textAlign: 'center', lineHeight: 21 },
+  unblockBtn: { paddingHorizontal: Spacing.five },
 });

@@ -47,9 +47,10 @@ export async function currentViewer(): Promise<string | null> {
 
 /**
  * The column that names the owner. Almost every per-user table calls it
- * `user_id`; `profiles` is the exception — its owner is its primary key `id`.
+ * `user_id`; `profiles` is the exception — its owner is its primary key `id` —
+ * and `blocks` is owned by whoever did the blocking, `blocker_id`.
  */
-export type OwnerColumn = 'user_id' | 'id';
+export type OwnerColumn = 'user_id' | 'id' | 'blocker_id';
 
 // The client is untyped (no generated Database type), so a dynamic table name
 // resolves to the error overload — cast to the chainable builder once, here,

@@ -255,6 +255,19 @@ export default function EditProfileScreen() {
             <Pressable
               style={[styles.link, { borderBottomColor: c.border }]}
               disabled={saving || exporting}
+              onPress={() => router.push('/blocked')}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving || exporting }}>
+              <ThemedText type="subtitle">Blocked accounts</ThemedText>
+              <IconSymbol
+                name="chevron.right"
+                size={18}
+                tintColor={c.textSecondary}
+              />
+            </Pressable>
+            <Pressable
+              style={[styles.link, { borderBottomColor: c.border }]}
+              disabled={saving || exporting}
               onPress={exportMyData}
               accessibilityRole="button"
               accessibilityState={{ disabled: saving || exporting, busy: exporting }}>

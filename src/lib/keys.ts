@@ -33,10 +33,13 @@ export const keys = {
   /** Bare invalidates both your counts and whoever's profile is open. */
   followCounts: (userId?: string) =>
     userId ? (['followCounts', userId] as const) : (['followCounts'] as const),
-  /** Whether *you* follow `userId`. */
-  follow: (userId: string) => ['follow', userId] as const,
-  followers: (userId: string) => ['followers', userId] as const,
-  following: (userId: string) => ['following', userId] as const,
+  /** Whether *you* follow `userId`. Bare = every user's (for bulk invalidation). */
+  follow: (userId?: string) =>
+    userId ? (['follow', userId] as const) : (['follow'] as const),
+  followers: (userId?: string) =>
+    userId ? (['followers', userId] as const) : (['followers'] as const),
+  following: (userId?: string) =>
+    userId ? (['following', userId] as const) : (['following'] as const),
 
   // --- feed & notifications ----------------------------------------------
   feed: () => ['feed'] as const,
@@ -47,8 +50,20 @@ export const keys = {
   /** Community reviews of a title. Bare invalidates every title's. */
   titleRatings: (titleId?: string) =>
     titleId ? (['titleRatings', titleId] as const) : (['titleRatings'] as const),
-  reviewThread: (ratingId: string) => ['reviewThread', ratingId] as const,
-  reviewLikers: (ratingId: string) => ['reviewLikers', ratingId] as const,
+  reviewThread: (ratingId?: string) =>
+    ratingId ? (['reviewThread', ratingId] as const) : (['reviewThread'] as const),
+  reviewLikers: (ratingId?: string) =>
+    ratingId ? (['reviewLikers', ratingId] as const) : (['reviewLikers'] as const),
+
+  // --- moderation ---------------------------------------------------------
+  /**
+   * Everything about blocks under one root: bare invalidates the list of people
+   * you blocked and every profile's block status at once.
+   */
+  blocked: () => ['blocked'] as const,
+  blockedUsers: () => ['blocked', 'users'] as const,
+  /** Whether `userId` is blocked by you, hidden from you, or neither. */
+  blockStatus: (userId: string) => ['blocked', 'status', userId] as const,
 
   // --- catalog & search ---------------------------------------------------
   libraryStatus: (titleId: string) => ['libraryStatus', titleId] as const,
@@ -56,7 +71,8 @@ export const keys = {
   movieWatches: (titleId: string) => ['movieWatches', titleId] as const,
   genres: () => ['genres'] as const,
   search: (term: string) => ['search', term] as const,
-  userSearch: (term: string) => ['userSearch', term] as const,
+  userSearch: (term?: string) =>
+    term !== undefined ? (['userSearch', term] as const) : (['userSearch'] as const),
   trending: () => ['trending'] as const,
   /**
    * ⚠️ The `1` is a **payload-shape version, not a page number**. It exists to

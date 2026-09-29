@@ -151,6 +151,7 @@ function RootNavigator() {
         <Stack.Screen name="import-tvtime" />
         <Stack.Screen name="import-watchbuddy" />
         <Stack.Screen name="edit-profile" />
+        <Stack.Screen name="blocked" />
         <Stack.Screen name="about" />
         <Stack.Screen name="library-section" />
         <Stack.Screen name="trending-section" />

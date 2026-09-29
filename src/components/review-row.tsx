@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
+import { handleOf, useModerationMenu } from '@/components/moderation-menu';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -76,12 +77,41 @@ export const ReviewRow = memo(function ReviewRow({
     review.display_name?.trim() ||
     (review.username ? `@${review.username}` : 'User');
 
+  // Report / Block on someone else's review (ADR 0025). Both hide it from you
+  // straight away: the lists that show it refetch.
+  const { menu, openMenu, report, block } = useModerationMenu();
+  const author = { id: review.userId, username: review.username, name };
+  const openOptions = () =>
+    openMenu([
+      { label: 'Report', run: () => report('review', review.ratingId) },
+      {
+        label: `Block ${handleOf(author)}`,
+        destructive: true,
+        run: () => block(author),
+      },
+    ]);
+  // The same two as accessibility actions, on the row's own focusable Pressable
+  // (ADR 0018): the ⋯ below is a separate control a screen reader also reaches,
+  // but a custom action is the path that does not need a precise swipe to it.
+  const moderationActions = review.isMine
+    ? undefined
+    : [
+        { name: 'report', label: 'Report review' },
+        { name: 'block', label: `Block ${handleOf(author)}` },
+      ];
+
   return (
+    <>
     <Pressable
       style={[styles.card, { backgroundColor: c.backgroundElement }]}
       onPress={() =>
         router.push({ pathname: '/user/[id]', params: { id: review.userId } })
-      }>
+      }
+      accessibilityActions={moderationActions}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === 'report') report('review', review.ratingId);
+        else if (e.nativeEvent.actionName === 'block') block(author);
+      }}>
       <View style={styles.top}>
         <Avatar uri={review.avatar_url} name={name} />
         <View style={styles.who}>
@@ -185,9 +215,23 @@ export const ReviewRow = memo(function ReviewRow({
             )}
           </Pressable>
         )}
+        {!review.isMine && (
+          <Pressable
+            onPress={openOptions}
+            hitSlop={10}
+            style={styles.likeBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Review options">
+            <IconSymbol name="ellipsis" size={16} tintColor={c.textSecondary} />
+          </Pressable>
+        )}
         </View>
       </View>
     </Pressable>
+    {/* Outside the card: a Modal's React children would otherwise bubble
+        touches to the card's own onPress. */}
+    {menu}
+    </>
   );
 });
 
