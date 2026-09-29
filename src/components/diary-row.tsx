@@ -10,7 +10,7 @@ import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { openTitle } from '@/lib/navigation';
 import { imageUrl } from '@/lib/tmdb';
-import type { DiaryEntry } from '@/lib/watches';
+import type { DiaryEntry } from '@/lib/diary-page';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {

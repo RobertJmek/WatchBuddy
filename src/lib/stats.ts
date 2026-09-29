@@ -86,6 +86,12 @@ function deviceTimeZone(): string {
 }
 
 /** Map the RPC's numeric/keyed payload into the label-formatted Stats the UI wants. */
+/** A YYYY-MM-DD calendar date as local midnight of that day. */
+function calendarDate(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function formatStats(raw: RawStats): Stats {
   const statusCount = new Map(raw.libraryStatus.map((s) => [s.status, s.count]));
   const libraryStatus = LIBRARY_STATUSES.map(({ value, label }) => ({
@@ -127,7 +133,9 @@ function formatStats(raw: RawStats): Stats {
       busiestWeekday: p.busiestWeekday == null ? null : WEEKDAYS[p.busiestWeekday],
       biggestDay: p.biggestDay
         ? {
-            label: new Date(p.biggestDay.date).toLocaleDateString(undefined, {
+            // A calendar date, not an instant: `new Date('YYYY-MM-DD')` is UTC
+            // midnight, which is the previous day west of UTC.
+            label: calendarDate(p.biggestDay.date).toLocaleDateString(undefined, {
               day: 'numeric',
               month: 'short',
               year: 'numeric',
@@ -140,7 +148,9 @@ function formatStats(raw: RawStats): Stats {
       busiestMonth: p.busiestMonth
         ? {
             label: new Date(
-              `${p.busiestMonth.year}-${String(p.busiestMonth.month).padStart(2, '0')}-01`,
+              p.busiestMonth.year,
+              p.busiestMonth.month - 1,
+              1,
             ).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
             count: p.busiestMonth.count,
           }
