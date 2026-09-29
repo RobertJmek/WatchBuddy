@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 
+import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedView } from '@/components/themed-view';
@@ -15,7 +16,7 @@ import { getBlockedUsers } from '@/lib/moderation';
  * profile. Opening a row goes to their profile, which also offers Unblock.
  */
 export default function BlockedAccountsScreen() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, isRefetching, refetch } = useQuery({
     queryKey: keys.blockedUsers(),
     queryFn: getBlockedUsers,
   });
@@ -25,6 +26,22 @@ export default function BlockedAccountsScreen() {
       <Stack.Screen options={{ headerShown: true, title: 'Blocked accounts' }} />
       {isLoading ? (
         <RowSkeletonList />
+      ) : isError ? (
+        // Never let a failed load read as "No blocked accounts" — you may have some.
+        <View style={styles.error}>
+          <EmptyState
+            icon="person.2"
+            title="Couldn't load your blocked accounts"
+            hint="Check your connection and try again."
+          />
+          <Button
+            title="Try again"
+            variant="outline"
+            style={styles.retryBtn}
+            loading={isRefetching}
+            onPress={() => void refetch()}
+          />
+        </View>
       ) : (
         <FlatList
           data={data ?? []}
@@ -47,4 +64,6 @@ export default function BlockedAccountsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: Spacing.three, gap: Spacing.two, flexGrow: 1 },
+  error: { alignItems: 'center', gap: Spacing.three },
+  retryBtn: { paddingHorizontal: Spacing.five },
 });

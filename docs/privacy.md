@@ -14,7 +14,8 @@ the app handles and how.
   reviews, favorites and follows. This is the product — it exists so the app
   can show it back to you and, where the feature is social by design (public
   profiles, community ratings), to other signed-in users.
-- **Blocks and reports**: the people you have blocked (visible only to you) and
+- **Blocks and reports**: the people you have blocked (nobody else sees your list;
+  someone you block sees only that your profile isn't available to them) and
   the reports you file about a review, reply or profile — a reason and an
   optional note, visible only to us. Reports are kept so we can act on them.
 

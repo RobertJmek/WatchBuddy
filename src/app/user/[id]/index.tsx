@@ -160,18 +160,32 @@ export default function UserProfileScreen() {
   // `isLoading` is false while it sits in the cache.
   const statusLoading = !isMe && !statusQ.isFetchedAfterMount;
   const subject = { id, username: profile?.username ?? null, name };
+  // Someone who blocked you can still be reported — otherwise blocking you right
+  // after harassing you would leave nothing reportable. Blocking them back keeps
+  // the pair apart if they later unblock. Neither names them: this state shows
+  // no name, so the confirmation must not either.
+  const anonymous = { id, username: null, name: 'this account' };
   const openOptions = () =>
     openMenu(
       status === 'blocked'
         ? [{ label: `Unblock ${handleOf(subject)}`, run: () => void unblock(subject) }]
-        : [
-            { label: 'Report profile', run: () => report('user', id) },
-            {
-              label: `Block ${handleOf(subject)}`,
-              destructive: true,
-              run: () => block(subject),
-            },
-          ],
+        : status === 'unavailable'
+          ? [
+              { label: 'Report profile', run: () => report('user', id) },
+              {
+                label: 'Block this account',
+                destructive: true,
+                run: () => block(anonymous),
+              },
+            ]
+          : [
+              { label: 'Report profile', run: () => report('user', id) },
+              {
+                label: `Block ${handleOf(subject)}`,
+                destructive: true,
+                run: () => block(subject),
+              },
+            ],
     );
 
   const header = (
@@ -303,9 +317,10 @@ export default function UserProfileScreen() {
         options={{
           headerShown: true,
           title: '',
-          // Nothing to offer on your own profile, or on one you cannot open.
+          // Nothing to offer on your own profile. One you cannot open still
+          // gets Report and Block (see `openOptions`).
           headerRight:
-            isMe || status === 'unavailable'
+            isMe
               ? undefined
               : () => (
                   <Pressable
