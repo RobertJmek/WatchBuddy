@@ -494,7 +494,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
           />
         )}
 
-        {!editing && (
+        {!editing && !unavailable && (
         <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
         <SafeAreaView edges={['bottom']}>
           {replyTo && (
