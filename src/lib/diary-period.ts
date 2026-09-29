@@ -20,25 +20,20 @@ function startOfWeek(now: Date): Date {
 
 /**
  * Resolve a preset period to a query range. 'custom' is handled by the caller
- * (it carries its own from/to). 'all' returns no bounds + the default cap.
+ * (it carries its own from/to); 'all' is unbounded. Either way the diary is
+ * read in pages, so no range is truncated.
  */
 export function rangeForPeriod(period: DiaryPeriod, now = new Date()): DiaryRange {
-  // Bounded periods lift the row cap (null) so a busy span isn't truncated.
   switch (period) {
     case 'week':
-      return { from: startOfWeek(now).toISOString(), limit: null };
+      return { from: startOfWeek(now).toISOString() };
     case 'month':
-      return {
-        from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
-        limit: null,
-      };
+      return { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString() };
     case 'year':
-      return { from: new Date(now.getFullYear(), 0, 1).toISOString(), limit: null };
+      return { from: new Date(now.getFullYear(), 0, 1).toISOString() };
     case 'all':
     case 'custom':
     default:
-      // Lift the 100-row default; PostgREST still pages at 1000 rows per
-      // table, which bounds the render for very large histories.
-      return { limit: null };
+      return {};
   }
 }

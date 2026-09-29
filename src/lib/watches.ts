@@ -1,4 +1,12 @@
 import {
+  groupDiary,
+  mergeDiaryPage,
+  type DiaryCursor,
+  type DiaryEntry,
+  type DiaryPage,
+  type DiaryWatch,
+} from '@/lib/diary-page';
+import {
   getLibraryStatus,
   removeFromLibrary,
   setLibraryStatus,
@@ -208,122 +216,78 @@ export async function undoImpliedWatch(w: ImpliedWatch) {
 
 // --- diary (combined chronological history) -----------------------------
 
-export type DiaryEntry = {
-  id: string;
-  kind: 'movie' | 'episode';
-  watched_at: string;
-  titleName: string;
-  posterPath: string | null;
-  subtitle: string | null;
-  tmdbId: number;
-  mediaType: 'movie' | 'tv';
-  /** Underlying watch rows (1 for movies, N for grouped episode entries). */
-  rows: { id: string; watched_at: string }[];
-};
-
 export type DiaryRange = {
   /** Inclusive lower bound (ISO). */
   from?: string;
   /** Exclusive upper bound (ISO). */
   to?: string;
-  /** Row cap; pass null for no cap (used for bounded periods). */
-  limit?: number | null;
+  /** Only watches of titles whose name contains this. */
+  search?: string;
   /** Whose diary to read; defaults to the signed-in user. */
   userId?: string;
 };
 
-/** Combined movie + episode watch history, newest first. */
-export async function getDiary({
-  from,
-  to,
-  limit = 100,
-  userId,
-}: DiaryRange = {}): Promise<DiaryEntry[]> {
+/**
+ * One page of watch history, newest first, from both tables. Rows stay raw so
+ * the caller groups every loaded page at once: a season logged across a page
+ * boundary is still one entry. PostgREST caps a read at 1000 rows, so the
+ * whole history is only reachable by paging.
+ */
+export async function getDiaryPage(
+  { from, to, search, userId }: DiaryRange,
+  cursor: DiaryCursor | null = null,
+  size = 100,
+): Promise<DiaryPage> {
   // May read another user's (public) diary, so scope to the explicit id when
   // given, otherwise to the viewer.
   const uid = userId ?? (await currentViewer());
   if (!uid) throw new Error('Not signed in');
 
-  const build = (table: 'movie_watches' | 'episode_watches', select: string) => {
+  // LIKE wildcards in the term are literal; `!inner` makes the embedded
+  // filter drop the watch row rather than just null its title.
+  const term = search?.trim().replace(/[\\%_]/g, (ch) => `\\${ch}`);
+  const title = `title:titles${term ? '!inner' : ''}(title, poster_path, tmdb_id, media_type)`;
+
+  const build = (table: 'movie_watches' | 'episode_watches', embeds: string) => {
     let q = supabase
       .from(table)
-      .select(select)
+      .select(`id, watched_at, ${embeds}`)
       .eq('user_id', uid)
-      .order('watched_at', { ascending: false });
+      .order('watched_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(size);
     if (from) q = q.gte('watched_at', from);
     if (to) q = q.lt('watched_at', to);
-    if (limit != null) q = q.limit(limit);
+    if (term) q = q.ilike('title.title', `%${term}%`);
+    if (cursor) {
+      const at = `"${cursor.watched_at}"`;
+      q = q.or(`watched_at.lt.${at},and(watched_at.eq.${at},id.lt.${cursor.id})`);
+    }
     return q;
   };
 
   const [movies, episodes] = await Promise.all([
-    build(
-      'movie_watches',
-      'id, watched_at, title:titles(title, poster_path, tmdb_id, media_type)',
-    ),
-    build(
-      'episode_watches',
-      'id, watched_at, episode:episodes(name, season_number, episode_number), title:titles(title, poster_path, tmdb_id, media_type)',
-    ),
+    build('movie_watches', title),
+    build('episode_watches', `episode:episodes(name, season_number, episode_number), ${title}`),
   ]);
   if (movies.error) throw movies.error;
   if (episodes.error) throw episodes.error;
 
-  const movieEntries: DiaryEntry[] = (movies.data ?? []).map((r: any) => ({
-    id: `m_${r.id}`,
-    kind: 'movie',
-    watched_at: r.watched_at,
-    titleName: r.title?.title ?? 'Unknown',
-    posterPath: r.title?.poster_path ?? null,
-    subtitle: 'Movie',
-    tmdbId: r.title?.tmdb_id,
-    mediaType: r.title?.media_type ?? 'movie',
-    rows: [{ id: r.id, watched_at: r.watched_at }],
-  }));
+  const tag = (kind: DiaryWatch['kind'], rows: unknown[] | null) =>
+    ((rows ?? []) as Omit<DiaryWatch, 'kind'>[]).map((r) => ({ ...r, kind }));
+  return mergeDiaryPage(tag('movie', movies.data), tag('episode', episodes.data), size);
+}
 
-  // Group episode watches by show + season + calendar day, so logging a whole
-  // season collapses to one diary entry ("Season 8 · 6 episodes") instead of a
-  // wall of identical rows.
-  const episodeGroups = new Map<string, any[]>();
-  for (const r of (episodes.data ?? []) as any[]) {
-    const day = (r.watched_at as string).slice(0, 10);
-    const season = r.episode?.season_number ?? 'na';
-    const key = `${r.title?.tmdb_id}_${season}_${day}`;
-    const bucket = episodeGroups.get(key);
-    if (bucket) bucket.push(r);
-    else episodeGroups.set(key, [r]);
-  }
-
-  const episodeEntries: DiaryEntry[] = [...episodeGroups.values()].map((group) => {
-    group.sort((a: any, b: any) => b.watched_at.localeCompare(a.watched_at));
-    const r = group[0]; // most recent in the group
-    const ep = r.episode;
-    const count = group.length;
-    const subtitle =
-      count > 1
-        ? ep
-          ? `Season ${ep.season_number} · ${count} episodes`
-          : `${count} episodes`
-        : ep
-          ? `S${ep.season_number}E${ep.episode_number}` +
-            (ep.name ? ` · ${ep.name}` : '')
-          : null;
-    return {
-      id: `e_${r.id}`,
-      kind: 'episode',
-      watched_at: r.watched_at,
-      titleName: r.title?.title ?? 'Unknown',
-      posterPath: r.title?.poster_path ?? null,
-      subtitle,
-      tmdbId: r.title?.tmdb_id,
-      mediaType: r.title?.media_type ?? 'tv',
-      rows: group.map((g: any) => ({ id: g.id, watched_at: g.watched_at })),
-    };
-  });
-
-  return [...movieEntries, ...episodeEntries]
-    .sort((a, b) => b.watched_at.localeCompare(a.watched_at))
-    .slice(0, limit ?? undefined);
+/** The most recent `limit` diary entries of a user (a profile's preview). */
+export async function getDiary({
+  userId,
+  limit,
+}: {
+  userId?: string;
+  limit: number;
+}): Promise<DiaryEntry[]> {
+  const page = await getDiaryPage({ userId }, null, limit);
+  return groupDiary(page.rows).slice(0, limit);
 }
 
 /**

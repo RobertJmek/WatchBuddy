@@ -1,8 +1,13 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
 import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { Stack, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
   Modal,
   Platform,
   Pressable,
@@ -28,13 +33,9 @@ import {
   rangeForPeriod,
   type DiaryPeriod,
 } from '@/lib/diary-period';
+import { groupDiary, type DiaryEntry } from '@/lib/diary-page';
 import { keys } from '@/lib/keys';
-import {
-  getDiary,
-  updateWatchDay,
-  type DiaryEntry,
-  type DiaryRange,
-} from '@/lib/watches';
+import { getDiaryPage, updateWatchDay, type DiaryRange } from '@/lib/watches';
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -91,17 +92,35 @@ export default function DiaryScreen() {
           from: startOfDay(customStart).toISOString(),
           // `to` is exclusive, so add a day to make the end date inclusive.
           to: new Date(startOfDay(customEnd).getTime() + 86400000).toISOString(),
-          limit: null,
         }
       : rangeForPeriod(period);
+  // Paged, and searched on the server, so the whole history is reachable
+  // past PostgREST's 1000-row cap. The previous result stays up (dimmed)
+  // while a new period or term loads.
   const {
-    data: entries = [],
+    data,
     isLoading: loading,
+    isPlaceholderData: stale,
     refetch,
-  } = useQuery({
-    queryKey: [...keys.diary(), period, range.from ?? null, range.to ?? null],
-    queryFn: () => getDiary(range),
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: [...keys.diary(), period, range.from ?? null, range.to ?? null, term],
+    queryFn: ({ pageParam }) => getDiaryPage({ ...range, search: term }, pageParam),
+    initialPageParam: null as Parameters<typeof getDiaryPage>[1],
+    getNextPageParam: (last) => last.nextCursor,
+    placeholderData: keepPreviousData,
   });
+  // Grouped across every loaded page, so a season logged over a page
+  // boundary is still one entry.
+  const entries = useMemo(
+    () => groupDiary(data?.pages.flatMap((p) => p.rows) ?? []),
+    [data],
+  );
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useFocusEffect(
     useCallback(() => {
@@ -330,12 +349,16 @@ export default function DiaryScreen() {
         </View>
       ) : (
         <Animated.FlatList
-          data={
-            term
-              ? entries.filter((e) => e.titleName.toLowerCase().includes(term))
-              : entries
-          }
+          data={entries}
           keyExtractor={(e) => e.id}
+          style={stale ? styles.stale : undefined}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <ActivityIndicator style={styles.footer} color={c.tint} />
+            ) : null
+          }
           itemLayoutAnimation={LinearTransition.duration(200)}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -444,4 +467,6 @@ const styles = StyleSheet.create({
   doneText: { color: AccentText, fontWeight: '700' },
   list: { padding: Spacing.three, gap: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.five },
+  stale: { opacity: 0.5 },
+  footer: { paddingVertical: Spacing.three },
 });
