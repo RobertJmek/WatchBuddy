@@ -156,7 +156,9 @@ export default function UserProfileScreen() {
   // A failed status lookup (say, a backend without blocks yet) reads as `none` —
   // the server hides the data either way.
   const status = isMe ? 'none' : (statusQ.data ?? 'none');
-  const statusLoading = !isMe && statusQ.isLoading;
+  // Wait for this mount's own answer: a persisted 'none' is not one, and
+  // `isLoading` is false while it sits in the cache.
+  const statusLoading = !isMe && !statusQ.isFetchedAfterMount;
   const subject = { id, username: profile?.username ?? null, name };
   const openOptions = () =>
     openMenu(
