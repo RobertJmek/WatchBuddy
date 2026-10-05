@@ -5,6 +5,7 @@ import {
   deleteMine,
   requireViewer,
   selectMine,
+  updateMine,
 } from '@/lib/viewer';
 
 export type RatingEntityType = 'movie' | 'show';
@@ -63,6 +64,28 @@ export async function setRating(
     },
     { onConflict: 'user_id,entity_type,entity_id' },
   );
+  if (error) throw error;
+}
+
+/**
+ * Change only the review text of an existing rating, never its score.
+ *
+ * The review thread edits and deletes through this. Its copy of the score can
+ * be older than the title screen's (the thread stays cached), and re-sending it
+ * through `setRating` silently undid a score change made since the thread
+ * loaded — found on the simulator while testing PR #88.
+ */
+export async function setReviewText(
+  entityType: RatingEntityType,
+  entityId: string,
+  review: string | null,
+) {
+  const { q } = await updateMine('ratings', {
+    review: review && review.trim() ? review.trim() : null,
+  });
+  const { error } = await q
+    .eq('entity_type', entityType)
+    .eq('entity_id', entityId);
   if (error) throw error;
 }
 

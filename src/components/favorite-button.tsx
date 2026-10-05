@@ -29,6 +29,9 @@ export function FavoriteButton({ titleId }: { titleId: string }) {
     try {
       await setFavorite(titleId, next);
       queryClient.invalidateQueries({ queryKey: keys.library() });
+      // Favoriting a title that isn't in the library creates its row (as
+      // Watchlist) — the status chips on the same screen have to show it.
+      queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
     } catch {
       queryClient.setQueryData(keys.favorite(titleId), !next); // revert
       hapticFailure();

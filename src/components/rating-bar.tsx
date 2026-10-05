@@ -220,6 +220,8 @@ export function RatingBar({
       if (clear) await removeRating(entityType, titleId);
       else await setRating(entityType, titleId, n, review);
       queryClient.invalidateQueries({ queryKey: ratingKey });
+      // The thread shows the score as well; don't let it keep an old one.
+      if (ratingId) queryClient.invalidateQueries({ queryKey: keys.reviewThread(ratingId) });
       queryClient.invalidateQueries({ queryKey: keys.stats() });
       queryClient.invalidateQueries({ queryKey: keys.titleRatings(titleId) });
       // The library carries the viewer's own rating (it's a filter axis), so a

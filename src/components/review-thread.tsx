@@ -27,7 +27,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { usePullToDismiss } from '@/lib/pull-to-dismiss';
-import { likeReview, setRating, unlikeReview } from '@/lib/ratings';
+import { likeReview, setReviewText, unlikeReview } from '@/lib/ratings';
 import {
   ReviewUnavailableError,
   addReply,
@@ -185,7 +185,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
     const text = reviewDraft.trim();
     setSavingReview(true);
     try {
-      await setRating(review.entityType, review.entityId, review.value, text);
+      await setReviewText(review.entityType, review.entityId, text);
       // Refresh the thread + community lists so the new/empty text shows even if
       // this screen is revisited from a cached notification tap — and the title
       // screen's rating bar, which would otherwise write the old text back.
@@ -219,7 +219,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
           onPress: async () => {
             if (!review) return;
             try {
-              await setRating(review.entityType, review.entityId, review.value, '');
+              await setReviewText(review.entityType, review.entityId, null);
               // Invalidate the thread cache too, or a later notification tap
               // reopens this screen showing the deleted text (refresh = thread +
               // titleRatings) — and the rating bar, or its next score change
