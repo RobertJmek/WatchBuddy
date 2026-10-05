@@ -85,13 +85,13 @@ function deviceTimeZone(): string {
   }
 }
 
-/** Map the RPC's numeric/keyed payload into the label-formatted Stats the UI wants. */
 /** A YYYY-MM-DD calendar date as local midnight of that day. */
 function calendarDate(ymd: string): Date {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
 
+/** Map the RPC's numeric/keyed payload into the label-formatted Stats the UI wants. */
 function formatStats(raw: RawStats): Stats {
   const statusCount = new Map(raw.libraryStatus.map((s) => [s.status, s.count]));
   const libraryStatus = LIBRARY_STATUSES.map(({ value, label }) => ({

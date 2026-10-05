@@ -1,9 +1,11 @@
 import { supabase } from '@/lib/supabase';
 import {
+  allPages,
   currentViewer,
   deleteMine,
   requireViewer,
   selectMine,
+  updateMine,
 } from '@/lib/viewer';
 
 export type RatingEntityType = 'movie' | 'show';
@@ -32,10 +34,11 @@ export async function getRating(
   if (error) throw error;
   if (!data) return null;
 
-  const { count } = await supabase
+  const { count, error: countError } = await supabase
     .from('review_likes')
     .select('rating_id', { count: 'exact', head: true })
     .eq('rating_id', data.id);
+  if (countError) throw countError;
   return {
     id: data.id,
     value: data.value,
@@ -61,6 +64,28 @@ export async function setRating(
     },
     { onConflict: 'user_id,entity_type,entity_id' },
   );
+  if (error) throw error;
+}
+
+/**
+ * Change only the review text of an existing rating, never its score.
+ *
+ * The review thread edits and deletes through this. Its copy of the score can
+ * be older than the title screen's (the thread stays cached), and re-sending it
+ * through `setRating` silently undid a score change made since the thread
+ * loaded — found on the simulator while testing PR #88.
+ */
+export async function setReviewText(
+  entityType: RatingEntityType,
+  entityId: string,
+  review: string | null,
+) {
+  const { q } = await updateMine('ratings', {
+    review: review && review.trim() ? review.trim() : null,
+  });
+  const { error } = await q
+    .eq('entity_type', entityType)
+    .eq('entity_id', entityId);
   if (error) throw error;
 }
 
@@ -223,13 +248,16 @@ export async function getTitleRatings(
 ): Promise<TitleRatings> {
   const viewerId = await currentViewer();
 
-  const { data, error } = await supabase
-    .from('ratings')
-    .select('id, user_id, value, review, updated_at')
-    .eq('entity_type', entityType)
-    .eq('entity_id', entityId);
-  if (error) throw error;
-  const rows = (data ?? []) as any[];
+  // Every row, past PostgREST's 1000-row cap, or the average and count of a
+  // popular title would quietly describe only its first thousand ratings.
+  const rows = await allPages<any>(async () => ({
+    q: supabase
+      .from('ratings')
+      .select('id, user_id, value, review, updated_at')
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
+      .order('id'),
+  }));
 
   const count = rows.length;
   const average =

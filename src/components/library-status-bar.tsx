@@ -50,6 +50,8 @@ export function LibraryStatusBar({
       if (remove) await removeFromLibrary(titleId);
       else await setLibraryStatus(titleId, next);
       queryClient.invalidateQueries({ queryKey: keys.library() });
+      // Removing deletes the library row, and the favorite flag lives on it.
+      if (remove) queryClient.invalidateQueries({ queryKey: keys.favorite(titleId) });
       // Completed means watched (ADR 0024): fill in whatever isn't logged yet —
       // the movie's one watch, or a series' remaining aired episodes.
       if (!remove && next === 'completed')

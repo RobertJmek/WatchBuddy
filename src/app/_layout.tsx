@@ -94,10 +94,16 @@ function RootNavigator() {
     Archivo_700Bold,
   });
 
-  // Clear cached query data when signed out so nothing leaks between accounts.
+  // Clear cached query data when signed out so nothing leaks between accounts —
+  // once the session check has answered (before it, `session` is null for
+  // everyone), and the persisted copy too: the persister writes the emptied
+  // cache only after its throttle, so an app killed right after sign-out would
+  // otherwise restore the previous account's data on the next launch.
   useEffect(() => {
-    if (!session) queryClient.clear();
-  }, [session]);
+    if (!initialized || session) return;
+    queryClient.clear();
+    void asyncStoragePersister.removeClient();
+  }, [initialized, session]);
 
   // Wait for the initial session check (avoid flashing sign-in), the saved theme
   // preference (avoid flashing the wrong scheme), and the typefaces (avoid a

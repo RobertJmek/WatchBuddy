@@ -19,7 +19,12 @@ export type ProfileUpdate = {
   avatar_url?: string | null;
 };
 
-/** Thrown when a username update collides with the unique constraint. */
+/**
+ * Input caps, the same numbers the server enforces (migration 0021). The
+ * username's 20 is also the upper bound of USERNAME_RE below.
+ */
+export const PROFILE_LIMITS = { displayName: 40, username: 20, bio: 160 } as const;
+
 /** A username the app accepts: 3–20 chars, a–z / 0–9 / _. */
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
@@ -51,6 +56,7 @@ export async function pickAvatarImage(): Promise<PickedImage | null> {
   return { uri: asset.uri, mimeType: asset.mimeType ?? undefined };
 }
 
+/** Thrown when a username update collides with the unique constraint. */
 class UsernameTakenError extends Error {
   constructor() {
     super('That username is already taken.');

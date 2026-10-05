@@ -28,6 +28,7 @@ import {
   pickAvatarImage,
   saveProfile,
   saveProfileErrorMessage,
+  PROFILE_LIMITS,
   usernameError,
   type PickedImage,
 } from '@/lib/profile';
@@ -197,6 +198,7 @@ export default function EditProfileScreen() {
             style={inputStyle}
             placeholder="Your name"
             placeholderTextColor={c.textSecondary}
+            maxLength={PROFILE_LIMITS.displayName}
             value={displayName}
             editable={!saving}
             onChangeText={setDisplayName}
@@ -209,6 +211,7 @@ export default function EditProfileScreen() {
             placeholderTextColor={c.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
+            maxLength={PROFILE_LIMITS.username}
             value={username}
             editable={!saving}
             onChangeText={setUsername}
@@ -220,6 +223,7 @@ export default function EditProfileScreen() {
             placeholder="A little about you…"
             placeholderTextColor={c.textSecondary}
             multiline
+            maxLength={PROFILE_LIMITS.bio}
             value={bio}
             editable={!saving}
             onChangeText={setBio}

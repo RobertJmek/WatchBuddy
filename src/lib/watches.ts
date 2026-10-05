@@ -292,8 +292,9 @@ export async function getDiary({
 
 /**
  * Move watch rows to a new calendar day, preserving each row's time-of-day so
- * within-day ordering survives. Each update is scoped to the viewer by
- * `updateMine`; RLS is the backstop, not the mechanism.
+ * within-day ordering survives — but never past now: moving a 23:00 watch to
+ * today in the morning would otherwise date it in the future. Each update is
+ * scoped to the viewer by `updateMine`; RLS is the backstop, not the mechanism.
  */
 export async function updateWatchDay(
   kind: 'movie' | 'episode',
@@ -301,6 +302,7 @@ export async function updateWatchDay(
   day: Date,
 ) {
   const table = kind === 'movie' ? 'movie_watches' : 'episode_watches';
+  const now = Date.now();
   await Promise.all(
     rows.map(async (r) => {
       const old = new Date(r.watched_at);
@@ -314,7 +316,7 @@ export async function updateWatchDay(
         old.getMilliseconds(),
       );
       const { q } = await updateMine(table, {
-        watched_at: next.toISOString(),
+        watched_at: new Date(Math.min(next.getTime(), now)).toISOString(),
       });
       const { error } = await q.eq('id', r.id);
       if (error) throw error;
