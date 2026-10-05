@@ -1,8 +1,9 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   TextInput,
@@ -27,6 +28,7 @@ import {
   getRating,
   removeRating,
   setRating,
+  type Rating,
 } from '@/lib/ratings';
 
 const ACTIVE = Accent;
@@ -35,6 +37,8 @@ const VALUES = Array.from({ length: 10 }, (_, i) => i + 1);
 /** Matches the app's standard press spring (see `press-scale.tsx`). */
 const SPRING = { damping: 20, stiffness: 300 };
 const BUBBLE = 40;
+/** Matches the server's limit (migration 0021). */
+const REVIEW_MAX = 2000;
 
 /**
  * One number on the scale. The whole cell is `flex: 1` so the ten cells divide
@@ -108,13 +112,22 @@ export function RatingBar({
   const textColor = c.text;
   const borderColor = c.border;
 
-  const [value, setValue] = useState<number | null>(null);
-  const [review, setReview] = useState(''); // saved review
-  const [likeCount, setLikeCount] = useState(0);
-  const [ratingId, setRatingId] = useState<string | null>(null);
+  // A query, not local state: the title screen stays mounted under the review
+  // thread, and a copy loaded once here would write an edited or deleted review
+  // straight back on the next score change. The thread invalidates this key.
+  const ratingKey = keys.myRating(titleId);
+  const ratingQ = useQuery({
+    queryKey: ratingKey,
+    queryFn: () => getRating(entityType, titleId),
+  });
+  const rating = ratingQ.data ?? null;
+  const value = rating?.value ?? null;
+  const review = rating?.review ?? '';
+  const likeCount = rating?.likeCount ?? 0;
+  const ratingId = rating?.id ?? null;
+
   const [draft, setDraft] = useState(''); // edit buffer
   const [editing, setEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Drag-to-rate: the row's measured width turns a finger's x into a value.
@@ -155,7 +168,7 @@ export function RatingBar({
     .onUpdate((e) => hover(e.x))
     .onEnd((e) => {
       const n = valueFromX(e.x);
-      if (n != null) void choose(n, { fromDrag: true });
+      if (n != null) choose(n, { fromDrag: true });
     })
     .onFinalize(() => {
       lastHovered.current = null;
@@ -163,36 +176,39 @@ export function RatingBar({
     });
   /* eslint-enable react-hooks/refs */
 
-  useEffect(() => {
-    let active = true;
-    getRating(entityType, titleId)
-      .then((r) => {
-        if (!active || !r) return;
-        setValue(r.value);
-        setReview(r.review ?? '');
-        setLikeCount(r.likeCount);
-        setRatingId(r.id);
-      })
-      .catch(() => {})
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [titleId, entityType]);
-
   /**
    * `fromDrag` = the value was released under a finger swiping the scale, not
    * tapped. A drag never clears: stopping on the number you already have is far
    * too easy to do by accident, so it's a no-op instead of wiping your rating.
-   * A tap on the current value still clears it.
+   * A tap on the current value still clears it — after a confirmation when
+   * there is a review, because clearing deletes the rating row and, with it,
+   * the review, its likes and every reply other people wrote to it.
    */
-  async function choose(n: number, opts?: { fromDrag?: boolean }) {
+  function choose(n: number, opts?: { fromDrag?: boolean }) {
     if (opts?.fromDrag && n === value) return; // nothing to write
+    if (n === value && (review || likeCount > 0)) {
+      Alert.alert(
+        'Remove your rating?',
+        'Your review, its likes and every reply to it will be deleted too.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Remove', style: 'destructive', onPress: () => void commit(n) },
+        ],
+      );
+      return;
+    }
+    void commit(n, opts);
+  }
+
+  async function commit(n: number, opts?: { fromDrag?: boolean }) {
     const clear = n === value;
-    const previous = value;
-    setValue(clear ? null : n); // optimistic
+    const previous = rating;
+    // Optimistic.
+    const optimistic: Rating | null = clear
+      ? null
+      : { id: ratingId ?? '', value: n, review: rating?.review ?? null, likeCount };
+    queryClient.setQueryData(ratingKey, optimistic);
     if (clear) {
-      setReview('');
       setEditing(false);
       hapticUndo();
     } else if (opts?.fromDrag) {
@@ -203,6 +219,7 @@ export function RatingBar({
     try {
       if (clear) await removeRating(entityType, titleId);
       else await setRating(entityType, titleId, n, review);
+      queryClient.invalidateQueries({ queryKey: ratingKey });
       queryClient.invalidateQueries({ queryKey: keys.stats() });
       queryClient.invalidateQueries({ queryKey: keys.titleRatings(titleId) });
       // The library carries the viewer's own rating (it's a filter axis), so a
@@ -214,7 +231,7 @@ export function RatingBar({
       // already started — hence `onlyIfUntouched`.
       if (!clear && previous == null) void implied.mark({ onlyIfUntouched: true });
     } catch {
-      setValue(previous);
+      queryClient.setQueryData(ratingKey, previous);
       hapticFailure();
     }
   }
@@ -229,8 +246,12 @@ export function RatingBar({
     setSaving(true);
     try {
       await setRating(entityType, titleId, value, draft);
-      setReview(draft.trim());
+      const text = draft.trim() || null;
+      queryClient.setQueryData<Rating | null>(ratingKey, (r) =>
+        r ? { ...r, review: text } : r,
+      );
       setEditing(false);
+      queryClient.invalidateQueries({ queryKey: ratingKey });
       queryClient.invalidateQueries({ queryKey: keys.titleRatings(titleId) });
       hapticSuccess();
     } catch {
@@ -240,7 +261,33 @@ export function RatingBar({
     }
   }
 
-  if (loading) return <ActivityIndicator style={{ alignSelf: 'flex-start' }} />;
+  if (ratingQ.isLoading) return <ActivityIndicator style={{ alignSelf: 'flex-start' }} />;
+
+  // Nothing loaded and the load failed: show no scale at all. A scale here would
+  // read as "not rated", and the first tap would overwrite the real rating and
+  // erase its review.
+  if (ratingQ.data === undefined) {
+    return (
+      <View style={styles.container}>
+        <ThemedText type="meta" style={{ color: c.textSecondary }}>
+          Your rating
+        </ThemedText>
+        <View style={styles.actions}>
+          <ThemedText type="small" style={{ color: c.textSecondary }}>
+            Couldn&apos;t load your rating.
+          </ThemedText>
+          <Pressable
+            onPress={() => void ratingQ.refetch()}
+            hitSlop={8}
+            accessibilityRole="button">
+            <ThemedText type="small" style={styles.saveText}>
+              Retry
+            </ThemedText>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   // While dragging, the scale previews the value under the finger: the fill
   // follows it live instead of waiting for the release to commit.
@@ -296,6 +343,7 @@ export function RatingBar({
               ]}
               placeholder="Write a review…"
               placeholderTextColor={c.textSecondary}
+              maxLength={REVIEW_MAX}
               autoFocus
               multiline
               value={draft}

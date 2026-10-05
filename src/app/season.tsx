@@ -59,8 +59,8 @@ export default function SeasonScreen() {
         if (!active) return;
         setEpisodes(eps);
         setCounts(Object.fromEntries(map));
-      } catch (e) {
-        if (active) setError(String(e));
+      } catch {
+        if (active) setError("Couldn't load this season. Try again.");
       } finally {
         if (active) setLoading(false);
       }

@@ -97,6 +97,12 @@ export function useSearchLog() {
     hapticSuccess();
     const token = { cancelled: false };
     inflight.current.set(key, token);
+    // Log → undo → log again can put a second run's token under the same key
+    // before this one settles; deleting it then would let the second run's
+    // undo miss its write. Only ever remove our own.
+    const dropToken = () => {
+      if (inflight.current.get(key) === token) inflight.current.delete(key);
+    };
     void (async () => {
       try {
         // Same read-through the row already prefetches onPressIn → usually warm.
@@ -133,7 +139,7 @@ export function useSearchLog() {
             pending: false,
           };
         }
-        inflight.current.delete(key);
+        dropToken();
         if (token.cancelled) {
           // Undone while the write was in flight → roll it straight back.
           await reverseEntry(entry);
@@ -143,7 +149,7 @@ export function useSearchLog() {
         setLogged((prev) => (prev.has(key) ? new Map(prev).set(key, entry) : prev));
         invalidateWatchData(entry.kind === 'movie' ? entry.titleId : undefined);
       } catch {
-        inflight.current.delete(key);
+        dropToken();
         // Roll the optimistic ✓ back on failure.
         setLogged((prev) => {
           const next = new Map(prev);

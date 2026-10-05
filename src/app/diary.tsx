@@ -8,6 +8,7 @@ import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -28,6 +29,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure } from '@/lib/haptics';
 import {
   DIARY_PERIODS,
   rangeForPeriod,
@@ -71,7 +73,14 @@ export default function DiaryScreen() {
   const saveWatchDay = useCallback(
     async (entry: DiaryEntry, day: Date) => {
       setEditing(null);
-      await updateWatchDay(entry.kind, entry.rows, day);
+      try {
+        await updateWatchDay(entry.kind, entry.rows, day);
+      } catch {
+        // The picker is already closed, so this is the only place to say so.
+        hapticFailure();
+        Alert.alert("Couldn't change the date. Try again.");
+      }
+      // Either way: a batch can fail halfway, so show what actually landed.
       queryClient.invalidateQueries({ queryKey: keys.diary() });
       queryClient.invalidateQueries({ queryKey: keys.stats() });
     },

@@ -65,8 +65,18 @@ export const keys = {
   /** Whether `userId` is blocked by you, hidden from you, or neither. */
   blockStatus: (userId: string) => ['blocked', 'status', userId] as const,
 
+  /**
+   * Your own score + review of a title. The rating bar reads it and the review
+   * thread invalidates it, so an edit or delete there can't be undone by a
+   * stale copy on the title screen underneath. Bare = every title's.
+   */
+  myRating: (titleId?: string) =>
+    titleId ? (['myRating', titleId] as const) : (['myRating'] as const),
+
   // --- catalog & search ---------------------------------------------------
   libraryStatus: (titleId: string) => ['libraryStatus', titleId] as const,
+  /** Whether a title is favorited in your library. */
+  favorite: (titleId: string) => ['favorite', titleId] as const,
   /** Your own watches of one movie (the title screen's "Watched N×"). */
   movieWatches: (titleId: string) => ['movieWatches', titleId] as const,
   genres: () => ['genres'] as const,

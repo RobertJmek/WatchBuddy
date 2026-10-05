@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
@@ -43,9 +43,16 @@ export const ReviewRow = memo(function ReviewRow({
   const c = useTheme();
   const queryClient = useQueryClient();
 
-  // Optimistic like state; the server truth arrives on the next refetch.
+  // Optimistic like state, re-seeded from the server truth whenever a refetch
+  // changes it. Rows are keyed by author, so the component outlives a refetch:
+  // without the re-seed a like made in the thread never showed here, and the
+  // next tap counted it twice.
   const [liked, setLiked] = useState(review.likedByMe);
   const [likes, setLikes] = useState(review.likeCount);
+  useEffect(() => {
+    setLiked(review.likedByMe);
+    setLikes(review.likeCount);
+  }, [review.ratingId, review.likedByMe, review.likeCount]);
 
   // Long-press on the heart shows who liked (only when there's someone).
   function openLikers() {

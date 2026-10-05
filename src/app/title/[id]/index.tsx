@@ -47,7 +47,8 @@ export default function TitleDetailScreen() {
   const title = titleQ.data?.title ?? null;
   const seasons = titleQ.data?.seasons ?? [];
   const loading = titleQ.isLoading;
-  const error = titleQ.error ? String(titleQ.error) : null;
+  // Never the raw error text (a PostgREST or network message) on screen.
+  const error = titleQ.error ? "Couldn't load this title. Try again." : null;
 
   const year = title?.release_date?.slice(0, 4);
 
@@ -226,7 +227,7 @@ export default function TitleDetailScreen() {
                 <MovieWatchBar titleId={title.id} />
               )}
               {title.media_type === 'tv' && seasons.length > 0 && (
-                <TvWatchBar tmdbId={title.tmdb_id} seasons={seasons} />
+                <TvWatchBar titleId={title.id} tmdbId={title.tmdb_id} seasons={seasons} />
               )}
 
               <View style={[styles.divider, { backgroundColor: c.border }]} />

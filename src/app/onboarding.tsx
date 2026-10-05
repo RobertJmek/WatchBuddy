@@ -23,6 +23,7 @@ import {
   pickAvatarImage,
   saveProfile,
   saveProfileErrorMessage,
+  PROFILE_LIMITS,
   usernameError,
   type PickedImage,
 } from '@/lib/profile';
@@ -152,6 +153,7 @@ export default function OnboardingScreen() {
           style={inputStyle}
           placeholder="Your name"
           placeholderTextColor={c.textSecondary}
+          maxLength={PROFILE_LIMITS.displayName}
           value={displayName}
           editable={!saving}
           onChangeText={setDisplayName}
@@ -164,6 +166,7 @@ export default function OnboardingScreen() {
           placeholderTextColor={c.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
+          maxLength={PROFILE_LIMITS.username}
           value={username}
           editable={!saving}
           onChangeText={setUsername}
