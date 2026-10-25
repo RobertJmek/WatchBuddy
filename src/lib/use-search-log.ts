@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback } from 'react';
 
-import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import {
   getLibraryStatus,
@@ -10,6 +9,7 @@ import {
   type LibraryStatus,
 } from '@/lib/library';
 import { fetchAllEpisodes, getTitle, type SearchResult } from '@/lib/tmdb';
+import { useSessionLog } from '@/lib/use-session-log';
 import {
   airedOnly,
   logManyEpisodeWatches,
@@ -19,39 +19,27 @@ import {
 } from '@/lib/watches';
 
 /**
- * One swipe-logged Search row, remembered for the session. Holds exactly the
- * rows the swipe inserted so undo reverses them precisely — and, for movies, the
- * pre-log Library status so undo can restore it (logMovieWatch forces Completed).
+ * What one swipe-logged Search row wrote: exactly the rows it inserted, so undo
+ * reverses them precisely — and, for movies, the pre-log Library status so undo
+ * can restore it (logMovieWatch forces Completed).
  */
-type LoggedEntry = {
+type LoggedRows = {
   kind: 'movie' | 'tv';
   titleId: string;
   watchIds: string[];
   priorStatus: LibraryStatus | null;
-  /** True while the optimistic ✓ is shown but the DB write hasn't landed yet. */
-  pending: boolean;
 };
 
 /** Identity of a search result in the session-log map, and as a list key. */
 export const itemKey = (r: SearchResult) => `${r.media_type}-${r.tmdb_id}`;
 
 /**
- * Search's swipe-to-log: session-scoped and optimistic. A swipe shows the ✓ at
- * once and writes in the background; an undo reverses exactly the rows that
- * swipe inserted, even while the write is still in flight. See ADR 0011.
+ * Search's swipe-to-log: a movie logs one watch, a series every aired
+ * non-Specials episode. Session-scoped and optimistic (`useSessionLog`).
+ * See ADR 0011.
  */
 export function useSearchLog() {
   const queryClient = useQueryClient();
-  const [logged, setLogged] = useState<Map<string, LoggedEntry>>(new Map());
-  // Cancel tokens for in-flight logs, so an undo tapped *before* the DB write
-  // finishes can cancel it — the write, once done, rolls itself back.
-  const inflight = useRef(new Map<string, { cancelled: boolean }>());
-  // The two handlers below are handed to memoized rows, so they have to stay
-  // referentially stable — which means they can't close over `logged`. They read
-  // it through here instead. (Same mailbox pattern as `range-slider`.)
-  const loggedRef = useRef(logged);
-  // eslint-disable-next-line react-hooks/refs -- a mailbox, not render state
-  loggedRef.current = logged;
 
   const invalidateWatchData = useCallback(
     (titleId?: string) => {
@@ -67,47 +55,23 @@ export function useSearchLog() {
   );
 
   /** Delete exactly the rows an entry inserted (+ restore a movie's status). */
-  const reverseEntry = useCallback(async function reverseEntry(entry: LoggedEntry) {
-    if (entry.kind === 'movie') {
-      await removeMovieWatch(entry.watchIds[0]);
-      if (entry.priorStatus)
-        await setLibraryStatus(entry.titleId, entry.priorStatus);
-      else await removeFromLibrary(entry.titleId);
-      invalidateWatchData(entry.titleId);
+  const { logged, log, undo } = useSessionLog<LoggedRows>(async (rows) => {
+    if (rows.kind === 'movie') {
+      await removeMovieWatch(rows.watchIds[0]);
+      if (rows.priorStatus) await setLibraryStatus(rows.titleId, rows.priorStatus);
+      else await removeFromLibrary(rows.titleId);
+      invalidateWatchData(rows.titleId);
     } else {
-      await removeEpisodeWatchesByIds(entry.watchIds);
+      await removeEpisodeWatchesByIds(rows.watchIds);
       invalidateWatchData();
     }
-  }, [invalidateWatchData]);
+  });
 
-  const logItem = useCallback(function logItem(item: SearchResult) {
-    const key = itemKey(item);
-    if (loggedRef.current.has(key)) return;
-    const kind: LoggedEntry['kind'] = item.media_type === 'tv' ? 'tv' : 'movie';
-    // Optimistic: show the ✓ instantly; the DB write runs in the background.
-    setLogged((prev) =>
-      new Map(prev).set(key, {
-        kind,
-        titleId: '',
-        watchIds: [],
-        priorStatus: null,
-        pending: true,
-      }),
-    );
-    hapticSuccess();
-    const token = { cancelled: false };
-    inflight.current.set(key, token);
-    // Log → undo → log again can put a second run's token under the same key
-    // before this one settles; deleting it then would let the second run's
-    // undo miss its write. Only ever remove our own.
-    const dropToken = () => {
-      if (inflight.current.get(key) === token) inflight.current.delete(key);
-    };
-    void (async () => {
-      try {
+  const logItem = useCallback(
+    (item: SearchResult) =>
+      log(itemKey(item), async () => {
         // Same read-through the row already prefetches onPressIn → usually warm.
         const { title, seasons } = await getTitle(item.tmdb_id, item.media_type);
-        let entry: LoggedEntry;
         if (item.media_type === 'tv') {
           const seasonNumbers = seasons
             .map((s) => s.season_number)
@@ -116,71 +80,23 @@ export function useSearchLog() {
           const episodes = airedOnly(
             await fetchAllEpisodes(item.tmdb_id, seasonNumbers),
           );
-          // Nothing aired yet → nothing to log; the catch rolls the ✓ back.
+          // Nothing aired yet → nothing to log; throwing rolls the ✓ back.
           if (episodes.length === 0) throw new Error('no aired episodes');
           const ids = await logManyEpisodeWatches(
             episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
           );
-          entry = {
-            kind: 'tv',
-            titleId: title.id,
-            watchIds: ids,
-            priorStatus: null,
-            pending: false,
-          };
-        } else {
-          const priorStatus = await getLibraryStatus(title.id);
-          const watchId = await logMovieWatch(title.id);
-          entry = {
-            kind: 'movie',
-            titleId: title.id,
-            watchIds: [watchId],
-            priorStatus,
-            pending: false,
-          };
+          invalidateWatchData();
+          return { kind: 'tv', titleId: title.id, watchIds: ids, priorStatus: null };
         }
-        dropToken();
-        if (token.cancelled) {
-          // Undone while the write was in flight → roll it straight back.
-          await reverseEntry(entry);
-          return;
-        }
-        // Swap the pending entry for the resolved one (with real ids for undo).
-        setLogged((prev) => (prev.has(key) ? new Map(prev).set(key, entry) : prev));
-        invalidateWatchData(entry.kind === 'movie' ? entry.titleId : undefined);
-      } catch {
-        dropToken();
-        // Roll the optimistic ✓ back on failure.
-        setLogged((prev) => {
-          const next = new Map(prev);
-          next.delete(key);
-          return next;
-        });
-        hapticFailure();
-      }
-    })();
-  }, [invalidateWatchData, reverseEntry]);
+        const priorStatus = await getLibraryStatus(title.id);
+        const watchId = await logMovieWatch(title.id);
+        invalidateWatchData(title.id);
+        return { kind: 'movie', titleId: title.id, watchIds: [watchId], priorStatus };
+      }),
+    [log, invalidateWatchData],
+  );
 
-  const undoItem = useCallback(function undoItem(item: SearchResult) {
-    const key = itemKey(item);
-    const entry = loggedRef.current.get(key);
-    if (!entry) return;
-    // Optimistic: drop the ✓ instantly.
-    setLogged((prev) => {
-      const next = new Map(prev);
-      next.delete(key);
-      return next;
-    });
-    hapticUndo();
-    const token = inflight.current.get(key);
-    if (token) {
-      // Still writing — cancel; the log's completion handler rolls it back.
-      token.cancelled = true;
-      return;
-    }
-    // Resolved entry → delete its rows now.
-    void reverseEntry(entry).catch(() => {});
-  }, [reverseEntry]);
+  const undoItem = useCallback((item: SearchResult) => undo(itemKey(item)), [undo]);
 
   return { logged, logItem, undoItem };
 }

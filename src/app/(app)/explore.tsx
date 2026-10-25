@@ -315,7 +315,7 @@ export default function SearchScreen() {
                   bg={c.backgroundElement}
                   router={router}
                   logged={logged.has(key)}
-                  pending={logged.get(key)?.pending ?? false}
+                  pending={logged.get(key)?.some((e) => e.pending) ?? false}
                   onLog={logItem}
                   onUndo={undoItem}
                 />

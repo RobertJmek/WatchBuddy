@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -17,17 +17,20 @@ import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryStatusBar } from '@/components/library-status-bar';
 import { MovieWatchBar } from '@/components/movie-watch-bar';
 import { RatingBar } from '@/components/rating-bar';
+import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ReviewRow } from '@/components/review-row';
 import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { TvWatchBar } from '@/components/tv-watch-bar';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Danger, Glow, Hero, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Danger, Glow, Hero, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
-import { imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
+import { fetchAllEpisodes, imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
 import { usePullToDismiss } from '@/lib/pull-to-dismiss';
+import { useSessionLog } from '@/lib/use-session-log';
+import { airedOnly, logManyEpisodeWatches, removeEpisodeWatchesByIds } from '@/lib/watches';
 
 // Roughly the Save/Cancel row below the review composer, plus breathing room.
 // Without it the keyboard stops flush against the input and swallows the very
@@ -80,6 +83,33 @@ export default function TitleDetailScreen() {
   // from the backdrop on Android (`usePullToDismiss`).
   const dismiss = useCallback(() => router.back(), [router]);
   const { scrollHandler, atTop } = usePullToDismiss(dismiss);
+
+  // Swipe a season row right to log it: one more watch of every aired episode
+  // in it (a rewatch counts, like the season screen's "Log whole season").
+  // Every swipe adds another; left undoes the latest one. Session-scoped,
+  // keyed by season number — see ADR 0011. The row's Swipeable activates
+  // before this screen's SwipeNav, so a drag that starts on a season row is
+  // the row's (ADR 0023).
+  const queryClient = useQueryClient();
+  const invalidateWatchData = () => {
+    queryClient.invalidateQueries({ queryKey: keys.diary() });
+    queryClient.invalidateQueries({ queryKey: keys.stats() });
+  };
+  const seasonLog = useSessionLog<string[]>(async (ids) => {
+    await removeEpisodeWatchesByIds(ids);
+    invalidateWatchData();
+  });
+  const logSeason = (tmdbId: number, seasonNumber: number) =>
+    seasonLog.log(String(seasonNumber), async () => {
+      const episodes = airedOnly(await fetchAllEpisodes(tmdbId, [seasonNumber]));
+      // Nothing aired yet → nothing to log; throwing rolls the ✓ back.
+      if (episodes.length === 0) throw new Error('no aired episodes');
+      const ids = await logManyEpisodeWatches(
+        episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
+      );
+      invalidateWatchData();
+      return ids;
+    }, { repeat: true });
 
   return (
     // Back is repeated here on purpose: the root layout's back-swipe wraps
@@ -250,35 +280,85 @@ export default function TitleDetailScreen() {
                   {seasons
                     .slice()
                     .sort((a, b) => a.season_number - b.season_number)
-                    .map((s) => (
-                      <Pressable
-                        key={s.id}
-                        style={[
-                          styles.seasonRow,
-                          { backgroundColor: c.backgroundElement },
-                        ]}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/season',
-                            params: {
-                              tmdbId: String(title.tmdb_id),
-                              seasonNumber: String(s.season_number),
-                              name: s.name ?? `Season ${s.season_number}`,
-                            },
-                          })
-                        }
-                        accessibilityRole="button">
-                        <ThemedText>
-                          {s.name ?? `Season ${s.season_number}`}
-                          {s.episode_count ? ` · ${s.episode_count} eps` : ''}
-                        </ThemedText>
-                        <IconSymbol
-                          name="chevron.right"
-                          size={18}
-                          tintColor={c.textSecondary}
-                        />
-                      </Pressable>
-                    ))}
+                    .map((s) => {
+                      const stack = seasonLog.logged.get(String(s.season_number));
+                      const undo = () => seasonLog.undo(String(s.season_number));
+                      return (
+                        <SwipeToLogRow
+                          key={s.id}
+                          longLog
+                          logLabel="Log season"
+                          onLog={() => logSeason(title.tmdb_id, s.season_number)}
+                          onUndo={stack ? undo : undefined}>
+                          <Pressable
+                            style={[
+                              styles.seasonRow,
+                              { backgroundColor: c.backgroundElement },
+                            ]}
+                            onPress={() =>
+                              router.push({
+                                pathname: '/season',
+                                params: {
+                                  tmdbId: String(title.tmdb_id),
+                                  seasonNumber: String(s.season_number),
+                                  name: s.name ?? `Season ${s.season_number}`,
+                                },
+                              })
+                            }
+                            accessibilityRole="button"
+                            // The swipe's two directions, on the focusable row
+                            // (ADR 0018) — a screen reader can't perform a pan.
+                            accessibilityActions={
+                              stack
+                                ? [
+                                    { name: 'log', label: 'Log season again' },
+                                    { name: 'undo', label: 'Undo last season log' },
+                                  ]
+                                : [{ name: 'log', label: 'Log season' }]
+                            }
+                            onAccessibilityAction={({ nativeEvent }) => {
+                              if (nativeEvent.actionName === 'log')
+                                logSeason(title.tmdb_id, s.season_number);
+                              else if (nativeEvent.actionName === 'undo') undo();
+                            }}>
+                            <ThemedText style={styles.seasonName}>
+                              {s.name ?? `Season ${s.season_number}`}
+                              {s.episode_count ? ` · ${s.episode_count} eps` : ''}
+                            </ThemedText>
+                            {stack && (
+                              // Its own Pressable: tapping the ✓ undoes the latest
+                              // log instead of opening the season. Dimmed until
+                              // that write lands; ×N once you've logged it twice.
+                              <Pressable
+                                style={[styles.logged, stack.at(-1)!.pending && styles.checkPending]}
+                                hitSlop={8}
+                                onPress={undo}
+                                accessibilityRole="button"
+                                accessibilityLabel={
+                                  stack.length > 1
+                                    ? `Logged ${stack.length} times. Undo the last one`
+                                    : 'Undo this season log'
+                                }
+                                accessibilityState={{ busy: stack.at(-1)!.pending }}>
+                                {stack.length > 1 && (
+                                  <ThemedText type="smallBold" style={{ color: Accent }}>
+                                    ×{stack.length}
+                                  </ThemedText>
+                                )}
+                                <View style={styles.check}>
+                                  <IconSymbol name="checkmark" size={16} tintColor={AccentText} />
+                                </View>
+                              </Pressable>
+                            )}
+                            <IconSymbol
+                              name="chevron.right"
+                              size={18}
+                              tintColor={c.textSecondary}
+                            />
+                          </Pressable>
+                        </SwipeToLogRow>
+                      );
+                    })}
                 </View>
               )}
 
@@ -392,6 +472,18 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.two,
+    gap: Spacing.two,
   },
+  seasonName: { flex: 1 },
+  check: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logged: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  checkPending: { opacity: 0.55 },
   error: { color: Danger, marginTop: Spacing.six, textAlign: 'center' },
 });

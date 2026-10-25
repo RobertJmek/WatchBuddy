@@ -54,8 +54,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Movie watch logging** (rewatches included).
 - **Rating or completing counts as watched** — a first rating, or marking a title Completed,
   logs the watch for you (a movie once; a series' aired, unwatched episodes), with an Undo.
-- **Swipe to log** — swipe a Search result (or a season's episode) **right** to log a watch,
-  **left** to undo; a movie logs one watch, a whole series logs with a longer swipe.
+- **Swipe to log** — swipe a Search result, a season on a series' page, or a season's episode
+  **right** to log a watch, **left** to undo; a movie logs one watch, while a whole series or a
+  whole season logs with a longer swipe.
 - A dated **Diary** of everything you've watched, filterable by **day / week / month / year /
   custom range**, with **editable watch dates** (grouped episode entries move together).
 - **Search inside Library and Diary** — a toggleable title search that composes with the
