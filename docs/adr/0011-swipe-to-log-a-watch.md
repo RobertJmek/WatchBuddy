@@ -129,6 +129,36 @@ The scale also **fills live** while you drag — the circles and the selected ri
 follow `hovered ?? value`, so the bar fills and empties under your finger and the
 release just keeps what you already see.
 
+## Follow-up (v1.23.0): season rows on the title screen
+
+A series' title screen lists its seasons, and each row is now a `SwipeToLogRow`
+too. Swipe right logs the season, swipe left undoes it, and the ✓ that shows up
+can also be tapped to undo.
+
+- **A season swipe adds one watch to every aired episode in it.** It doesn't
+  skip the episodes you've already seen, so on a season you've watched it is a
+  rewatch. That matches the season screen's "Log whole season" button (Robert's
+  call). "Log whole series" on the same page works differently on purpose:
+  it fills in only the aired episodes you haven't logged, behind a confirmation.
+  So the two bulk logs on one page follow different rules.
+- **Undo works only within the session, like Search, and is keyed by season
+  number.** It removes exactly the rows that swipe inserted. On a season you
+  didn't swipe-log on this visit, undo does nothing. The cancel-token and
+  rollback machinery used to live inside the Search hook. It is now
+  `useSessionLog` (`src/lib/use-session-log.ts`), and Search and the title
+  screen both use it, so the race fixes live in one place.
+- **It needs the long swipe** (`longLog`, 45% of the width), just like a whole
+  series. A season is tens of rows written with no dialog, so the length of the
+  swipe acts as the confirmation.
+- **The row takes priority over the screen's swipe.** The title screen's
+  `SwipeNav` (left opens Reviews, right closes) activates at 12pt, while the
+  row's `Swipeable` activates at 10pt. So a horizontal drag that starts on a
+  season row belongs to the row, on both platforms (ADR 0023's
+  threshold rule). That is the same trade the season screen's episode rows
+  and Search's rows already make. You close the page or open Reviews by
+  dragging anywhere else on it. Android's system back gesture starts at the
+  screen edge and the OS takes it before the app does.
+
 ## Layout
 
 ```
@@ -138,6 +168,8 @@ src/components/swipe-to-log-row.tsx   auto-commit swipe wrapper (log / undo)
 src/app/_layout.tsx                   GestureHandlerRootView at the root
 src/app/(app)/explore.tsx             Search: session state, checkmark, log/undo
 src/app/season.tsx                    episode rows: swipe mirrors the +/− buttons
+src/lib/use-session-log.ts            session-scoped optimistic log + exact-row undo
+src/app/title/[id]/index.tsx          season rows: long swipe logs a season (+1)
 src/lib/watches.ts                    return inserted ids; removeEpisodeWatchesByIds
 src/components/icon-symbol.tsx        checkmark / arrow.uturn glyphs
 ```
