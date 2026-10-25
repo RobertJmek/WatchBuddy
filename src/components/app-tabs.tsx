@@ -32,6 +32,7 @@ import { Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
+import { hapticTick } from '@/lib/haptics';
 import { getUnreadCount, subscribeToNotifications } from '@/lib/notifications';
 import { TabPagerProvider } from '@/lib/tab-pager';
 import { emitTabReset } from '@/lib/tab-reset';
@@ -173,6 +174,16 @@ function PagedTabSlot() {
   // The pager reports the page it settled on even when we asked for it, so
   // this ref is what stops a tab press from dispatching a second jump.
   const settled = useRef(page);
+
+  // One tick per real tab change. A press and a swipe both end up here; a
+  // re-press of the focused tab (a reset, not a change) and the first render
+  // don't.
+  const ticked = useRef(page);
+  useEffect(() => {
+    if (ticked.current === page) return;
+    ticked.current = page;
+    hapticTick();
+  }, [page]);
 
   // Tab press (or any other navigation) → pager follows.
   useEffect(() => {
