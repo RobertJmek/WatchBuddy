@@ -67,7 +67,6 @@ export function SwipeToLogRow({
     // a swipe (and the handler knows whether it's a tick or a full commit).
     if (direction === 'left') onLog();
     else onUndo?.();
-    ref.current?.close();
   }
 
   return (
@@ -76,6 +75,13 @@ export function SwipeToLogRow({
       leftThreshold={logThreshold}
       rightThreshold={undoThreshold}
       onSwipeableWillOpen={handleWillOpen}
+      // Close once the open spring has finished, never from inside WillOpen.
+      // RNGH calls WillOpen in the same tick it starts the open spring, before
+      // its `rowState` update has flushed. A `close()` there reads the stale
+      // state and starts a second native spring on the same node in the same
+      // frame. On iOS the open one can win, and the row stays open until some
+      // unrelated re-render (a season log settling) puts it back.
+      onSwipeableOpen={() => ref.current?.close()}
       renderLeftActions={() => (
         <View style={[styles.action, styles.logAction]}>
           <IconSymbol name="checkmark" size={22} tintColor={AccentText} />
