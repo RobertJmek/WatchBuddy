@@ -29,7 +29,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticFailure } from '@/lib/haptics';
+import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import {
   DIARY_PERIODS,
   rangeForPeriod,
@@ -73,6 +73,7 @@ export default function DiaryScreen() {
   const saveWatchDay = useCallback(
     async (entry: DiaryEntry, day: Date) => {
       setEditing(null);
+      hapticSuccess();
       try {
         await updateWatchDay(entry.kind, entry.rows, day);
       } catch {

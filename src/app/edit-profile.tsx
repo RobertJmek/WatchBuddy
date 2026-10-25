@@ -23,6 +23,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { buildExport } from '@/lib/export';
+import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import {
   getMyProfile,
   pickAvatarImage,
@@ -98,6 +99,7 @@ export default function EditProfileScreen() {
       // Overwrite a leftover file from an earlier export the same day.
       file.create({ overwrite: true, intermediates: true });
       file.write(JSON.stringify(data, null, 2));
+      hapticSuccess();
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(file.uri, {
           mimeType: 'application/json',
@@ -108,6 +110,7 @@ export default function EditProfileScreen() {
       }
     } catch (e) {
       console.error('export:', e);
+      hapticFailure();
       Alert.alert(
         'Export failed',
         e instanceof Error ? e.message : 'Could not export your data. Try again.',
@@ -158,9 +161,11 @@ export default function EditProfileScreen() {
         },
         picked,
       );
+      hapticSuccess();
       queryClient.invalidateQueries({ queryKey: keys.profile() });
       router.back();
     } catch (e) {
+      hapticFailure();
       setError(saveProfileErrorMessage(e));
     } finally {
       setSaving(false);

@@ -163,10 +163,35 @@ can also be tapped to undo.
   dragging anywhere else on it. Android's system back gesture starts at the
   screen edge and the OS takes it before the app does.
 
+## Follow-up: haptics on navigation (v1.23.1)
+
+The v1.12.2 rule kept navigation silent. Robert asked for a buzz when the main
+tab changes, so that rule now has two exceptions:
+
+- **A tab change ticks** (`hapticTick`), whether it came from a tap on the bar
+  or a swipe of the pager. The one place both paths reach is the tab index, so
+  `PagedTabSlot` (`app-tabs.tsx`) ticks when that index changes. A re-press of
+  the focused tab is a reset, not a change, and stays silent. So does the first
+  render. On a swipe the tick arrives when the pager settles, not mid-drag.
+- **A committed `SwipeNav` gesture ticks**: title → Reviews, the right-swipe
+  close and back, and Android's pull-down close. It fires inside `fire()`,
+  after the focus check, so a swipe that does nothing gets no buzz. The Feed's
+  segment swipe goes through the same `fire()`, so its own handler no longer
+  buzzes, which would have doubled it. A tap on the segmented control keeps
+  its `hapticToggle`. Native gestures are left alone: iOS's swipe-back and the
+  overscroll-to-close in `pull-to-dismiss.ts` are not ours to decorate.
+
+The same pass closed some writes that had no feedback at all. A diary date
+change, a profile save (edit and onboarding), an import that finishes or fails,
+and a data export now use the same success/failure helpers as every other
+write. A cancelled import has no error message and gets no buzz.
+
 ## Layout
 
 ```
 src/lib/haptics.ts                    the only importer of expo-haptics
+src/components/app-tabs.tsx           tab change tick (tap or pager swipe)
+src/components/swipe-nav.tsx          tick on a committed navigation swipe
 src/components/rating-bar.tsx         drag-to-rate: pan over the 1–10 scale
 src/components/swipe-to-log-row.tsx   auto-commit swipe wrapper (log / undo)
 src/app/_layout.tsx                   GestureHandlerRootView at the root

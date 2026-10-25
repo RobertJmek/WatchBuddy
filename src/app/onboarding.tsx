@@ -15,6 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { markOnboardingSeen } from '@/lib/onboarding';
@@ -102,9 +103,11 @@ export default function OnboardingScreen() {
         },
         picked,
       );
+      hapticSuccess();
       queryClient.invalidateQueries({ queryKey: keys.profile() });
       await finish();
     } catch (e) {
+      hapticFailure();
       setError(saveProfileErrorMessage(e));
       setSaving(false);
     }

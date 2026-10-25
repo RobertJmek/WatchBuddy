@@ -18,7 +18,6 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getFeed, markFeedSeen } from '@/lib/feed';
-import { hapticToggle } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import {
   getNotifications,
@@ -57,11 +56,6 @@ export default function FeedScreen() {
   const myId = session?.user.id;
 
   const [segment, setSegment] = useState<SegmentKey>('activity');
-  // The same feedback as a tap on the control; only a real change gets here.
-  const select = useCallback((key: SegmentKey) => {
-    hapticToggle(true);
-    setSegment(key);
-  }, []);
   const tabPager = useTabPager();
 
   const {
@@ -182,9 +176,9 @@ export default function FeedScreen() {
           // The default 12pt sits under the pager's 16dp paging slop and above
           // a row swipe's 10, which is what lets this beat the tab pager.
           blocks={tabPager?.native}
-          onSwipeLeft={segment === 'activity' ? () => select('notifications') : undefined}
+          onSwipeLeft={segment === 'activity' ? () => setSegment('notifications') : undefined}
           onSwipeRight={
-            segment === 'notifications' ? () => select('activity') : undefined
+            segment === 'notifications' ? () => setSegment('activity') : undefined
           }>
           <ActivityList
             items={items}

@@ -3,6 +3,8 @@ import { type ReactNode } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector, type NativeGesture } from 'react-native-gesture-handler';
 
+import { hapticTick } from '@/lib/haptics';
+
 /**
  * Swipe *shortcuts* between screens: a horizontal drag anywhere on the screen
  * fires `onSwipeLeft` / `onSwipeRight` once, at release, and on Android a
@@ -101,7 +103,9 @@ export function SwipeNav({
   // would get that second case wrong: nothing re-focuses a segment switch.
   const navigation = useNavigation();
   const fire = (handler: () => void) => {
-    if (navigation.isFocused()) handler();
+    if (!navigation.isFocused()) return;
+    hapticTick();
+    handler();
   };
 
   // Same idiom as `rating-bar.tsx`: `runOnJS` because the callbacks only

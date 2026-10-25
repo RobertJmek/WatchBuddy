@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Danger, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { importErrorMessage } from '@/lib/import-core/run';
 import { queryClient } from '@/lib/query';
 import { parseExport, WbImportParseError } from '@/lib/wb-import/parse';
@@ -45,7 +46,12 @@ export default function ImportWatchBuddyScreen() {
   const [state, setState] = useState<Step>({ step: 'idle', error: null });
   const run = useImportRun();
 
-  const fail = (e: unknown) => setState({ step: 'idle', error: importErrorMessage(e) });
+  // A cancel has no message, and gets no buzz either.
+  const fail = (e: unknown) => {
+    const error = importErrorMessage(e);
+    if (error) hapticFailure();
+    setState({ step: 'idle', error });
+  };
 
   async function pickJson() {
     const picked = await DocumentPicker.getDocumentAsync({
@@ -94,6 +100,7 @@ export default function ImportWatchBuddyScreen() {
       });
       // The import bypassed the app's mutation paths — refresh everything.
       queryClient.invalidateQueries();
+      hapticSuccess();
       setState({ step: 'done', summary });
     } catch (e) {
       // Partial writes are safe: a re-run prefetches and skips them.
