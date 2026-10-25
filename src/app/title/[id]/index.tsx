@@ -85,9 +85,9 @@ export default function TitleDetailScreen() {
   const { scrollHandler, atTop } = usePullToDismiss(dismiss);
 
   // Swipe a season row right to log it: one more watch of every aired episode
-  // in it (a rewatch counts, like the season screen's "Log whole season"), and
-  // left to undo exactly that. Session-scoped, keyed by season number — see
-  // ADR 0011. The row's Swipeable activates before this screen's SwipeNav, so
+  // in it (a rewatch counts, like the season screen's "Log whole season").
+  // Every swipe adds another; left undoes the latest one. Session-scoped,
+  // keyed by season number — see ADR 0011. The row's Swipeable activates before this screen's SwipeNav, so
   // a drag that starts on a season row is the row's (ADR 0023).
   const queryClient = useQueryClient();
   const invalidateWatchData = () => {
@@ -108,7 +108,7 @@ export default function TitleDetailScreen() {
       );
       invalidateWatchData();
       return ids;
-    });
+    }, { repeat: true });
 
   return (
     // Back is repeated here on purpose: the root layout's back-swipe wraps
@@ -280,7 +280,8 @@ export default function TitleDetailScreen() {
                     .slice()
                     .sort((a, b) => a.season_number - b.season_number)
                     .map((s) => {
-                      const entry = seasonLog.logged.get(String(s.season_number));
+                      const stack = seasonLog.logged.get(String(s.season_number));
+                      const latest = stack?.at(-1);
                       const undo = () => seasonLog.undo(String(s.season_number));
                       return (
                         <SwipeToLogRow
@@ -288,7 +289,7 @@ export default function TitleDetailScreen() {
                           longLog
                           logLabel="Log season"
                           onLog={() => logSeason(title.tmdb_id, s.season_number)}
-                          onUndo={entry ? undo : undefined}>
+                          onUndo={latest ? undo : undefined}>
                           <Pressable
                             style={[
                               styles.seasonRow,
@@ -308,10 +309,10 @@ export default function TitleDetailScreen() {
                             // The swipe's two directions, on the focusable row
                             // (ADR 0018) — a screen reader can't perform a pan.
                             accessibilityActions={
-                              entry
+                              latest
                                 ? [
-                                    { name: 'log', label: 'Log season' },
-                                    { name: 'undo', label: 'Undo' },
+                                    { name: 'log', label: 'Log season again' },
+                                    { name: 'undo', label: 'Undo last season log' },
                                   ]
                                 : [{ name: 'log', label: 'Log season' }]
                             }
@@ -324,17 +325,29 @@ export default function TitleDetailScreen() {
                               {s.name ?? `Season ${s.season_number}`}
                               {s.episode_count ? ` · ${s.episode_count} eps` : ''}
                             </ThemedText>
-                            {entry && (
-                              // Its own Pressable: tapping the ✓ undoes instead of
-                              // opening the season. Dimmed until the write lands.
+                            {stack && latest && (
+                              // Its own Pressable: tapping the ✓ undoes the latest
+                              // log instead of opening the season. Dimmed until
+                              // that write lands; ×N once you've logged it twice.
                               <Pressable
-                                style={[styles.check, entry.pending && styles.checkPending]}
+                                style={[styles.logged, latest.pending && styles.checkPending]}
                                 hitSlop={8}
                                 onPress={undo}
                                 accessibilityRole="button"
-                                accessibilityLabel="Undo this season's log"
-                                accessibilityState={{ busy: entry.pending }}>
-                                <IconSymbol name="checkmark" size={16} tintColor={AccentText} />
+                                accessibilityLabel={
+                                  stack.length > 1
+                                    ? `Logged ${stack.length} times. Undo the last one`
+                                    : 'Undo this season log'
+                                }
+                                accessibilityState={{ busy: latest.pending }}>
+                                {stack.length > 1 && (
+                                  <ThemedText type="smallBold" style={{ color: Accent }}>
+                                    ×{stack.length}
+                                  </ThemedText>
+                                )}
+                                <View style={styles.check}>
+                                  <IconSymbol name="checkmark" size={16} tintColor={AccentText} />
+                                </View>
                               </Pressable>
                             )}
                             <IconSymbol
@@ -470,6 +483,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  logged: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   checkPending: { opacity: 0.55 },
   error: { color: Danger, marginTop: Spacing.six, textAlign: 'center' },
 });

@@ -2,25 +2,28 @@ import { useCallback, useRef, useState } from 'react';
 
 import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 
-/** One swipe-logged row, remembered for the session (ADR 0011). */
+/** One swipe-log, remembered for the session (ADR 0011). */
 export type SessionEntry<D> = {
   /** What the write returned (the rows it inserted); null while pending. */
   data: D | null;
   /** True while the optimistic ✓ is shown but the DB write hasn't landed yet. */
   pending: boolean;
+  /** Set by an undo that lands before the write does; the write then rolls itself back. */
+  cancelled: boolean;
 };
 
 /**
  * Swipe-to-log's session-scoped undo, shared by Search and the title screen's
  * season rows: a log shows the ✓ at once and writes in the background; an undo
- * reverses exactly what that log wrote — via `reverse` — even while the write
- * is still in flight. A write that throws rolls the ✓ back.
+ * reverses exactly what one log wrote — via `reverse` — even while the write
+ * is still in flight. A write that throws rolls its ✓ back.
+ *
+ * Each key holds a stack of logs, oldest first. Search allows one per row; the
+ * season rows pass `repeat`, so every swipe adds another and undo pops the
+ * latest.
  */
 export function useSessionLog<D>(reverse: (data: D) => Promise<void>) {
-  const [logged, setLogged] = useState<Map<string, SessionEntry<D>>>(new Map());
-  // Cancel tokens for in-flight logs, so an undo tapped *before* the DB write
-  // finishes can cancel it — the write, once done, rolls itself back.
-  const inflight = useRef(new Map<string, { cancelled: boolean }>());
+  const [logged, setLogged] = useState<Map<string, SessionEntry<D>[]>>(new Map());
   // The two handlers below are handed to memoized rows, so they have to stay
   // referentially stable — which means they can't close over `logged`. They read
   // it through here instead. (Same mailbox pattern as `range-slider`.)
@@ -32,63 +35,65 @@ export function useSessionLog<D>(reverse: (data: D) => Promise<void>) {
   // eslint-disable-next-line react-hooks/refs -- a mailbox, not render state
   reverseRef.current = reverse;
 
-  const drop = useCallback((key: string) => {
-    setLogged((prev) => {
-      const next = new Map(prev);
-      next.delete(key);
-      return next;
-    });
-  }, []);
+  /** Rewrite one key's stack; an empty stack drops the key. */
+  const update = useCallback(
+    (key: string, fn: (stack: SessionEntry<D>[]) => SessionEntry<D>[]) => {
+      setLogged((prev) => {
+        const stack = fn(prev.get(key) ?? []);
+        const next = new Map(prev);
+        if (stack.length) next.set(key, stack);
+        else next.delete(key);
+        return next;
+      });
+    },
+    [],
+  );
 
-  const log = useCallback(function log(key: string, write: () => Promise<D>) {
-    if (loggedRef.current.has(key)) return;
+  const log = useCallback(function log(
+    key: string,
+    write: () => Promise<D>,
+    { repeat = false }: { repeat?: boolean } = {},
+  ) {
+    if (!repeat && loggedRef.current.has(key)) return;
+    // Settled in place, not replaced: an undo reads this same object through
+    // the mailbox, so it sees the write land even before the next render.
+    const entry: SessionEntry<D> = { data: null, pending: true, cancelled: false };
     // Optimistic: show the ✓ instantly; the DB write runs in the background.
-    setLogged((prev) => new Map(prev).set(key, { data: null, pending: true }));
+    update(key, (stack) => [...stack, entry]);
     hapticSuccess();
-    const token = { cancelled: false };
-    inflight.current.set(key, token);
-    // Log → undo → log again can put a second run's token under the same key
-    // before this one settles; deleting it then would let the second run's
-    // undo miss its write. Only ever remove our own.
-    const dropToken = () => {
-      if (inflight.current.get(key) === token) inflight.current.delete(key);
-    };
     void (async () => {
       try {
         const data = await write();
-        dropToken();
-        if (token.cancelled) {
+        if (entry.cancelled) {
           // Undone while the write was in flight → roll it straight back.
           await reverseRef.current(data);
           return;
         }
-        // Swap the pending entry for the resolved one (with real ids for undo).
-        setLogged((prev) =>
-          prev.has(key) ? new Map(prev).set(key, { data, pending: false }) : prev,
-        );
+        // Fill in this log's entry (with real ids for undo).
+        entry.data = data;
+        entry.pending = false;
+        update(key, (stack) => [...stack]);
       } catch {
-        dropToken();
-        drop(key);
+        if (entry.cancelled) return; // already off the stack
+        update(key, (stack) => stack.filter((e) => e !== entry));
         hapticFailure();
       }
     })();
-  }, [drop]);
+  }, [update]);
 
   const undo = useCallback(function undo(key: string) {
-    const entry = loggedRef.current.get(key);
+    const entry = loggedRef.current.get(key)?.at(-1);
     if (!entry) return;
-    // Optimistic: drop the ✓ instantly.
-    drop(key);
+    // Optimistic: drop the latest ✓ instantly.
+    update(key, (stack) => stack.filter((e) => e !== entry));
     hapticUndo();
-    const token = inflight.current.get(key);
-    if (token) {
+    if (entry.pending) {
       // Still writing — cancel; the log's completion handler rolls it back.
-      token.cancelled = true;
+      entry.cancelled = true;
       return;
     }
-    // Resolved entry → delete its rows now.
     if (entry.data !== null) void reverseRef.current(entry.data).catch(() => {});
-  }, [drop]);
+  }, [update]);
 
   return { logged, log, undo };
 }

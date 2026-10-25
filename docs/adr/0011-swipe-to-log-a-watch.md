@@ -141,9 +141,13 @@ can also be tapped to undo.
   call). "Log whole series" on the same page works differently on purpose:
   it fills in only the aired episodes you haven't logged, behind a confirmation.
   So the two bulk logs on one page follow different rules.
-- **Undo works only within the session, like Search, and is keyed by season
-  number.** It removes exactly the rows that swipe inserted. On a season you
-  didn't swipe-log on this visit, undo does nothing. The cancel-token and
+- **The swipe can be repeated, like the episode rows.** Each long swipe adds
+  another watch, and the ✓ shows how many (×2, ×3). **Undo is a stack per
+  session**: each swipe left (or tap on the ✓) reverses the most recent swipe
+  from this visit and removes exactly the rows it inserted. So three swipes
+  right and three left bring you back to where you started. Watches logged
+  any other way are never touched. On a season you didn't swipe-log on this
+  visit, undo does nothing. Search keeps one log per row. The cancel-token and
   rollback machinery used to live inside the Search hook. It is now
   `useSessionLog` (`src/lib/use-session-log.ts`), and Search and the title
   screen both use it, so the race fixes live in one place.
