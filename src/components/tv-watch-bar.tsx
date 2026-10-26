@@ -29,7 +29,8 @@ const ACTIVE = Accent;
  * passes, the lowest watch count among the aired episodes — so it shows for
  * logs from earlier versions, other visits and other devices too. Undo takes
  * one pass off (the latest watch of every aired episode); a series left with
- * no complete pass but some watches goes back to Watching.
+ * no complete pass goes back to Watching, or to Watchlist when nothing at all
+ * is left watched.
  */
 export function TvWatchBar({
   titleId,
@@ -115,7 +116,7 @@ export function TvWatchBar({
     hapticUndo();
     try {
       const left = await undoSeriesPass(titleId, aired);
-      if (passes === 1 && left > 0) await setLibraryStatus(titleId, 'watching');
+      if (passes === 1) await setLibraryStatus(titleId, left > 0 ? 'watching' : 'watchlist');
       invalidate();
     } catch {
       setMessage("Couldn't undo. Try again.");

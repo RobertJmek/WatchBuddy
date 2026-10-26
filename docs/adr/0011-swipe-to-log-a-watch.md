@@ -145,8 +145,8 @@ can also be tapped to undo.
   number of complete passes (the lowest watch count among the aired episodes,
   so a pass finished by hand counts as well), and Undo takes one pass off by
   deleting the latest watch of every aired episode. A series left with no
-  complete pass but some watches goes back to Watching; otherwise its status
-  is left alone. (From v1.22.1 to v1.23.5 it filled in only
+  complete pass but some watches goes back to Watching, and one with nothing
+  left watched goes to Watchlist (it stays in the Library, favourite and all). (From v1.22.1 to v1.23.5 it filled in only
   the unlogged episodes behind a confirmation; Robert reverted that in
   v1.23.6.) A Search swipe on a series marks it Completed too, and its undo
   restores the earlier status, as it already did for a movie.
