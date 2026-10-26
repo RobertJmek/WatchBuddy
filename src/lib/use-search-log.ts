@@ -20,8 +20,8 @@ import {
 
 /**
  * What one swipe-logged Search row wrote: exactly the rows it inserted, so undo
- * reverses them precisely — and, for movies, the pre-log Library status so undo
- * can restore it (logMovieWatch forces Completed).
+ * reverses them precisely — and the pre-log Library status so undo can restore
+ * it (a log of either kind marks the title Completed).
  */
 type LoggedRows = {
   kind: 'movie' | 'tv';
@@ -42,29 +42,23 @@ export function useSearchLog() {
   const queryClient = useQueryClient();
 
   const invalidateWatchData = useCallback(
-    (titleId?: string) => {
+    (titleId: string) => {
       queryClient.invalidateQueries({ queryKey: keys.diary() });
       queryClient.invalidateQueries({ queryKey: keys.stats() });
-      if (titleId) {
-        // A movie log/undo also moves its Library status → refresh those views.
-        queryClient.invalidateQueries({ queryKey: keys.library() });
-        queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
-      }
+      // A log/undo also moves the Library status → refresh those views.
+      queryClient.invalidateQueries({ queryKey: keys.library() });
+      queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
     },
     [queryClient],
   );
 
-  /** Delete exactly the rows an entry inserted (+ restore a movie's status). */
+  /** Delete exactly the rows an entry inserted, then restore the status. */
   const { logged, log, undo } = useSessionLog<LoggedRows>(async (rows) => {
-    if (rows.kind === 'movie') {
-      await removeMovieWatch(rows.watchIds[0]);
-      if (rows.priorStatus) await setLibraryStatus(rows.titleId, rows.priorStatus);
-      else await removeFromLibrary(rows.titleId);
-      invalidateWatchData(rows.titleId);
-    } else {
-      await removeEpisodeWatchesByIds(rows.watchIds);
-      invalidateWatchData();
-    }
+    if (rows.kind === 'movie') await removeMovieWatch(rows.watchIds[0]);
+    else await removeEpisodeWatchesByIds(rows.watchIds);
+    if (rows.priorStatus) await setLibraryStatus(rows.titleId, rows.priorStatus);
+    else await removeFromLibrary(rows.titleId);
+    invalidateWatchData(rows.titleId);
   });
 
   const logItem = useCallback(
@@ -82,11 +76,13 @@ export function useSearchLog() {
           );
           // Nothing aired yet → nothing to log; throwing rolls the ✓ back.
           if (episodes.length === 0) throw new Error('no aired episodes');
+          const priorStatus = await getLibraryStatus(title.id);
           const ids = await logManyEpisodeWatches(
             episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
           );
-          invalidateWatchData();
-          return { kind: 'tv', titleId: title.id, watchIds: ids, priorStatus: null };
+          await setLibraryStatus(title.id, 'completed');
+          invalidateWatchData(title.id);
+          return { kind: 'tv', titleId: title.id, watchIds: ids, priorStatus };
         }
         const priorStatus = await getLibraryStatus(title.id);
         const watchId = await logMovieWatch(title.id);
