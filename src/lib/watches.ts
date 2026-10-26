@@ -18,23 +18,58 @@ import {
   currentViewer,
   deleteMine,
   requireViewer,
+  selectAllMine,
   selectMine,
   updateMine,
 } from '@/lib/viewer';
 
-/** How many times the user has watched each episode of a title. */
+/**
+ * How many times the user has watched each episode of a title. Paged: a long
+ * series with rewatches passes PostgREST's 1000-row cap.
+ */
 export async function getEpisodeWatchCounts(
   titleId: string,
 ): Promise<Map<string, number>> {
-  const { q } = await selectMine('episode_watches', 'episode_id');
-  const { data, error } = await q.eq('title_id', titleId);
-  if (error) throw error;
+  const rows = await selectAllMine<{ episode_id: string }>(
+    'episode_watches',
+    'episode_id',
+    (q) => q.eq('title_id', titleId).order('id'),
+  );
   const counts = new Map<string, number>();
-  for (const r of data ?? []) {
-    const id = r.episode_id as string;
-    counts.set(id, (counts.get(id) ?? 0) + 1);
-  }
+  for (const r of rows) counts.set(r.episode_id, (counts.get(r.episode_id) ?? 0) + 1);
   return counts;
+}
+
+/**
+ * Complete passes through a series: the smallest watch count among the given
+ * (aired) episodes, 0 when any is unwatched. The series' "Logged N times".
+ */
+export function seriesPasses(episodeIds: string[], counts: Map<string, number>): number {
+  if (episodeIds.length === 0) return 0;
+  return Math.min(...episodeIds.map((id) => counts.get(id) ?? 0));
+}
+
+/**
+ * One series pass less: deletes the most recent watch of each given episode.
+ * Returns how many of the title's watch rows are left.
+ */
+export async function undoSeriesPass(titleId: string, episodeIds: string[]): Promise<number> {
+  const rows = await selectAllMine<{ id: string; episode_id: string }>(
+    'episode_watches',
+    'id, episode_id',
+    (q) =>
+      q
+        .eq('title_id', titleId)
+        .order('watched_at', { ascending: false })
+        .order('id'),
+  );
+  const wanted = new Set(episodeIds);
+  const latest = new Map<string, string>();
+  for (const r of rows) {
+    if (wanted.has(r.episode_id) && !latest.has(r.episode_id)) latest.set(r.episode_id, r.id);
+  }
+  await removeEpisodeWatchesByIds([...latest.values()]);
+  return rows.length - latest.size;
 }
 
 /** Log one watch of an episode (a dated diary entry; repeat for rewatches). */
@@ -48,13 +83,15 @@ export async function logEpisodeWatch(episodeId: string, titleId: string) {
   if (error) throw error;
 }
 
-/** Delete specific episode-watch rows by id. Used by the Search swipe-to-log
- *  undo to reverse *exactly* the rows a swipe inserted. */
+/** Delete specific episode-watch rows by id. Used by the swipe-to-log undos
+ *  to reverse *exactly* the rows a swipe inserted. Chunked: a whole series is
+ *  hundreds of ids, and they travel in the request URL. */
 export async function removeEpisodeWatchesByIds(ids: string[]) {
-  if (ids.length === 0) return;
-  const { q } = await deleteMine('episode_watches');
-  const { error } = await q.in('id', ids);
-  if (error) throw error;
+  for (let i = 0; i < ids.length; i += 200) {
+    const { q } = await deleteMine('episode_watches');
+    const { error } = await q.in('id', ids.slice(i, i + 200));
+    if (error) throw error;
+  }
 }
 
 /** Remove the user's most recent single watch of an episode. */

@@ -138,9 +138,18 @@ can also be tapped to undo.
 - **A season swipe adds one watch to every aired episode in it.** It doesn't
   skip the episodes you've already seen, so on a season you've watched it is a
   rewatch. That matches the season screen's "Log whole season" button (Robert's
-  call). "Log whole series" on the same page works differently on purpose:
-  it fills in only the aired episodes you haven't logged, behind a confirmation.
-  So the two bulk logs on one page follow different rules.
+  call). "Log whole series" follows the same rule: +1 on every aired episode,
+  every press, with no confirmation, and it then marks the series Completed.
+  Under the button, "Logged N times · Undo" is read from the database, not
+  from the session, so it shows for logs made before v1.23.6 too: N is the
+  number of complete passes (the lowest watch count among the aired episodes,
+  so a pass finished by hand counts as well), and Undo takes one pass off by
+  deleting the latest watch of every aired episode. A series left with no
+  complete pass but some watches goes back to Watching, and one with nothing
+  left watched goes to Watchlist (it stays in the Library, favourite and all). (From v1.22.1 to v1.23.5 it filled in only
+  the unlogged episodes behind a confirmation; Robert reverted that in
+  v1.23.6.) A Search swipe on a series marks it Completed too, and its undo
+  restores the earlier status, as it already did for a movie.
 - **The swipe can be repeated, like the episode rows.** Each long swipe adds
   another watch, and the ✓ shows how many (×2, ×3). **Undo is a stack per
   session**: each swipe left (or tap on the ✓) reverses the most recent swipe

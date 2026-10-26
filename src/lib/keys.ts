@@ -79,6 +79,9 @@ export const keys = {
   favorite: (titleId: string) => ['favorite', titleId] as const,
   /** Your own watches of one movie (the title screen's "Watched N×"). */
   movieWatches: (titleId: string) => ['movieWatches', titleId] as const,
+  /** Complete passes through a series (the title screen's "Logged N times"). Bare = every series'. */
+  seriesPasses: (titleId?: string) =>
+    titleId ? (['seriesPasses', titleId] as const) : (['seriesPasses'] as const),
   genres: () => ['genres'] as const,
   search: (term: string) => ['search', term] as const,
   userSearch: (term?: string) =>
