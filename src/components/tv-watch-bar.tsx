@@ -1,24 +1,22 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { hapticFailure, hapticSuccess } from '@/lib/haptics';
-import { fetchAllEpisodes, type EpisodeRow, type SeasonRow } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
-import { airedOnly, getEpisodeWatchCounts, logManyEpisodeWatches } from '@/lib/watches';
+import { setLibraryStatus } from '@/lib/library';
+import { fetchAllEpisodes, type SeasonRow } from '@/lib/tmdb';
+import { airedOnly, logManyEpisodeWatches } from '@/lib/watches';
 
 const ACTIVE = Accent;
 
-const plural = (n: number) => `${n} episode${n === 1 ? '' : 's'}`;
-
 /**
- * "Log whole series": fills in every aired episode you haven't logged yet (the
- * same rule a rating or Completed follows, ADR 0024), after a confirmation that
- * names the count — it can be hundreds of rows, and there is no undo here.
- * Episodes you already watched are left alone; when every aired one is logged,
- * there is nothing to do.
+ * "Log whole series": +1 watch on every aired episode, every press, so on a
+ * series you've seen it is a rewatch and the counts go up (the same rule as
+ * "Log whole season" and the season swipe). Then marks the series Completed,
+ * as logging a movie does.
  */
 export function TvWatchBar({
   titleId,
@@ -39,14 +37,26 @@ export function TvWatchBar({
     .filter((n) => n >= 1)
     .sort((a, b) => a - b);
 
-  async function write(episodes: EpisodeRow[]) {
+  async function logSeries() {
+    if (busy || seasonNumbers.length === 0) return;
+    setBusy(true);
+    setMessage(null);
     try {
+      const episodes = airedOnly(await fetchAllEpisodes(tmdbId, seasonNumbers));
+      if (episodes.length === 0) {
+        setMessage('No aired episodes yet');
+        hapticFailure();
+        return;
+      }
       await logManyEpisodeWatches(
         episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
       );
+      await setLibraryStatus(titleId, 'completed');
       queryClient.invalidateQueries({ queryKey: keys.diary() });
       queryClient.invalidateQueries({ queryKey: keys.stats() });
-      setMessage(`Logged ${plural(episodes.length)}`);
+      queryClient.invalidateQueries({ queryKey: keys.library() });
+      queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
+      setMessage(`Logged ${episodes.length} episode${episodes.length === 1 ? '' : 's'}`);
       // Fires on completion, not on tap: a whole series takes seconds to write,
       // so the buzz *is* the "it's done" signal.
       hapticSuccess();
@@ -56,41 +66,6 @@ export function TvWatchBar({
     } finally {
       setBusy(false);
     }
-  }
-
-  async function logSeries() {
-    if (busy || seasonNumbers.length === 0) return;
-    setBusy(true);
-    setMessage(null);
-    let aired: EpisodeRow[];
-    let todo: EpisodeRow[];
-    try {
-      const [all, counts] = await Promise.all([
-        fetchAllEpisodes(tmdbId, seasonNumbers),
-        getEpisodeWatchCounts(titleId),
-      ]);
-      aired = airedOnly(all);
-      todo = aired.filter((e) => !counts.has(e.id));
-    } catch {
-      setMessage("Couldn't load the episodes. Try again.");
-      hapticFailure();
-      setBusy(false);
-      return;
-    }
-    if (todo.length === 0) {
-      setMessage(aired.length === 0 ? 'No aired episodes yet' : "You've watched every aired episode");
-      setBusy(false);
-      return;
-    }
-    Alert.alert(
-      `Log ${plural(todo.length)}?`,
-      "Every aired episode you haven't logged yet. Episodes you already watched stay as they are.",
-      [
-        { text: 'Cancel', style: 'cancel', onPress: () => setBusy(false) },
-        { text: 'Log', onPress: () => void write(todo) },
-      ],
-      { cancelable: true, onDismiss: () => setBusy(false) },
-    );
   }
 
   return (
@@ -105,7 +80,11 @@ export function TvWatchBar({
         <ThemedText style={styles.buttonText}>＋ Log whole series</ThemedText>
       </Pressable>
       {busy && <ActivityIndicator />}
-      {message && <ThemedText type="small">{message}</ThemedText>}
+      {message && (
+        <ThemedText type="small" style={styles.message}>
+          {message}
+        </ThemedText>
+      )}
     </View>
   );
 }
@@ -121,4 +100,6 @@ const styles = StyleSheet.create({
   },
   busy: { opacity: 0.6 },
   buttonText: { color: AccentText, fontWeight: '600' },
+  // Wraps beside the button instead of running off the screen.
+  message: { flexShrink: 1 },
 });
