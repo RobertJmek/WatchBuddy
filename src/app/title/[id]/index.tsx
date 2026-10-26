@@ -444,9 +444,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     color: Hero.textMuted,
+    textShadowColor: Hero.shadow,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   pills: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.one },
   pill: {
+    backgroundColor: Hero.pill,
     borderWidth: 1,
     borderColor: Hero.border,
     paddingHorizontal: Spacing.two,
