@@ -57,6 +57,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Swipe to log** — swipe a Search result, a season on a series' page, or a season's episode
   **right** to log a watch, **left** to undo; a movie logs one watch, while a whole series or a
   whole season logs with a longer swipe.
+- **Log whole series** — one tap adds a watch to every aired episode and marks the series
+  Completed; underneath, "Logged N times" counts your complete watch-throughs, with an Undo
+  that takes the latest one off.
 - A dated **Diary** of everything you've watched, filterable by **day / week / month / year /
   custom range**, with **editable watch dates** (grouped episode entries move together).
 - **Search inside Library and Diary** — a toggleable title search that composes with the
