@@ -81,7 +81,9 @@ function FactRow({
   return (
     <View style={styles.factRow}>
       <ThemedText type="small">{label}</ThemedText>
-      <ThemedText type="smallBold" style={{ color: highlight ? c.glow : ACTIVE }}>
+      <ThemedText
+        type="smallBold"
+        style={[styles.factValue, { color: highlight ? c.glow : ACTIVE }]}>
         {value}
       </ThemedText>
     </View>
@@ -443,7 +445,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingVertical: Spacing.half,
   },
-  factValue: { color: ACTIVE },
+  // Shrinks and wraps (right-aligned) so a long title can't push past the
+  // card; wrapping rather than an ellipsis keeps a trailing "·×N" visible.
+  factValue: { flexShrink: 1, textAlign: 'right' },
   subhead: {
     marginTop: Spacing.two,
     marginBottom: Spacing.half,
