@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
@@ -39,6 +40,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { deleteAccount } = useAuth();
+  const insets = useSafeAreaInsets();
 
   // Two explicit gates — deletion is irreversible, one tap must never do it.
   function confirmDeleteAccount() {
@@ -180,10 +182,16 @@ export default function EditProfileScreen() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Edit Profile' }} />
+      {/* Edge-to-edge: without the bottom inset, Delete account… sits under
+          the home indicator / gesture bar and can't be tapped. */}
       {isLoading ? (
         <RowSkeletonList />
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: insets.bottom + Spacing.five },
+          ]}>
           <View style={styles.avatarSection}>
             <Avatar uri={avatarUri} name={displayName} size={96} />
             <Pressable
