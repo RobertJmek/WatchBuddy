@@ -48,6 +48,7 @@ export function useSearchLog() {
       // A log/undo also moves the Library status → refresh those views.
       queryClient.invalidateQueries({ queryKey: keys.library() });
       queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
+      queryClient.invalidateQueries({ queryKey: keys.seriesPasses(titleId) });
     },
     [queryClient],
   );

@@ -1,32 +1,35 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
-import {
-  getLibraryStatus,
-  removeFromLibrary,
-  setLibraryStatus,
-  type LibraryStatus,
-} from '@/lib/library';
+import { setLibraryStatus } from '@/lib/library';
 import { fetchAllEpisodes, type SeasonRow } from '@/lib/tmdb';
-import { useSessionLog } from '@/lib/use-session-log';
-import { airedOnly, logManyEpisodeWatches, removeEpisodeWatchesByIds } from '@/lib/watches';
+import {
+  airedOnly,
+  getEpisodeWatchCounts,
+  logManyEpisodeWatches,
+  seriesPasses,
+  undoSeriesPass,
+} from '@/lib/watches';
 
 const ACTIVE = Accent;
-
-/** What one press wrote, so Undo reverses exactly that. */
-type SeriesLog = { watchIds: string[]; priorStatus: LibraryStatus | null };
 
 /**
  * "Log whole series": +1 watch on every aired episode, every press, so on a
  * series you've seen it is a rewatch and the counts go up (the same rule as
  * "Log whole season" and the season swipe). Then marks the series Completed,
- * as logging a movie does. Below the button, "Logged N times · Undo" counts
- * this visit's presses; Undo pops the latest one, its rows and its status
- * change (`useSessionLog`, ADR 0011).
+ * as logging a movie does.
+ *
+ * Under it, "Logged N times · Undo". N is read from the database — complete
+ * passes, the lowest watch count among the aired episodes — so it shows for
+ * logs from earlier versions, other visits and other devices too. Undo takes
+ * one pass off (the latest watch of every aired episode); a series left with
+ * no complete pass but some watches goes back to Watching.
  */
 export function TvWatchBar({
   titleId,
@@ -38,6 +41,7 @@ export function TvWatchBar({
   seasons: SeasonRow[];
 }) {
   const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // A full-series watch excludes "Specials" (season 0).
@@ -46,83 +50,114 @@ export function TvWatchBar({
     .filter((n) => n >= 1)
     .sort((a, b) => a - b);
 
+  const passesQ = useQuery({
+    queryKey: keys.seriesPasses(titleId),
+    queryFn: async () => {
+      const [all, counts] = await Promise.all([
+        fetchAllEpisodes(tmdbId, seasonNumbers),
+        getEpisodeWatchCounts(titleId),
+      ]);
+      const airedIds = airedOnly(all).map((e) => e.id);
+      return { airedIds, passes: seriesPasses(airedIds, counts) };
+    },
+    enabled: seasonNumbers.length > 0,
+  });
+  const passes = passesQ.data?.passes ?? 0;
+
+  // The season screen's +/− don't know this key; catch up on coming back.
+  const { refetch } = passesQ;
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
+
   const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: keys.seriesPasses(titleId) });
     queryClient.invalidateQueries({ queryKey: keys.diary() });
     queryClient.invalidateQueries({ queryKey: keys.stats() });
     queryClient.invalidateQueries({ queryKey: keys.library() });
     queryClient.invalidateQueries({ queryKey: keys.libraryStatus(titleId) });
   };
 
-  const { logged, log, undo } = useSessionLog<SeriesLog>(async (rows) => {
-    await removeEpisodeWatchesByIds(rows.watchIds);
-    if (rows.priorStatus) await setLibraryStatus(titleId, rows.priorStatus);
-    else await removeFromLibrary(titleId);
-    invalidate();
-  });
-  const stack = logged.get(titleId);
-  const pending = stack?.at(-1)?.pending ?? false;
-
-  function logSeries() {
-    if (pending || seasonNumbers.length === 0) return;
+  async function logSeries() {
+    if (busy || seasonNumbers.length === 0) return;
+    setBusy(true);
     setMessage(null);
-    log(
-      titleId,
-      async () => {
-        try {
-          const episodes = airedOnly(await fetchAllEpisodes(tmdbId, seasonNumbers));
-          if (episodes.length === 0) {
-            setMessage('No aired episodes yet');
-            // Throwing rolls the press back (and buzzes the failure).
-            throw new Error('no aired episodes');
-          }
-          const priorStatus = await getLibraryStatus(titleId);
-          const watchIds = await logManyEpisodeWatches(
-            episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
-          );
-          await setLibraryStatus(titleId, 'completed');
-          invalidate();
-          return { watchIds, priorStatus };
-        } catch (e) {
-          setMessage((m) => m ?? "Couldn't log the episodes. Try again.");
-          throw e;
-        }
-      },
-      { repeat: true },
-    );
+    try {
+      const episodes = airedOnly(await fetchAllEpisodes(tmdbId, seasonNumbers));
+      if (episodes.length === 0) {
+        setMessage('No aired episodes yet');
+        hapticFailure();
+        return;
+      }
+      await logManyEpisodeWatches(
+        episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
+      );
+      await setLibraryStatus(titleId, 'completed');
+      invalidate();
+      // Fires on completion, not on tap: a whole series takes seconds to write,
+      // so the buzz *is* the "it's done" signal.
+      hapticSuccess();
+    } catch {
+      setMessage("Couldn't log the episodes. Try again.");
+      hapticFailure();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function undoPass() {
+    const aired = passesQ.data?.airedIds;
+    if (busy || !aired || passes === 0) return;
+    setBusy(true);
+    setMessage(null);
+    hapticUndo();
+    try {
+      const left = await undoSeriesPass(titleId, aired);
+      if (passes === 1 && left > 0) await setLibraryStatus(titleId, 'watching');
+      invalidate();
+    } catch {
+      setMessage("Couldn't undo. Try again.");
+      hapticFailure();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.row}>
         <Pressable
-          style={[styles.button, pending && styles.busy]}
+          style={[styles.button, busy && styles.busy]}
           onPress={logSeries}
-          disabled={pending}
+          disabled={busy}
           accessibilityRole="button"
           accessibilityLabel="Log whole series"
-          accessibilityState={{ disabled: pending, busy: pending }}>
+          accessibilityState={{ disabled: busy, busy }}>
           <ThemedText style={styles.buttonText}>＋ Log whole series</ThemedText>
         </Pressable>
-        {pending && <ActivityIndicator />}
+        {busy && <ActivityIndicator />}
       </View>
-      {stack ? (
+      {passes > 0 && (
         <View style={styles.row}>
           <ThemedText type="small">
-            Logged {stack.length} {stack.length === 1 ? 'time' : 'times'}
+            Logged {passes} {passes === 1 ? 'time' : 'times'}
           </ThemedText>
           <Pressable
-            onPress={() => undo(titleId)}
+            onPress={undoPass}
+            disabled={busy}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Undo the last series log">
+            accessibilityLabel="Undo one series watch"
+            accessibilityState={{ disabled: busy }}>
             <ThemedText type="smallBold" style={{ color: ACTIVE }}>
               Undo
             </ThemedText>
           </Pressable>
         </View>
-      ) : (
-        message && <ThemedText type="small">{message}</ThemedText>
       )}
+      {message && <ThemedText type="small">{message}</ThemedText>}
     </View>
   );
 }

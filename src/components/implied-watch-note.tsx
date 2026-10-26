@@ -46,6 +46,7 @@ export function useImpliedWatch(title: ImpliedTitle) {
     queryClient.invalidateQueries({ queryKey: keys.library() });
     queryClient.invalidateQueries({ queryKey: keys.libraryStatus(title.id) });
     queryClient.invalidateQueries({ queryKey: keys.movieWatches(title.id) });
+    queryClient.invalidateQueries({ queryKey: keys.seriesPasses(title.id) });
   }
 
   async function mark(opts: { onlyIfUntouched: boolean }) {

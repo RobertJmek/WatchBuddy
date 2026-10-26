@@ -94,6 +94,7 @@ export default function TitleDetailScreen() {
   const invalidateWatchData = () => {
     queryClient.invalidateQueries({ queryKey: keys.diary() });
     queryClient.invalidateQueries({ queryKey: keys.stats() });
+    queryClient.invalidateQueries({ queryKey: keys.seriesPasses() });
   };
   const seasonLog = useSessionLog<string[]>(async (ids) => {
     await removeEpisodeWatchesByIds(ids);
