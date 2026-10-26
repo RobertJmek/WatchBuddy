@@ -19,6 +19,7 @@ import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { RowSkeletonList, Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { DiaryRow } from '@/components/diary-row';
+import { RatedReviewRow } from '@/components/rated-review-row';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -28,6 +29,7 @@ import { openTitle } from '@/lib/navigation';
 import { getLibraryFor, type LibraryEntry } from '@/lib/library';
 import { getBlockStatus } from '@/lib/moderation';
 import { getProfileById } from '@/lib/profile';
+import { getUserRatings } from '@/lib/ratings';
 import { getFollowCounts, getFollowState } from '@/lib/social';
 import { getStats } from '@/lib/stats';
 import { getDiary } from '@/lib/watches';
@@ -77,6 +79,15 @@ export default function UserProfileScreen() {
     queryKey: keys.library(id),
     queryFn: () => getLibraryFor(id),
   });
+  // Previews of the two "See all" lists (ADR 0026), newest first.
+  const ratingsQ = useQuery({
+    queryKey: keys.ratingsBy(id, 'ratings', 'recent', 10),
+    queryFn: () => getUserRatings(id, { limit: 10 }),
+  });
+  const reviewsQ = useQuery({
+    queryKey: keys.ratingsBy(id, 'reviews', 'recent', 3),
+    queryFn: () => getUserRatings(id, { reviewsOnly: true, limit: 3 }),
+  });
   // Blocked by you / hidden from you / neither (ADR 0025). Always refetched on
   // open: a cached 'none' from before they blocked you would show a profile
   // whose data the server has already stopped sending.
@@ -124,6 +135,14 @@ export default function UserProfileScreen() {
   const watchingShelf = shelfOf((e) => e.status === 'watching');
   const favoritesShelf = shelfOf((e) => e.is_favorite);
   const completedShelf = shelfOf((e) => e.status === 'completed');
+  const ratingsShelf: PosterItem[] = (ratingsQ.data?.items ?? []).map((r) => ({
+    key: r.ratingId,
+    ...r.title,
+    score: r.value,
+  }));
+  const openList = (kind: 'ratings' | 'reviews') =>
+    router.push({ pathname: '/user/[id]/ratings', params: { id, kind } });
+  const reviewTotal = reviewsQ.data?.total ?? 0;
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
@@ -134,6 +153,8 @@ export default function UserProfileScreen() {
       statsQ.refetch(),
       diaryQ.refetch(),
       libraryQ.refetch(),
+      ratingsQ.refetch(),
+      reviewsQ.refetch(),
     ]);
     setRefreshing(false);
   };
@@ -303,6 +324,35 @@ export default function UserProfileScreen() {
         {completedShelf.length > 0 && (
           <PosterShelf title="Recently completed" items={completedShelf} onPressItem={openPoster} />
         )}
+        {ratingsShelf.length > 0 && (
+          <PosterShelf
+            title="Ratings"
+            items={ratingsShelf}
+            count={ratingsQ.data?.total}
+            onPressItem={openPoster}
+            onPressHeader={() => openList('ratings')}
+          />
+        )}
+        {reviewTotal > 0 && (
+          <View style={styles.reviews}>
+            <Pressable
+              style={({ pressed }) => [styles.sectionHeader, pressed && styles.pressed]}
+              onPress={() => openList('reviews')}
+              accessibilityRole="button"
+              accessibilityLabel="Reviews, see all">
+              <ThemedText type="subtitle">Reviews</ThemedText>
+              <View style={styles.sectionHeaderRight}>
+                <ThemedText type="meta" style={{ color: c.textSecondary }}>
+                  {reviewTotal}
+                </ThemedText>
+                <IconSymbol name="chevron.right" size={18} tintColor={c.tint} />
+              </View>
+            </Pressable>
+            {reviewsQ.data?.items.map((r) => (
+              <RatedReviewRow key={r.ratingId} item={r} />
+            ))}
+          </View>
+        )}
       </View>
 
       <ThemedText type="subtitle" style={styles.recentHeading}>
@@ -425,6 +475,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   shelves: { alignSelf: 'stretch', gap: Spacing.four, marginTop: Spacing.three },
+  reviews: { gap: Spacing.two },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  pressed: { opacity: 0.6 },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   blocked: {
     alignItems: 'center',

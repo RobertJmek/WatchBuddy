@@ -164,6 +164,7 @@ function RootNavigator() {
         <Stack.Screen name="user/[id]" />
         <Stack.Screen name="user/[id]/followers" />
         <Stack.Screen name="user/[id]/following" />
+        <Stack.Screen name="user/[id]/ratings" />
       </Stack.Protected>
     </Stack>
   );

@@ -342,3 +342,81 @@ export async function removeRating(
     .eq('entity_id', entityId);
   if (error) throw error;
 }
+
+export type RatingsSort = 'recent' | 'highest' | 'lowest';
+
+/** One of a person's ratings, with the title it rates — for their profile. */
+export type UserRating = {
+  ratingId: string;
+  value: number;
+  review: string | null;
+  updatedAt: string;
+  title: {
+    tmdb_id: number;
+    media_type: 'movie' | 'tv';
+    title: string;
+    poster_path: string | null;
+  };
+};
+
+/**
+ * One page of the ratings `userId` gave, plus how many there are in all.
+ *
+ * Open-read like the rest of watch data; the block policies (0020) already
+ * withhold a hidden user's rows. Only titles: the client never writes a season
+ * or episode rating. The title arrives from a second select because
+ * `ratings.entity_id` is polymorphic and PostgREST cannot nest it.
+ */
+export async function getUserRatings(
+  userId: string,
+  {
+    reviewsOnly = false,
+    sort = 'recent',
+    offset = 0,
+    limit,
+  }: { reviewsOnly?: boolean; sort?: RatingsSort; offset?: number; limit: number },
+): Promise<{ items: UserRating[]; total: number }> {
+  let q = supabase
+    .from('ratings')
+    .select('id, entity_id, value, review, updated_at', { count: 'exact' })
+    .eq('user_id', userId)
+    .in('entity_type', ['movie', 'show']);
+  // Non-blank text, the same rule as a title's review list (`r.review.trim()`);
+  // a null never matches a regex.
+  if (reviewsOnly) q = q.filter('review', 'match', '\\S');
+  if (sort !== 'recent') q = q.order('value', { ascending: sort === 'lowest' });
+  // `id` last: range paging needs a total order.
+  const { data, count, error } = await q
+    .order('updated_at', { ascending: false })
+    .order('id')
+    .range(offset, offset + limit - 1);
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return { items: [], total: count ?? 0 };
+
+  const { data: titles, error: titlesError } = await supabase
+    .from('titles')
+    .select('id, tmdb_id, media_type, title, poster_path')
+    .in('id', rows.map((r) => r.entity_id));
+  if (titlesError) throw titlesError;
+  const byId = new Map((titles ?? []).map((t) => [t.id, t]));
+
+  const items: UserRating[] = [];
+  for (const r of rows) {
+    const t = byId.get(r.entity_id);
+    if (!t) continue;
+    items.push({
+      ratingId: r.id,
+      value: r.value,
+      review: r.review,
+      updatedAt: r.updated_at,
+      title: {
+        tmdb_id: t.tmdb_id,
+        media_type: t.media_type,
+        title: t.title,
+        poster_path: t.poster_path,
+      },
+    });
+  }
+  return { items, total: count ?? items.length };
+}

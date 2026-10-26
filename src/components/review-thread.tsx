@@ -77,6 +77,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
   function refresh() {
     queryClient.invalidateQueries({ queryKey: keys.reviewThread(ratingId) });
     queryClient.invalidateQueries({ queryKey: keys.titleRatings() });
+    queryClient.invalidateQueries({ queryKey: keys.ratingsBy() });
   }
 
   async function send() {
