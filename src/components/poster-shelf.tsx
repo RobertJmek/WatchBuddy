@@ -4,6 +4,7 @@ import { memo, useCallback } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { PosterScore } from '@/components/grid-poster';
 import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { ThemedText } from '@/components/themed-text';
@@ -17,17 +18,21 @@ export type PosterItem = {
   media_type: 'movie' | 'tv';
   title: string;
   poster_path: string | null;
+  /** A person's score for the title, shown in the poster's corner. */
+  score?: number;
 };
 
 function PosterCard({
   posterPath,
   /** The title's name — the only thing a screen reader can announce for a poster. */
   label,
+  score,
   onPress,
   onPressIn,
 }: {
   posterPath: string | null;
   label?: string;
+  score?: number;
   onPress: () => void;
   onPressIn?: () => void;
 }) {
@@ -44,6 +49,7 @@ function PosterCard({
         contentFit="cover"
         transition={150}
       />
+      {score != null ? <PosterScore value={score} /> : null}
     </PressScale>
   );
 }
@@ -65,6 +71,7 @@ export const PosterShelf = memo(function PosterShelf({
   onPressItem,
   onPressHeader,
   showCount = true,
+  count,
 }: {
   title: string;
   items: PosterItem[];
@@ -77,6 +84,8 @@ export const PosterShelf = memo(function PosterShelf({
    * header opens, so those shelves turn it off.
    */
   showCount?: boolean;
+  /** The header's count when the shelf holds only a preview of a longer list. */
+  count?: number;
 }) {
   const c = useTheme();
   const queryClient = useQueryClient();
@@ -84,7 +93,8 @@ export const PosterShelf = memo(function PosterShelf({
     ({ item }: { item: PosterItem }) => (
       <PosterCard
         posterPath={item.poster_path}
-        label={item.title}
+        label={item.score != null ? `${item.title}, rated ${item.score}` : item.title}
+        score={item.score}
         onPress={() => onPressItem(item)}
         // Warm the detail cache while the finger is still down.
         onPressIn={() =>
@@ -110,7 +120,7 @@ export const PosterShelf = memo(function PosterShelf({
           <View style={styles.headerRight}>
             {showCount && (
               <ThemedText type="meta" style={{ color: c.textSecondary }}>
-                {items.length}
+                {count ?? items.length}
               </ThemedText>
             )}
             <IconSymbol name="chevron.right" size={18} tintColor={c.tint} />

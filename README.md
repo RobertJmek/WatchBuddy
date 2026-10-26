@@ -89,7 +89,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
 - **Public profiles** (`/user/[id]`) — avatar, bio, follower counts, a compact stats summary,
   a **taste summary** (top genres + favorite directors), and **Watching now / Favorites /
-  Recently completed** shelves alongside recent activity.
+  Recently completed** shelves alongside recent activity, plus everything they've **rated**
+  (posters with their score) and **reviewed**, each opening a full list sortable by recent,
+  highest or lowest.
 - **Community ratings per title** — an aggregate **WatchBuddy score** (mean + count) shown
   beside the TMDB/IMDb badges.
 - **Community reviews** — read everyone's written reviews on a title, with **people you follow

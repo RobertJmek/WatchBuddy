@@ -155,6 +155,7 @@ export function invalidateBlockScoped(queryClient: QueryClient) {
     keys.blocked(),
     keys.feed(),
     keys.titleRatings(),
+    keys.ratingsBy(),
     keys.reviewThread(),
     keys.reviewLikers(),
     keys.notifications(),
@@ -177,6 +178,7 @@ export function invalidateAfterReport(queryClient: QueryClient) {
   for (const queryKey of [
     keys.feed(),
     keys.titleRatings(),
+    keys.ratingsBy(),
     keys.reviewThread(),
     keys.notifications(),
   ]) {

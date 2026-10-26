@@ -224,6 +224,7 @@ export function RatingBar({
       if (ratingId) queryClient.invalidateQueries({ queryKey: keys.reviewThread(ratingId) });
       queryClient.invalidateQueries({ queryKey: keys.stats() });
       queryClient.invalidateQueries({ queryKey: keys.titleRatings(titleId) });
+      queryClient.invalidateQueries({ queryKey: keys.ratingsBy() });
       // The library carries the viewer's own rating (it's a filter axis), so a
       // changed or cleared value has to reach it. Only this path matters —
       // editing a review's text keeps the value, so it can't move the axis.
@@ -255,6 +256,7 @@ export function RatingBar({
       setEditing(false);
       queryClient.invalidateQueries({ queryKey: ratingKey });
       queryClient.invalidateQueries({ queryKey: keys.titleRatings(titleId) });
+      queryClient.invalidateQueries({ queryKey: keys.ratingsBy() });
       hapticSuccess();
     } catch {
       hapticFailure();

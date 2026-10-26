@@ -52,6 +52,13 @@ export const keys = {
     titleId ? (['titleRatings', titleId] as const) : (['titleRatings'] as const),
   reviewThread: (ratingId?: string) =>
     ratingId ? (['reviewThread', ratingId] as const) : (['reviewThread'] as const),
+  /**
+   * The ratings a person gave, for their profile. Bare invalidates every
+   * profile's; whatever names the list (kind, sort,
+   * size) goes after the id, so `ratingsBy(id)` reaches every list of one person.
+   */
+  ratingsBy: (userId?: string, ...list: (string | number)[]) =>
+    userId ? (['ratingsBy', userId, ...list] as const) : (['ratingsBy'] as const),
   reviewLikers: (ratingId?: string) =>
     ratingId ? (['reviewLikers', ratingId] as const) : (['reviewLikers'] as const),
 
