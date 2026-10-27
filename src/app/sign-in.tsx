@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -54,7 +55,13 @@ export default function SignInScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.container}>
+        {/* Scrolls so the button under the code field stays reachable: iOS's
+            number pad has no Return key to put the keyboard away. */}
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          bottomOffset={Spacing.three}>
         <Image
           style={[
             styles.logo,
@@ -108,6 +115,8 @@ export default function SignInScreen() {
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
               value={email}
               editable={!busy}
               onChangeText={setEmail}
@@ -127,6 +136,8 @@ export default function SignInScreen() {
               placeholder="········"
               placeholderTextColor={c.border}
               keyboardType="number-pad"
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
               maxLength={8}
               value={code}
               editable={!busy}
@@ -149,6 +160,7 @@ export default function SignInScreen() {
         )}
 
         {busy && <ActivityIndicator style={{ marginTop: Spacing.two }} />}
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -156,8 +168,8 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: {
-    flex: 1,
+  content: {
+    flexGrow: 1,
     justifyContent: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
