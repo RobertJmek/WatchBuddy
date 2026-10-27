@@ -46,6 +46,11 @@ const LINKS: { label: string; hint: string; href: string }[] = [
     hint: 'WatchBuddy is open source on GitHub',
     href: 'https://github.com/RobertJmek/WatchBuddy',
   },
+  {
+    label: 'The Movie Database (TMDB)',
+    hint: 'Where titles, posters and cast come from',
+    href: 'https://www.themoviedb.org',
+  },
 ];
 
 /**
@@ -120,6 +125,11 @@ export default function AboutScreen() {
             </Pressable>
           ))}
         </View>
+
+        {/* Required by TMDB's API terms. */}
+        <ThemedText type="small" style={[styles.credit, { color: c.textSecondary }]}>
+          This product uses the TMDB API but is not endorsed or certified by TMDB.
+        </ThemedText>
       </ScrollView>
     </ThemedView>
   );
@@ -144,4 +154,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   linkText: { flex: 1, gap: Spacing.half },
+  credit: { textAlign: 'center' },
 });
