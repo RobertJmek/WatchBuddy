@@ -104,7 +104,7 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   **Edit profile → Blocked accounts**. Reports land in a table the developer reviews.
 
 ### Account & platform
-- **Auth** — passwordless email one-time code, plus Google sign-in (OAuth).
+- **Auth** — passwordless email one-time code, Google sign-in (OAuth), and Sign in with Apple on iOS.
 - **First-run onboarding** — new accounts are gently prompted to set a username and photo so
   friends can find and follow them; skippable and shown once.
 - **Editable profile** — display name, unique username, bio, and avatar upload.
@@ -339,4 +339,4 @@ TMDB is down.
 closed testing**; iOS ships via **TestFlight**.
 
 **Planned next:** finish Play closed testing → production, a PRO tier (ad-free) with AdMob
-banners, Apple sign-in, and over-the-air updates (EAS Update).
+banners, and over-the-air updates (EAS Update).

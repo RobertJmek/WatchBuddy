@@ -1,6 +1,15 @@
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -12,7 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 
 export default function SignInScreen() {
-  const { sendCode, verifyCode, signInWithProvider } = useAuth();
+  const { sendCode, verifyCode, signInWithProvider, signInWithApple } = useAuth();
   const c = useTheme();
   const isDark = useColorScheme() === 'dark';
 
@@ -20,6 +29,11 @@ export default function SignInScreen() {
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
+  }, []);
 
   async function handleSend() {
     if (!email.includes('@')) {
@@ -47,6 +61,13 @@ export default function SignInScreen() {
     if (error) Alert.alert('Google sign-in failed', error);
   }
 
+  async function handleApple() {
+    setBusy(true);
+    const { error } = await signInWithApple();
+    setBusy(false);
+    if (error) Alert.alert('Apple sign-in failed', error);
+  }
+
   const inputStyle = [
     styles.input,
     { color: c.text, backgroundColor: c.backgroundElement },
@@ -54,7 +75,13 @@ export default function SignInScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.container}>
+        {/* Scrolls so the button under the code field stays reachable: iOS's
+            number pad has no Return key to put the keyboard away. */}
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          bottomOffset={Spacing.three}>
         <Image
           style={[
             styles.logo,
@@ -79,6 +106,19 @@ export default function SignInScreen() {
 
         {!codeSent && (
           <>
+            {appleAvailable && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                buttonStyle={
+                  isDark
+                    ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                    : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                }
+                cornerRadius={Spacing.three}
+                style={[styles.appleBtn, busy && styles.disabled]}
+                onPress={busy ? () => {} : handleApple}
+              />
+            )}
             <Pressable
               style={[styles.secondaryBtn, { borderColor: c.border }]}
               onPress={handleGoogle}
@@ -108,6 +148,8 @@ export default function SignInScreen() {
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
               value={email}
               editable={!busy}
               onChangeText={setEmail}
@@ -127,6 +169,8 @@ export default function SignInScreen() {
               placeholder="········"
               placeholderTextColor={c.border}
               keyboardType="number-pad"
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
               maxLength={8}
               value={code}
               editable={!busy}
@@ -149,6 +193,7 @@ export default function SignInScreen() {
         )}
 
         {busy && <ActivityIndicator style={{ marginTop: Spacing.two }} />}
+        </KeyboardAwareScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -156,8 +201,8 @@ export default function SignInScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: {
-    flex: 1,
+  content: {
+    flexGrow: 1,
     justifyContent: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
@@ -194,6 +239,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.two,
   },
+  // The Google button's height: 20 line + 2 × 16 padding + 2 × 1 border.
+  appleBtn: { height: 54 },
+  disabled: { opacity: 0.5 },
   googleIcon: { width: 18, height: 18 },
   or: { textAlign: 'center' },
   // Two-part sender line: quiet label, then the address it was sent to standing
