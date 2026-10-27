@@ -216,8 +216,9 @@ const styles = StyleSheet.create({
     fontFamily: Type.semibold,
     fontSize: 17,
   },
-  // The code reads like a ticket number: centered, widely tracked, larger than a
-  // plain field — the one distinctive touch on this screen.
+  // The code reads like a ticket number: centered and larger than a plain
+  // field. No letterSpacing: iOS recycles this native view into later
+  // TextInputs (Search) and the kerning survives the recycle.
   codeInput: {
     fontFamily: Type.medium,
     borderRadius: Spacing.three,
@@ -225,7 +226,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     fontSize: 26,
     textAlign: 'center',
-    letterSpacing: 8,
   },
   link: { textAlign: 'center' },
 });
