@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -23,9 +24,9 @@ type AuthState = {
   /** Verify the 6-digit code to complete sign-in. */
   verifyCode: (email: string, token: string) => Promise<{ error: string | null }>;
   /** Sign in via an OAuth provider through an in-app browser. */
-  signInWithProvider: (
-    provider: 'google' | 'apple',
-  ) => Promise<{ error: string | null }>;
+  signInWithProvider: (provider: 'google') => Promise<{ error: string | null }>;
+  /** Native Sign in with Apple (iOS only). */
+  signInWithApple: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   /** Permanently delete the account and all its data, then sign out. */
   deleteAccount: () => Promise<{ error: string | null }>;
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return { error: second.error?.message ?? null };
   }
 
-  async function signInWithProvider(provider: 'google' | 'apple') {
+  async function signInWithProvider(provider: 'google') {
     const redirectTo = Linking.createURL('auth-callback');
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -110,6 +111,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return { error: exchangeError.message };
   }
 
+  // Native sheet, then hand Apple's identity token to Supabase. No nonce:
+  // Supabase only checks one when the token carries it (ADR 0027).
+  async function signInWithApple() {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) return { error: 'No identity token returned' };
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+      return { error: error?.message ?? null };
+    } catch (e) {
+      if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') return { error: null };
+      return { error: e instanceof Error ? e.message : 'Apple sign-in failed' };
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
   }
@@ -131,6 +154,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         sendCode,
         verifyCode,
         signInWithProvider,
+        signInWithApple,
         signOut,
         deleteAccount,
       }}>
