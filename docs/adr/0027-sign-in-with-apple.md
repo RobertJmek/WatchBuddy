@@ -24,9 +24,11 @@ not part of this decision.
 - **iOS only.** The button renders when `Platform.OS === 'ios'` and
   `isAvailableAsync()`. The guideline is App Store only; Android keeps Google +
   email.
-- **Apple's own button** (`AppleAuthenticationButton`, *Continue*), above
-  Google, white on dark and black on light. Apple's HIG requires its button and
-  reviewers check.
+- **A custom button, styled like Google's** (outline, app font, `apple.logo`
+  SF Symbol, *Continue with Apple*), above Google. The first cut used
+  `AppleAuthenticationButton`; its system font grows with the button's height
+  and its solid fill shouted over the rest of the screen. HIG allows a custom
+  button that keeps the Apple logo, an approved title and matching size.
 - **No nonce.** Supabase checks a nonce only when the token carries one;
   skipping it avoids a crypto dependency. Revisit if Supabase starts requiring it.
 - **The full name Apple returns on first sign-in is not stored.** Onboarding
