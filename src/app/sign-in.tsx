@@ -1,5 +1,6 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
+import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -107,17 +108,20 @@ export default function SignInScreen() {
         {!codeSent && (
           <>
             {appleAvailable && (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-                buttonStyle={
-                  isDark
-                    ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                    : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                }
-                cornerRadius={Spacing.three}
-                style={[styles.appleBtn, busy && styles.disabled]}
-                onPress={busy ? () => {} : handleApple}
-              />
+              // A custom button rather than AppleAuthenticationButton: the native
+              // one sets its own font and grows its label with its height, so it
+              // shouted over Google. HIG allows a custom button with the Apple
+              // logo, the "Continue with Apple" title and matching size.
+              <Pressable
+                style={[styles.secondaryBtn, { borderColor: c.border }]}
+                onPress={handleApple}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Apple"
+                accessibilityState={{ disabled: busy }}>
+                <SymbolView name="apple.logo" size={18} tintColor={c.text} />
+                <ThemedText type="smallBold">Continue with Apple</ThemedText>
+              </Pressable>
             )}
             <Pressable
               style={[styles.secondaryBtn, { borderColor: c.border }]}
@@ -239,9 +243,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.two,
   },
-  // The Google button's height: 20 line + 2 × 16 padding + 2 × 1 border.
-  appleBtn: { height: 54 },
-  disabled: { opacity: 0.5 },
   googleIcon: { width: 18, height: 18 },
   or: { textAlign: 'center' },
   // Two-part sender line: quiet label, then the address it was sent to standing
