@@ -1,6 +1,6 @@
 # WatchBuddy — Privacy Policy
 
-_Last updated: 29 September 2026_
+_Last updated: 29 October 2026_
 
 WatchBuddy is a personal movie & TV tracking app. This page explains what data
 the app handles and how.
@@ -8,7 +8,8 @@ the app handles and how.
 ## What we collect
 
 - **Account**: your email address (used only to sign you in) and, if you use
-  Google sign-in, the email Google shares with us.
+  Google or Apple sign-in, the email that provider shares with us (with Apple,
+  this can be a private relay address).
 - **Profile**: the display name, username, bio and avatar you choose to set.
 - **Your activity in the app**: library statuses, watch history, ratings,
   reviews, favorites and follows. This is the product — it exists so the app
