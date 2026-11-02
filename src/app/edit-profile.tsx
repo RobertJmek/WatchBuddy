@@ -192,19 +192,19 @@ export default function EditProfileScreen() {
             styles.content,
             { paddingBottom: insets.bottom + Spacing.five },
           ]}>
-          <View style={styles.avatarSection}>
+          <Pressable
+            style={styles.avatarSection}
+            onPress={pickAvatar}
+            disabled={saving}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Change photo"
+            accessibilityState={{ disabled: saving }}>
             <Avatar uri={avatarUri} name={displayName} size={96} />
-            <Pressable
-              onPress={pickAvatar}
-              disabled={saving}
-              accessibilityRole="button"
-              accessibilityLabel="Change photo"
-              accessibilityState={{ disabled: saving }}>
-              <ThemedText type="smallBold" style={{ color: Accent }}>
-                Change photo
-              </ThemedText>
-            </Pressable>
-          </View>
+            <ThemedText type="smallBold" style={{ color: Accent }}>
+              Change photo
+            </ThemedText>
+          </Pressable>
 
           <ThemedText type="smallBold">Display name</ThemedText>
           <TextInput
@@ -322,7 +322,7 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.two },
-  avatarSection: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
+  avatarSection: { alignSelf: 'center', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
   input: {
     fontFamily: Type.body,
     borderRadius: Spacing.three,

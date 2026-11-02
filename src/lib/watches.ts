@@ -40,6 +40,17 @@ export async function getEpisodeWatchCounts(
   return counts;
 }
 
+/** When the viewer last watched any episode of a series, or null. */
+export async function getLastEpisodeWatchAt(titleId: string): Promise<string | null> {
+  const { q } = await selectMine('episode_watches', 'watched_at');
+  const { data, error } = await q
+    .eq('title_id', titleId)
+    .order('watched_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return (data?.[0] as { watched_at: string } | undefined)?.watched_at ?? null;
+}
+
 /**
  * Complete passes through a series: the smallest watch count among the given
  * (aired) episodes, 0 when any is unwatched. The series' "Logged N times".
