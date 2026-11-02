@@ -1,13 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
@@ -136,20 +130,19 @@ export default function OnboardingScreen() {
           profile.
         </ThemedText>
 
-        <View style={styles.avatarSection}>
+        <Pressable
+          style={styles.avatarSection}
+          onPress={pickAvatar}
+          disabled={saving}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Add a photo"
+          accessibilityState={{ disabled: saving }}>
           <Avatar uri={avatarUri} name={displayName} size={96} />
-          <Pressable
-            onPress={pickAvatar}
-            disabled={saving}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Add a photo"
-            accessibilityState={{ disabled: saving }}>
-            <ThemedText type="smallBold" style={{ color: Accent }}>
-              Add a photo
-            </ThemedText>
-          </Pressable>
-        </View>
+          <ThemedText type="smallBold" style={{ color: Accent }}>
+            Add a photo
+          </ThemedText>
+        </Pressable>
 
         <ThemedText type="smallBold">Display name</ThemedText>
         <TextInput
@@ -209,7 +202,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: Spacing.three, gap: Spacing.two },
   heading: { textAlign: 'center' },
   subtitle: { textAlign: 'center', marginBottom: Spacing.three, marginTop: Spacing.one },
-  avatarSection: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.three },
+  avatarSection: { alignSelf: 'center', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.three },
   input: {
     fontFamily: Type.body,
     borderRadius: Spacing.three,
