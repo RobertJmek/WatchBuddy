@@ -109,11 +109,11 @@ export default function AboutScreen() {
             onPress={() => router.push({ pathname: '/tutorial', params: { replay: '1' } })}
             accessibilityRole="button"
             accessibilityLabel="How WatchBuddy works"
-            accessibilityHint="Replays the first-run tutorial">
+            accessibilityHint="Takes the tour again">
             <View style={styles.linkText}>
               <ThemedText type="subtitle">How WatchBuddy works</ThemedText>
               <ThemedText type="small" style={{ color: c.textSecondary }}>
-                The short tour new accounts see
+                Take the tour again
               </ThemedText>
             </View>
             <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />

@@ -1,68 +1,94 @@
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeOut, SlideInLeft, SlideInRight } from 'react-native-reanimated';
+import { useState, type ReactNode } from 'react';
+import {
+  ActivityIndicator,
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  LinearTransition,
+  SlideInLeft,
+  SlideInRight,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol, type IconName } from '@/components/icon-symbol';
+import { LibraryStatusBar } from '@/components/library-status-bar';
+import { PressScale } from '@/components/press-scale';
+import { RatingBar } from '@/components/rating-bar';
+import { SearchRow } from '@/components/search-row';
 import { SwipeNav } from '@/components/swipe-nav';
-import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { UserRow } from '@/components/user-row';
+import { Accent, AccentText, PlaceholderBg, Spacing, Type } from '@/constants/theme';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
-import { hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
+import { hapticSuccess, hapticTick } from '@/lib/haptics';
+import { keys } from '@/lib/keys';
+import { entityTypeFor, getRating } from '@/lib/ratings';
+import { searchUsers } from '@/lib/social';
+import {
+  imageUrl,
+  searchTitles,
+  titleQueryOptions,
+  type SearchResult,
+  type TitleRow,
+} from '@/lib/tmdb';
+import { itemKey, useSearchLog } from '@/lib/use-search-log';
 
 /**
- * "How WatchBuddy works": a few cards shown once, right after onboarding's
- * profile step, and replayable from About (`?replay=1`). ADR 0028.
+ * "How WatchBuddy works": five cards, each with one real thing to do, shown
+ * once right after onboarding's profile step and replayable from About
+ * (`?replay=1`). Everything here writes for real (log, rate, status, follow)
+ * through the same components the app uses. ADR 0028.
  *
- * The cards are a state index inside a `SwipeNav`, not a pager: the try-it
- * card holds a real `SwipeToLogRow`, and the row (10pt) has to win against the
- * card swipe (12pt) by threshold, the same rule every other screen relies on.
- * A pager would claim the drag first.
+ * Layout follows one rule: tight inside a group, wide between groups (8pt
+ * grid). Each card is a title, a line or two of why, then one or two steps,
+ * each with its instruction right above the control it is about.
+ *
+ * The cards are a state index inside a `SwipeNav`, not a pager: the controls
+ * on them (a swipe-to-log row at 10pt, the rating drag at ~6pt, a native
+ * scroll at 8dp) must win the drag against the card swipe (12pt) by threshold,
+ * the same rule every other screen relies on.
  */
 
-type Card = { icon: IconName; title: string; body: string; demo?: true };
+/** The title the later cards use when the user picks nothing on the first one. */
+const DEFAULT_TITLE: SearchResult = {
+  tmdb_id: 1401459,
+  media_type: 'movie',
+  title: 'Fjord',
+  overview: '',
+  poster_path: null,
+  release_date: '2026-06-13',
+  vote_average: null,
+};
 
-const CARDS: Card[] = [
-  {
-    icon: 'film',
-    title: 'Welcome to WatchBuddy',
-    body: 'Track every movie and show you watch, and see what your friends are watching.',
-  },
-  {
-    icon: 'magnifyingglass',
-    title: 'Log a watch',
-    body: 'Search a title and swipe it right to log it, or open it and use the buttons. Episodes, seasons and whole series work too.',
-  },
-  {
-    icon: 'checkmark',
-    title: 'Try it',
-    body: 'Swipe the row right to log it, and left to undo. Nothing here is saved.',
-    demo: true,
-  },
-  {
-    icon: 'star',
-    title: 'Rate it',
-    body: "Drag across 1–10 on a title's page. A first rating counts as watched, and you can add a review.",
-  },
-  {
-    icon: 'book.closed',
-    title: 'Library & Diary',
-    body: 'Sort titles into Watchlist, Watching and Completed, and filter them. Your Diary keeps every watch with a date you can edit.',
-  },
-  {
-    icon: 'person.2',
-    title: 'Friends & Feed',
-    body: 'Type @ in Search to find people and follow them. The Feed shows what they watch, and you can like and reply to reviews.',
-  },
-  {
-    icon: 'hand.draw',
-    title: 'Gestures & extras',
-    body: 'Swipe between tabs, swipe right to go back, pull down to close a title. Your Stats live on your profile, and you can import from TV Time in Edit Profile.',
-  },
-];
+/** Suggested on the friends card while nothing is typed. */
+const SUGGESTED_USERNAME = 'watchbuddy';
+
+const CARD_COUNT = 5;
+const MIN_CHARS = 3;
+const DEBOUNCE_MS = 500;
+
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+/** Card content rises in one group after another. */
+const rise = (step: number) =>
+  FadeInDown.duration(340)
+    .delay(40 + step * 80)
+    .easing(EASE_OUT);
+const layout = LinearTransition.duration(220).easing(EASE_OUT);
 
 export default function TutorialScreen() {
   const c = useTheme();
@@ -71,43 +97,146 @@ export default function TutorialScreen() {
   const { replay } = useLocalSearchParams<{ replay?: string }>();
   const [index, setIndex] = useState(0);
   const [forward, setForward] = useState(true);
-  const [logged, setLogged] = useState(false);
 
-  const last = index === CARDS.length - 1;
-  const card = CARDS[index];
+  // Lifted out of the cards, which unmount on every change.
+  const [query, setQuery] = useState('');
+  const [submitted, setSubmitted] = useState('');
+  const [people, setPeople] = useState('');
+  const [picked, setPicked] = useState<SearchResult | null>(null);
+  const { logged, logItem, undoItem } = useSearchLog();
+
+  // The default title's poster comes from the same read-through the title page uses.
+  const defaultQ = useQuery(titleQueryOptions(DEFAULT_TITLE.tmdb_id, DEFAULT_TITLE.media_type));
+  const fallback: SearchResult = {
+    ...DEFAULT_TITLE,
+    poster_path: defaultQ.data?.title.poster_path ?? null,
+  };
+  const chosen = picked ?? fallback;
+
+  const pick = (item: SearchResult) => {
+    Keyboard.dismiss();
+    hapticTick();
+    setPicked(item);
+  };
+
+  const last = index === CARD_COUNT - 1;
 
   // A committed SwipeNav swipe ticks inside its own `fire()`; the buttons tick here.
+  const go = (step: 1 | -1) => {
+    Keyboard.dismiss();
+    setForward(step > 0);
+    setIndex((i) => Math.min(Math.max(i + step, 0), CARD_COUNT - 1));
+  };
   const next = () => {
-    setForward(true);
-    setIndex((i) => Math.min(i + 1, CARDS.length - 1));
+    hapticTick();
+    go(1);
   };
-  const back = () => {
-    setForward(false);
-    setIndex((i) => Math.max(i - 1, 0));
-  };
-
   const done = () => (replay ? router.back() : router.replace('/'));
-  const finish = () => {
-    hapticSuccess();
-    done();
-  };
 
-  const log = () => {
-    setLogged(true);
-    hapticSuccess();
-  };
-  const undo = () => {
-    setLogged(false);
-    hapticUndo();
-  };
+  const field = { backgroundColor: c.backgroundElement };
+  const fieldText = [styles.fieldInput, { color: c.text }];
+
+  const cards = [
+    <Card
+      key="log"
+      title="Log a watch"
+      body="Keep track of every movie and show you watch.">
+      <Step n={1} label="Search for something you've seen">
+        <View style={[styles.field, field]}>
+          <IconSymbol name="magnifyingglass" size={18} tintColor={c.textSecondary} />
+          <TextInput
+            style={fieldText}
+            placeholder="Movie or show"
+            placeholderTextColor={c.textSecondary}
+            returnKeyType="search"
+            autoCorrect={false}
+            value={query}
+            onChangeText={(t) => {
+              setQuery(t);
+              setSubmitted('');
+            }}
+            onSubmitEditing={() => setSubmitted(query.trim())}
+          />
+        </View>
+        <SearchPicks query={query} submitted={submitted} picked={picked} onPick={pick} />
+      </Step>
+      <Step n={2} label="Swipe it right to log it" note="To undo, swipe left or tap ✓.">
+        {picked ? (
+          <SwipeTry
+            item={picked}
+            logged={logged}
+            onLog={logItem}
+            onUndo={undoItem}
+            onNext={next}
+          />
+        ) : (
+          <View style={[styles.empty, { borderColor: c.border }]}>
+            <ThemedText type="small" style={{ color: c.textSecondary }}>
+              Choose a title above.
+            </ThemedText>
+            <Pressable onPress={() => pick(fallback)} hitSlop={8} accessibilityRole="button">
+              <ThemedText type="smallBold" style={{ color: Accent }}>
+                Or use {DEFAULT_TITLE.title}
+              </ThemedText>
+            </Pressable>
+          </View>
+        )}
+      </Step>
+    </Card>,
+    <Card
+      key="rate"
+      title="Rate it"
+      body="Rate titles from 1 to 10. Your ratings feed your stats.">
+      <Step label="Drag across the numbers and let go" note="Rating a title also logs it as watched.">
+        <TitleControl title={chosen} control="rating" />
+      </Step>
+    </Card>,
+    <Card
+      key="library"
+      title="Your library"
+      body="Sort titles by status. Every watch also goes into your Diary.">
+      <Step label="Tap a status">
+        <TitleControl title={chosen} control="status" />
+      </Step>
+    </Card>,
+    <Card
+      key="friends"
+      title="Find friends"
+      body="Follow friends to see what they watch and rate.">
+      <Step label="Search for a username, then tap Follow" note="In Search, type @ before a name.">
+        <View style={[styles.field, field]}>
+          <ThemedText style={{ color: c.textSecondary }}>@</ThemedText>
+          <TextInput
+            style={fieldText}
+            placeholder="username"
+            placeholderTextColor={c.textSecondary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={people}
+            onChangeText={setPeople}
+          />
+        </View>
+        <PeopleResults text={people} />
+      </Step>
+    </Card>,
+    <Card key="gestures" title="Swipe around" body="Most of WatchBuddy works with swipes.">
+      <Step
+        label="Swipe the box to switch tabs"
+        note="Swipe right to go back. Pull a title down to close it.">
+        <TabDemo />
+      </Step>
+    </Card>,
+  ];
 
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-      <SwipeNav onSwipeLeft={last ? undefined : next} onSwipeRight={index > 0 ? back : undefined}>
+      <SwipeNav
+        onSwipeLeft={last ? undefined : () => go(1)}
+        onSwipeRight={index > 0 ? () => go(-1) : undefined}>
         <View style={[styles.top, { paddingTop: insets.top + Spacing.two }]}>
           <Pressable onPress={done} hitSlop={12} accessibilityRole="button">
-            <ThemedText type="small" style={{ color: c.textSecondary }}>
+            <ThemedText type="smallBold" style={{ color: c.textSecondary }}>
               Skip
             </ThemedText>
           </Pressable>
@@ -116,61 +245,10 @@ export default function TutorialScreen() {
         <View style={styles.stage}>
           <Animated.View
             key={index}
-            entering={(forward ? SlideInRight : SlideInLeft).duration(220)}
+            entering={(forward ? SlideInRight : SlideInLeft).duration(260).easing(EASE_OUT)}
             exiting={FadeOut.duration(120)}
-            style={styles.card}>
-            <View style={[styles.badge, { backgroundColor: c.backgroundElement }]}>
-              <IconSymbol name={card.icon} size={36} tintColor={Accent} />
-            </View>
-            <ThemedText type="title" style={styles.center}>
-              {card.title}
-            </ThemedText>
-            <ThemedText style={[styles.center, { color: c.textSecondary }]}>{card.body}</ThemedText>
-
-            {card.demo && (
-              <View style={styles.demo}>
-                <SwipeToLogRow
-                  onLog={log}
-                  logLabel="Log watch"
-                  onUndo={logged ? undo : undefined}>
-                  <Pressable
-                    style={[styles.row, { backgroundColor: c.backgroundElement }]}
-                    // The swipe's actions for a screen reader, on the row's own
-                    // focusable node (ADR 0018).
-                    accessibilityLabel="Your first movie, demo"
-                    accessibilityActions={
-                      logged
-                        ? [
-                            { name: 'log', label: 'Log watch' },
-                            { name: 'undo', label: 'Undo' },
-                          ]
-                        : [{ name: 'log', label: 'Log watch' }]
-                    }
-                    onAccessibilityAction={({ nativeEvent }) => {
-                      if (nativeEvent.actionName === 'log') log();
-                      else if (nativeEvent.actionName === 'undo') undo();
-                    }}>
-                    <Image source={require('@/assets/images/icon.png')} style={styles.poster} />
-                    <View style={styles.rowText}>
-                      <ThemedText type="smallBold">Your first movie</ThemedText>
-                      <ThemedText type="small" style={{ color: c.textSecondary }}>
-                        {logged ? 'Logged!' : 'Movie · demo'}
-                      </ThemedText>
-                    </View>
-                    {logged && (
-                      <Pressable
-                        style={styles.check}
-                        hitSlop={8}
-                        onPress={undo}
-                        accessibilityRole="button"
-                        accessibilityLabel="Undo this watch">
-                        <IconSymbol name="checkmark" size={18} tintColor={AccentText} />
-                      </Pressable>
-                    )}
-                  </Pressable>
-                </SwipeToLogRow>
-              </View>
-            )}
+            style={StyleSheet.absoluteFill}>
+            {cards[index]}
           </Animated.View>
         </View>
 
@@ -178,40 +256,48 @@ export default function TutorialScreen() {
           <View
             style={styles.dots}
             accessible
-            accessibilityLabel={`Step ${index + 1} of ${CARDS.length}`}>
-            {CARDS.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, { backgroundColor: i === index ? Accent : c.border }]}
+            accessibilityLabel={`Step ${index + 1} of ${CARD_COUNT}`}>
+            {cards.map((card, i) => (
+              <Animated.View
+                key={card.key}
+                style={[
+                  styles.dot,
+                  {
+                    width: i === index ? 22 : 8,
+                    backgroundColor: i === index ? Accent : c.border,
+                    transitionProperty: ['width', 'backgroundColor'],
+                    transitionDuration: 220,
+                  },
+                ]}
               />
             ))}
           </View>
           <View style={styles.buttons}>
-            <Pressable
-              style={[styles.secondaryBtn, index === 0 && styles.hidden]}
+            {index > 0 && (
+              <PressScale
+                style={[styles.button, styles.secondaryBtn, { borderColor: c.text }]}
+                onPress={() => {
+                  hapticTick();
+                  go(-1);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Back">
+                <ThemedText style={styles.buttonText}>Back</ThemedText>
+              </PressScale>
+            )}
+            <PressScale
+              style={[styles.button, styles.primaryBtn]}
               onPress={() => {
-                hapticTick();
-                back();
+                if (!last) return next();
+                hapticSuccess();
+                done();
               }}
-              disabled={index === 0}
               accessibilityRole="button"
-              accessibilityElementsHidden={index === 0}
-              importantForAccessibility={index === 0 ? 'no-hide-descendants' : 'auto'}>
-              <ThemedText type="smallBold">Back</ThemedText>
-            </Pressable>
-            <Pressable
-              style={styles.primaryBtn}
-              onPress={
-                last
-                  ? finish
-                  : () => {
-                      hapticTick();
-                      next();
-                    }
-              }
-              accessibilityRole="button">
-              <ThemedText style={styles.primaryText}>{last ? 'Get started' : 'Next'}</ThemedText>
-            </Pressable>
+              accessibilityLabel={last ? 'Get started' : 'Next'}>
+              <ThemedText style={[styles.buttonText, { color: AccentText }]}>
+                {last ? 'Get started' : 'Next'}
+              </ThemedText>
+            </PressScale>
           </View>
         </View>
       </SwipeNav>
@@ -219,61 +305,601 @@ export default function TutorialScreen() {
   );
 }
 
+function Card({ title, body, children }: { title: string; body: string; children: ReactNode }) {
+  const c = useTheme();
+  return (
+    <ScrollView
+      contentContainerStyle={styles.card}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag">
+      <Animated.View entering={rise(0)} style={styles.intro}>
+        {/* One line on every phone: the type shrinks before it wraps. */}
+        <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+          {title}
+        </ThemedText>
+        <ThemedText style={[styles.body, { color: c.textSecondary }]}>{body}</ThemedText>
+      </Animated.View>
+      <Animated.View entering={rise(1)} style={styles.steps}>
+        {children}
+      </Animated.View>
+    </ScrollView>
+  );
+}
+
+/** One instruction and the control it is about. `n` numbers it when a card has two. */
+function Step({
+  n,
+  label,
+  note,
+  children,
+}: {
+  n?: number;
+  label: string;
+  note?: string;
+  children: ReactNode;
+}) {
+  const c = useTheme();
+  return (
+    <Animated.View layout={layout} style={styles.step}>
+      <View style={styles.stepHead}>
+        <View style={styles.stepLabelRow}>
+          {n != null && (
+            <View style={styles.stepNum}>
+              <ThemedText style={styles.stepNumText}>{n}</ThemedText>
+            </View>
+          )}
+          <ThemedText style={styles.stepLabel}>{label}</ThemedText>
+        </View>
+        {note && (
+          <ThemedText
+            type="small"
+            style={[n != null && styles.noteIndent, { color: c.textSecondary }]}>
+            {note}
+          </ThemedText>
+        )}
+      </View>
+      {children}
+    </Animated.View>
+  );
+}
+
+/**
+ * True once `value` differs from the first value it settled on: an animated
+ * hint steps aside once the user has done what it shows. (Setting state during
+ * render is React's pattern for remembering a prior value.)
+ */
+function useChanged<T>(value: T | undefined) {
+  const [first, setFirst] = useState<{ v: T } | null>(null);
+  if (first === null && value !== undefined) setFirst({ v: value });
+  return first !== null && value !== undefined && value !== first.v;
+}
+
+/**
+ * Step 1: search, and tap a result to choose it. Choosing does not log; that
+ * is step 2's swipe, kept apart so the search is something the user does, not
+ * something they scroll past. Same term rule as Search (ADR 0020): live from 3
+ * characters, any length on the keyboard's Search key.
+ */
+function SearchPicks({
+  query,
+  submitted,
+  picked,
+  onPick,
+}: {
+  query: string;
+  submitted: string;
+  picked: SearchResult | null;
+  onPick: (item: SearchResult) => void;
+}) {
+  const c = useTheme();
+  const debounced = useDebouncedValue(query.trim(), DEBOUNCE_MS);
+  const term = submitted || (debounced.length >= MIN_CHARS ? debounced : '');
+  const search = useQuery({
+    queryKey: keys.search(term),
+    queryFn: () => searchTitles(term),
+    enabled: !!term,
+    placeholderData: keepPreviousData,
+  });
+
+  if (!query.trim()) return null;
+  if (search.isError)
+    return (
+      <ThemedText type="small" style={{ color: c.textSecondary }}>
+        Search failed. Try again.
+      </ThemedText>
+    );
+  if (!search.data) return term ? <ActivityIndicator style={styles.spinner} /> : null;
+  if (search.data.length === 0)
+    return (
+      <ThemedText type="small" style={{ color: c.textSecondary }}>
+        Nothing found.
+      </ThemedText>
+    );
+
+  return (
+    <View style={styles.picks}>
+      {search.data.slice(0, 4).map((item, i) => {
+        const on = picked != null && itemKey(picked) === itemKey(item);
+        const poster = imageUrl(item.poster_path, 'w92');
+        return (
+          <Animated.View key={itemKey(item)} entering={FadeIn.duration(200).delay(i * 40)}>
+            <Pressable
+              onPress={() => onPick(item)}
+              style={({ pressed }) => [
+                styles.pick,
+                { backgroundColor: on ? c.backgroundSelected : 'transparent' },
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on }}
+              accessibilityLabel={`${item.title}, ${item.media_type === 'tv' ? 'TV' : 'movie'}`}>
+              <Image
+                style={styles.pickPoster}
+                source={poster ? { uri: poster } : undefined}
+                contentFit="cover"
+              />
+              <View style={styles.pickText}>
+                <ThemedText type="smallBold" numberOfLines={1}>
+                  {item.title}
+                </ThemedText>
+                <ThemedText type="small" style={{ color: c.textSecondary }}>
+                  {item.media_type === 'tv' ? 'TV' : 'Movie'}
+                  {item.release_date ? ` · ${item.release_date.slice(0, 4)}` : ''}
+                </ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.radio,
+                  { borderColor: on ? Accent : c.border },
+                  on && styles.radioOn,
+                ]}>
+                {on && <IconSymbol name="checkmark" size={12} tintColor={AccentText} />}
+              </View>
+            </Pressable>
+          </Animated.View>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * Shows what a swipe does before the user tries it: the row slides right every
+ * couple of seconds and uncovers the same teal the real swipe reveals, then
+ * settles back.
+ */
+function Peek({ children }: { children: ReactNode }) {
+  const reduced = useReducedMotion();
+  return (
+    <View style={styles.peek}>
+      <View style={styles.peekUnder}>
+        <IconSymbol name="checkmark" size={20} tintColor={AccentText} />
+        <ThemedText style={styles.peekText}>Log</ThemedText>
+      </View>
+      <Animated.View
+        style={
+          reduced
+            ? undefined
+            : {
+                animationName: {
+                  '0%': { transform: [{ translateX: 0 }] },
+                  '35%': { transform: [{ translateX: 0 }] },
+                  '55%': { transform: [{ translateX: 104 }] },
+                  '70%': { transform: [{ translateX: 104 }] },
+                  '88%': { transform: [{ translateX: 0 }] },
+                  '100%': { transform: [{ translateX: 0 }] },
+                },
+                animationDuration: 2800,
+                animationIterationCount: 'infinite',
+                animationTimingFunction: 'ease-in-out',
+              }
+        }>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
+/** Step 2: the chosen title as the real swipe-to-log row. */
+function SwipeTry({
+  item,
+  logged,
+  onLog,
+  onUndo,
+  onNext,
+}: {
+  item: SearchResult;
+  logged: ReturnType<typeof useSearchLog>['logged'];
+  onLog: (item: SearchResult) => void;
+  onUndo: (item: SearchResult) => void;
+  onNext: () => void;
+}) {
+  const c = useTheme();
+  const router = useRouter();
+  const key = itemKey(item);
+  const isLogged = logged.has(key);
+  const row = (
+    <SearchRow
+      item={item}
+      bg={c.backgroundElement}
+      router={router}
+      logged={isLogged}
+      pending={logged.get(key)?.some((e) => e.pending) ?? false}
+      onLog={onLog}
+      onUndo={onUndo}
+    />
+  );
+  return (
+    <Animated.View
+      key={key}
+      entering={FadeInDown.duration(260).easing(EASE_OUT)}
+      style={styles.picks}>
+      {isLogged ? row : <Peek>{row}</Peek>}
+      {isLogged && (
+        <Animated.View entering={FadeInDown.duration(260).easing(EASE_OUT)}>
+          <Pressable
+            style={styles.success}
+            onPress={onNext}
+            accessibilityRole="button"
+            accessibilityLabel="Logged. Next: rate it">
+            <ThemedText type="smallBold" style={{ color: Accent }}>
+              Logged. Next: rate it
+            </ThemedText>
+            <IconSymbol name="chevron.right" size={16} tintColor={Accent} />
+          </Pressable>
+        </Animated.View>
+      )}
+    </Animated.View>
+  );
+}
+
+/** The chosen title's poster and name above the real rating bar or status chips. */
+function TitleControl({ title, control }: { title: SearchResult; control: 'rating' | 'status' }) {
+  const c = useTheme();
+  const q = useQuery(titleQueryOptions(title.tmdb_id, title.media_type));
+  const row = q.data?.title;
+  const poster = imageUrl(row?.poster_path ?? title.poster_path, 'w185');
+  const year = (row?.release_date ?? title.release_date)?.slice(0, 4);
+
+  return (
+    <View style={styles.control}>
+      <View style={[styles.titleRow, { backgroundColor: c.backgroundElement }]}>
+        <Image
+          style={styles.poster}
+          source={poster ? { uri: poster } : undefined}
+          contentFit="cover"
+          transition={200}
+        />
+        <View style={styles.titleText}>
+          <ThemedText type="smallBold" numberOfLines={2}>
+            {title.title}
+          </ThemedText>
+          <ThemedText type="small" style={{ color: c.textSecondary }}>
+            {title.media_type === 'tv' ? 'TV' : 'Movie'}
+            {year ? ` · ${year}` : ''}
+          </ThemedText>
+        </View>
+      </View>
+      {row ? (
+        control === 'rating' ? (
+          <RateBlock row={row} />
+        ) : (
+          <LibraryStatusBar titleId={row.id} tmdbId={row.tmdb_id} mediaType={row.media_type} />
+        )
+      ) : q.isError ? (
+        <ThemedText type="small" style={{ color: c.textSecondary }}>
+          Couldn&apos;t load this title. You can skip ahead.
+        </ThemedText>
+      ) : (
+        <ActivityIndicator style={styles.spinner} />
+      )}
+    </View>
+  );
+}
+
+function RateBlock({ row }: { row: TitleRow }) {
+  // The same query the rating bar reads, so this shares its request and cache.
+  const q = useQuery({
+    queryKey: keys.myRating(row.id),
+    queryFn: () => getRating(entityTypeFor(row.media_type), row.id),
+  });
+  const rated = useChanged(q.data === undefined ? undefined : (q.data?.value ?? null));
+  const reduced = useReducedMotion();
+  return (
+    <View>
+      <RatingBar titleId={row.id} tmdbId={row.tmdb_id} mediaType={row.media_type} />
+      {/* A ghost fingertip gliding over the real scale until the first rating.
+          Its band sits where RatingBar draws the scale: under the "Your rating"
+          label (16pt line + 8pt gap), one 38pt row of chips. Move it if that
+          layout changes. */}
+      {!rated && !reduced && (
+        <Animated.View
+          pointerEvents="none"
+          entering={FadeIn.duration(250)}
+          exiting={FadeOut.duration(150)}
+          style={styles.ghostBand}>
+          <Animated.View
+            style={[
+              styles.ghostFinger,
+              {
+                animationName: {
+                  '0%': { left: '0%', opacity: 0, transform: [{ scale: 0.7 }] },
+                  '12%': { opacity: 1, transform: [{ scale: 1 }] },
+                  '70%': { left: '62%', opacity: 1, transform: [{ scale: 1 }] },
+                  '85%': { left: '62%', opacity: 0, transform: [{ scale: 1.3 }] },
+                  '100%': { left: '62%', opacity: 0 },
+                },
+                animationDuration: 2200,
+                animationIterationCount: 'infinite',
+                animationTimingFunction: 'ease-in-out',
+              },
+            ]}
+          />
+        </Animated.View>
+      )}
+    </View>
+  );
+}
+
+/** People search with the real Follow rows; a suggested account while it's empty. */
+function PeopleResults({ text }: { text: string }) {
+  const c = useTheme();
+  const typed = useDebouncedValue(text.trim().replace(/^@/, ''), DEBOUNCE_MS);
+  const term = typed || SUGGESTED_USERNAME;
+  const q = useQuery({
+    queryKey: keys.userSearch(term),
+    queryFn: () => searchUsers(term),
+    placeholderData: keepPreviousData,
+  });
+  const users = typed
+    ? (q.data ?? []).slice(0, 4)
+    : (q.data ?? []).filter((u) => u.username === SUGGESTED_USERNAME);
+
+  return (
+    <View style={styles.picks}>
+      {!typed && users.length > 0 && (
+        <ThemedText type="small" style={{ color: c.textSecondary }}>
+          Suggested
+        </ThemedText>
+      )}
+      {typed && q.data?.length === 0 && (
+        <ThemedText type="small" style={{ color: c.textSecondary }}>
+          No one by that name.
+        </ThemedText>
+      )}
+      {users.map((u) => (
+        <UserRow key={u.id} user={u} />
+      ))}
+    </View>
+  );
+}
+
+const DEMO_TABS: { label: string; icon: IconName; hint: string }[] = [
+  { label: 'Feed', icon: 'rectangle.stack.fill', hint: 'What your friends are watching' },
+  { label: 'Library', icon: 'film', hint: 'Everything you track' },
+  { label: 'Search', icon: 'magnifyingglass', hint: 'Find titles and people' },
+  { label: 'Profile', icon: 'person.crop.circle', hint: 'Your diary, ratings and stats' },
+];
+
+/**
+ * A miniature of the tab pager: a paging ScrollView, which claims a horizontal
+ * drag at 8dp, before the card swipe's 12pt. A ghost fingertip sweeps across
+ * it until the first swipe.
+ */
+function TabDemo() {
+  const c = useTheme();
+  const reduced = useReducedMotion();
+  const [width, setWidth] = useState(0);
+  const [page, setPage] = useState(0);
+  const [moved, setMoved] = useState(false);
+  const [scroller, setScroller] = useState<ScrollView | null>(null);
+
+  const show = (p: number) => {
+    if (p !== page) hapticTick();
+    setPage(p);
+    if (p !== 0) setMoved(true);
+  };
+
+  return (
+    <View
+      style={[styles.demoBox, { borderColor: c.border, backgroundColor: c.backgroundElement }]}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <ScrollView
+        ref={setScroller}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => show(Math.round(e.nativeEvent.contentOffset.x / (width || 1)))}>
+        {DEMO_TABS.map((t) => (
+          <View key={t.label} style={[styles.demoPage, { width }]}>
+            <IconSymbol name={t.icon} size={30} tintColor={Accent} />
+            <ThemedText type="subtitle">{t.label}</ThemedText>
+            <ThemedText type="small" style={[styles.center, { color: c.textSecondary }]}>
+              {t.hint}
+            </ThemedText>
+          </View>
+        ))}
+      </ScrollView>
+      {!moved && !reduced && (
+        <Animated.View
+          pointerEvents="none"
+          exiting={FadeOut.duration(150)}
+          style={styles.demoGhostBand}>
+          <Animated.View
+            style={[
+              styles.ghostFinger,
+              {
+                animationName: {
+                  '0%': { left: '70%', opacity: 0 },
+                  '15%': { opacity: 1 },
+                  '70%': { left: '25%', opacity: 1 },
+                  '85%': { left: '25%', opacity: 0 },
+                  '100%': { left: '25%', opacity: 0 },
+                },
+                animationDuration: 1800,
+                animationIterationCount: 'infinite',
+                animationTimingFunction: 'ease-in-out',
+              },
+            ]}
+          />
+        </Animated.View>
+      )}
+      <View style={[styles.demoBar, { borderTopColor: c.border }]}>
+        {DEMO_TABS.map((t, i) => {
+          const on = i === page;
+          return (
+            <Pressable
+              key={t.label}
+              style={styles.demoTab}
+              onPress={() => {
+                scroller?.scrollTo({ x: i * width, animated: true });
+                show(i);
+              }}
+              accessibilityRole="tab"
+              accessibilityLabel={t.label}
+              accessibilityState={{ selected: on }}>
+              <IconSymbol name={t.icon} size={18} tintColor={on ? Accent : c.textSecondary} />
+              <ThemedText type="small" style={{ color: on ? Accent : c.textSecondary }}>
+                {t.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   top: { alignItems: 'flex-end', paddingHorizontal: Spacing.four },
   stage: { flex: 1, overflow: 'hidden' },
+  // 8pt grid: 12 inside a group, 32 between groups.
   card: {
-    ...StyleSheet.absoluteFill,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.three,
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.five,
+    gap: Spacing.five,
   },
-  badge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  intro: { gap: 12 },
+  body: { fontSize: 17, lineHeight: 26 },
+  steps: { gap: Spacing.five },
+  step: { gap: 12 },
+  stepHead: { gap: Spacing.one },
+  stepLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepNum: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.two,
   },
-  center: { textAlign: 'center' },
-  demo: { alignSelf: 'stretch', marginTop: Spacing.three },
-  row: {
+  stepNumText: { color: AccentText, fontFamily: Type.semibold, fontSize: 13, lineHeight: 16 },
+  stepLabel: { fontFamily: Type.semibold, fontSize: 17, lineHeight: 24, flexShrink: 1 },
+  noteIndent: { marginLeft: 34 },
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+  },
+  fieldInput: { flex: 1, fontFamily: Type.body, fontSize: 16, paddingVertical: 14 },
+  spinner: { alignSelf: 'flex-start', marginVertical: Spacing.two },
+  picks: { gap: Spacing.two },
+  pick: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: Spacing.two,
+    borderRadius: 12,
+  },
+  pressed: { opacity: 0.6 },
+  pickPoster: { width: 36, height: 54, borderRadius: 4, backgroundColor: PlaceholderBg },
+  pickText: { flex: 1, gap: 2 },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOn: { backgroundColor: Accent },
+  empty: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  peek: { borderRadius: Spacing.three, overflow: 'hidden' },
+  peekUnder: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: Accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+  },
+  peekText: { color: AccentText, fontWeight: '700' },
+  success: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.one,
+  },
+  control: { gap: Spacing.four },
+  titleRow: {
     flexDirection: 'row',
     gap: Spacing.three,
     alignItems: 'center',
     padding: Spacing.two,
     borderRadius: Spacing.three,
   },
-  poster: { width: 52, height: 78, borderRadius: 4 },
-  rowText: { flex: 1, gap: Spacing.half },
-  check: {
+  poster: { width: 52, height: 78, borderRadius: 4, backgroundColor: PlaceholderBg },
+  titleText: { flex: 1, gap: Spacing.half },
+  ghostBand: { position: 'absolute', top: 24, height: 38, left: 0, right: 0 },
+  ghostFinger: {
+    position: 'absolute',
+    top: 5,
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Accent,
+    backgroundColor: 'rgba(13,148,136,0.3)',
+    borderWidth: 2,
+    borderColor: Accent,
+  },
+  center: { textAlign: 'center' },
+  demoBox: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Spacing.three,
+    overflow: 'hidden',
+  },
+  demoPage: {
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.four,
   },
-  bottom: { paddingHorizontal: Spacing.three, gap: Spacing.three },
+  demoGhostBand: { position: 'absolute', top: 150, height: 38, left: 0, right: 0 },
+  demoBar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth },
+  demoTab: { flex: 1, alignItems: 'center', gap: Spacing.half, paddingVertical: Spacing.two },
+  bottom: { paddingHorizontal: Spacing.four, gap: Spacing.three, paddingTop: Spacing.two },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.two },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { height: 8, borderRadius: 4 },
   buttons: { flexDirection: 'row', gap: Spacing.three },
-  secondaryBtn: {
-    flex: 1,
+  button: {
     borderRadius: Spacing.three,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
-  hidden: { opacity: 0 },
-  primaryBtn: {
-    flex: 2,
-    backgroundColor: Accent,
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  primaryText: { color: AccentText, fontWeight: '700', fontSize: 16 },
+  secondaryBtn: { flex: 1, borderWidth: 1.5 },
+  primaryBtn: { flex: 2, backgroundColor: Accent },
+  buttonText: { fontWeight: '700', fontSize: 16 },
 });

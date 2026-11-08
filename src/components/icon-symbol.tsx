@@ -22,8 +22,7 @@ const GLYPHS = {
   'info.circle': 'info',
   'rectangle.stack.fill': 'layers',
   'person.crop.circle': 'user',
-  star: 'star',
-  'hand.draw': 'move',
+  'arrow.down': 'arrow-down',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;
