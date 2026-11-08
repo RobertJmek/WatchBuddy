@@ -67,7 +67,8 @@ export default function OnboardingScreen() {
         // ignore — navigate regardless
       }
     }
-    router.replace('/');
+    // A new account's next stop is the tutorial (ADR 0028); it goes on to '/'.
+    router.replace('/tutorial');
   }
 
   async function pickAvatar() {

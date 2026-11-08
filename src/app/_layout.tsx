@@ -138,6 +138,7 @@ function RootNavigator() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="tutorial" options={{ gestureEnabled: false }} />
         <Stack.Screen name="title/[id]" options={modalOptions} />
         {/* Sibling of the title screen, reachable by a leftward swipe
             (SwipeNav): it slides in like the next page of a pager and the
