@@ -29,6 +29,7 @@ import {
   type ResolveProgress,
 } from '@/lib/tvtime/engine';
 import { buildImportPlan, unzipExport } from '@/lib/tvtime/parse';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 import type {
   ImportPlan,
   ImportProgress,
@@ -165,6 +166,7 @@ function MatchCard({
 }
 
 export default function ImportTvTimeScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   const [state, setState] = useState<Step>({ step: 'idle', error: null });
   const run = useImportRun();
@@ -257,7 +259,7 @@ export default function ImportTvTimeScreen() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Import TV Time' }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
         {state.step === 'idle' && (
           <>
             <ThemedText type="subtitle">Bring your TV Time history</ThemedText>

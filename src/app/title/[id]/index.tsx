@@ -31,6 +31,7 @@ import { keys } from '@/lib/keys';
 import { usePullToDismiss } from '@/lib/pull-to-dismiss';
 import { useSessionLog } from '@/lib/use-session-log';
 import { airedOnly, logManyEpisodeWatches, removeEpisodeWatchesByIds } from '@/lib/watches';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 // Roughly the Save/Cancel row below the review composer, plus breathing room.
 // Without it the keyboard stops flush against the input and swallows the very
@@ -38,6 +39,7 @@ import { airedOnly, logManyEpisodeWatches, removeEpisodeWatchesByIds } from '@/l
 const COMPOSER_ACTIONS_HEIGHT = 72;
 
 export default function TitleDetailScreen() {
+  const bottomGap = useBottomGap();
   const router = useRouter();
   const c = useTheme();
   const { id, type } = useLocalSearchParams<{
@@ -144,7 +146,7 @@ export default function TitleDetailScreen() {
         visible too, rather than lifting only the field itself.
       */}
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomGap }]}
         bottomOffset={COMPOSER_ACTIONS_HEIGHT}
         onScroll={scrollHandler}>
         {loading && (

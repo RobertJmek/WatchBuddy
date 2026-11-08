@@ -17,6 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 import {
   getTrendingPage,
   type MediaType,
@@ -44,6 +45,7 @@ const MAX_PAGES = 10;
  * one pages a remote feed and has nothing to filter.
  */
 export default function TrendingSectionScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   const { type, label } = useLocalSearchParams<{
     type?: MediaType;
@@ -115,7 +117,7 @@ export default function TrendingSectionScreen() {
           data={items}
           keyExtractor={(r) => `${r.media_type}-${r.tmdb_id}`}
           numColumns={COLS}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           columnWrapperStyle={styles.col}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) void fetchNextPage();

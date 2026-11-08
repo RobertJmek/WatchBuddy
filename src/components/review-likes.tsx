@@ -9,9 +9,11 @@ import { Spacing } from '@/constants/theme';
 import { UserRow } from '@/components/user-row';
 import { getReviewLikers } from '@/lib/ratings';
 import { keys } from '@/lib/keys';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 /** "Liked by" list for a review. Mounted by /review/[ratingId]/likes. */
 export function ReviewLikes({ ratingId }: { ratingId: string }) {
+  const bottomGap = useBottomGap();
   const { data, isLoading } = useQuery({
     queryKey: keys.reviewLikers(ratingId),
     queryFn: () => getReviewLikers(ratingId),
@@ -26,7 +28,7 @@ export function ReviewLikes({ ratingId }: { ratingId: string }) {
         <FlatList
           data={data ?? []}
           keyExtractor={(u) => u.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           ListEmptyComponent={
             <EmptyState icon="heart" title="No likes yet" />
           }

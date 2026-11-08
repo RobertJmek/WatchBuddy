@@ -51,6 +51,7 @@ import {
   type TitleRow,
 } from '@/lib/tmdb';
 import { itemKey, useSearchLog } from '@/lib/use-search-log';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 /**
  * "How WatchBuddy works": five cards, each with one real thing to do, shown
@@ -97,6 +98,7 @@ export default function TutorialScreen() {
   const c = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomGap = useBottomGap();
   const { replay } = useLocalSearchParams<{ replay?: string }>();
   const [index, setIndex] = useState(0);
   const [forward, setForward] = useState(true);
@@ -269,7 +271,7 @@ export default function TutorialScreen() {
           </Animated.View>
         </View>
 
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + Spacing.three }]}>
+        <View style={[styles.bottom, { paddingBottom: bottomGap }]}>
           <View
             style={styles.dots}
             accessible

@@ -19,6 +19,7 @@ import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { markOnboardingSeen } from '@/lib/onboarding';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 import {
   getMyProfile,
   pickAvatarImage,
@@ -36,6 +37,7 @@ export default function OnboardingScreen() {
   const c = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomGap = useBottomGap();
   const queryClient = useQueryClient();
   const { session } = useAuth();
 
@@ -238,7 +240,7 @@ export default function OnboardingScreen() {
         </Animated.View>
       </KeyboardAwareScrollView>
 
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + Spacing.three }]}>
+      <View style={[styles.bottom, { paddingBottom: bottomGap }]}>
         <PressScale
           style={[styles.primaryBtn, saving && styles.busy]}
           onPress={handleContinue}

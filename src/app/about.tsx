@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSuccess } from '@/lib/haptics';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 /**
  * Version, build and the policy pages — everything you go looking for when
@@ -62,6 +63,7 @@ const VERSION = Constants.expoConfig?.version ?? '—';
 const BUILD = Constants.expoConfig?.android?.versionCode;
 
 export default function AboutScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -84,7 +86,7 @@ export default function AboutScreen() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'About' }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
         {/* Tappable because the first thing anyone reporting a bug is asked for
             is which build they're on, and nobody wants to retype it. */}
         <Pressable

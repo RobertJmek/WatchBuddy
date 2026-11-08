@@ -517,7 +517,10 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
               </Pressable>
             </View>
           )}
-          <View style={styles.composer}>
+          {/* Send sits as high as every other screen's lowest button
+              (the SafeAreaView's inset + 32 here, the same as useBottomGap) until the
+              keyboard opens, when it hugs the keyboard instead. */}
+          <View style={[styles.composer, !keyboard.isVisible && { paddingBottom: Spacing.five }]}>
             <TextInput
               style={[
                 styles.input,

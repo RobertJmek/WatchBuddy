@@ -14,6 +14,7 @@ import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { importErrorMessage } from '@/lib/import-core/run';
 import { queryClient } from '@/lib/query';
 import { parseExport, WbImportParseError } from '@/lib/wb-import/parse';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 import {
   resolvePlan,
   runImport,
@@ -42,6 +43,7 @@ const PHASE_LABEL: Record<WbImportProgress['phase'], string> = {
 };
 
 export default function ImportWatchBuddyScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   const [state, setState] = useState<Step>({ step: 'idle', error: null });
   const run = useImportRun();
@@ -111,7 +113,7 @@ export default function ImportWatchBuddyScreen() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Import WatchBuddy' }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
         {state.step === 'idle' && (
           <>
             <ThemedText type="subtitle">Import a WatchBuddy export</ThemedText>

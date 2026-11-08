@@ -33,6 +33,7 @@ import { getUserRatings } from '@/lib/ratings';
 import { getFollowCounts, getFollowState } from '@/lib/social';
 import { getStats } from '@/lib/stats';
 import { getDiary } from '@/lib/watches';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 
 function StatCard({ value, label }: { value: string; label: string }) {
@@ -48,6 +49,7 @@ function StatCard({ value, label }: { value: string; label: string }) {
 }
 
 export default function UserProfileScreen() {
+  const bottomGap = useBottomGap();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const c = useTheme();
@@ -408,7 +410,7 @@ export default function UserProfileScreen() {
           data={diaryQ.data ?? []}
           keyExtractor={(e) => e.id}
           ListHeaderComponent={header}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

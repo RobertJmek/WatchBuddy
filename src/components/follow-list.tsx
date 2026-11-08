@@ -10,6 +10,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { getFollowers, getFollowing } from '@/lib/social';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 const LISTS = {
   followers: { title: 'Followers', empty: 'No followers yet.', fetch: getFollowers },
@@ -18,6 +19,7 @@ const LISTS = {
 
 /** A user's followers or followees — the body of both `user/[id]` list routes. */
 export function FollowList({ kind }: { kind: keyof typeof LISTS }) {
+  const bottomGap = useBottomGap();
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useTheme();
   const list = LISTS[kind];
@@ -35,7 +37,7 @@ export function FollowList({ kind }: { kind: keyof typeof LISTS }) {
         <FlatList
           data={data ?? []}
           keyExtractor={(u) => u.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           ListEmptyComponent={
             <ThemedText style={[styles.empty, { color: c.textSecondary }]}>
               {list.empty}
