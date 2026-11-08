@@ -34,7 +34,7 @@ import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserRow } from '@/components/user-row';
-import { Accent, AccentText, Glow, Hero, PlaceholderBg, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Danger, Glow, Hero, PlaceholderBg, Spacing, Type } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSuccess, hapticTick } from '@/lib/haptics';
@@ -473,19 +473,32 @@ function SearchPicks({
   );
 }
 
+const PEEK = 104;
+
 /**
- * Shows what a swipe does before the user tries it: the row slides right every
- * couple of seconds and uncovers the same teal the real swipe reveals, then
- * settles back.
+ * Shows what a swipe does before the user tries it: the row slides aside and
+ * uncovers the same layer the real swipe reveals, then settles back.
+ * `log` loops (teal, to the right) until the title is logged; `undo` plays
+ * once (red, to the left) right after, so undo is shown without being pushed.
+ * The same element animates in both modes, so the row is never remounted
+ * under the swipe's own spring.
  */
-function Peek({ children }: { children: ReactNode }) {
+function Peek({ mode, children }: { mode: 'log' | 'undo'; children: ReactNode }) {
   const reduced = useReducedMotion();
+  const x = mode === 'log' ? PEEK : -PEEK;
   return (
     <View style={styles.peek}>
-      <View style={styles.peekUnder}>
-        <IconSymbol name="checkmark" size={20} tintColor={AccentText} />
-        <ThemedText style={styles.peekText}>Log</ThemedText>
-      </View>
+      {mode === 'log' ? (
+        <View style={[styles.peekUnder, styles.peekLog]}>
+          <IconSymbol name="checkmark" size={20} tintColor={AccentText} />
+          <ThemedText style={styles.peekText}>Log</ThemedText>
+        </View>
+      ) : (
+        <View style={[styles.peekUnder, styles.peekUndo]}>
+          <ThemedText style={styles.peekText}>Undo</ThemedText>
+          <IconSymbol name="arrow.uturn" size={18} tintColor={AccentText} />
+        </View>
+      )}
       <Animated.View
         style={
           reduced
@@ -494,13 +507,15 @@ function Peek({ children }: { children: ReactNode }) {
                 animationName: {
                   '0%': { transform: [{ translateX: 0 }] },
                   '35%': { transform: [{ translateX: 0 }] },
-                  '55%': { transform: [{ translateX: 104 }] },
-                  '70%': { transform: [{ translateX: 104 }] },
+                  '55%': { transform: [{ translateX: x }] },
+                  '70%': { transform: [{ translateX: x }] },
                   '88%': { transform: [{ translateX: 0 }] },
                   '100%': { transform: [{ translateX: 0 }] },
                 },
                 animationDuration: 2800,
-                animationIterationCount: 'infinite',
+                // After a log, wait for the swipe's own close spring first.
+                animationDelay: mode === 'undo' ? 400 : 0,
+                animationIterationCount: mode === 'log' ? 'infinite' : 1,
                 animationTimingFunction: 'ease-in-out',
               }
         }>
@@ -544,7 +559,7 @@ function SwipeTry({
       key={key}
       entering={FadeInDown.duration(260).easing(EASE_OUT)}
       style={styles.picks}>
-      {isLogged ? row : <Peek>{row}</Peek>}
+      <Peek mode={isLogged ? 'undo' : 'log'}>{row}</Peek>
       {isLogged && (
         <Animated.View entering={FadeInDown.duration(260).easing(EASE_OUT)}>
           <Pressable
@@ -877,12 +892,13 @@ const styles = StyleSheet.create({
   peek: { borderRadius: Spacing.three, overflow: 'hidden' },
   peekUnder: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: Accent,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
     paddingHorizontal: Spacing.three,
   },
+  peekLog: { backgroundColor: Accent, justifyContent: 'flex-start' },
+  peekUndo: { backgroundColor: Danger, justifyContent: 'flex-end' },
   peekText: { color: AccentText, fontWeight: '700' },
   success: {
     flexDirection: 'row',
