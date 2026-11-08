@@ -24,6 +24,7 @@ const GLYPHS = {
   'rectangle.stack.fill': 'layers',
   'person.crop.circle': 'user',
   'arrow.down': 'arrow-down',
+  camera: 'camera',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

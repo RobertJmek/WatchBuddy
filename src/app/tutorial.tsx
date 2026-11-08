@@ -18,7 +18,6 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeOut,
-  LinearTransition,
   SlideInLeft,
   SlideInRight,
   useReducedMotion,
@@ -32,6 +31,7 @@ import { LibraryStatusBar } from '@/components/library-status-bar';
 import { PressScale } from '@/components/press-scale';
 import { RatingBar } from '@/components/rating-bar';
 import { SearchRow } from '@/components/search-row';
+import { Step } from '@/components/step';
 import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -92,7 +92,6 @@ const rise = (step: number) =>
   FadeInDown.duration(340)
     .delay(40 + step * 80)
     .easing(EASE_OUT);
-const layout = LinearTransition.duration(220).easing(EASE_OUT);
 
 export default function TutorialScreen() {
   const c = useTheme();
@@ -345,45 +344,6 @@ function Card({ title, body, children }: { title: string; body: string; children
         {children}
       </Animated.View>
     </KeyboardAwareScrollView>
-  );
-}
-
-/** One instruction and the control it is about. `n` numbers it when a card has two. */
-function Step({
-  n,
-  label,
-  note,
-  children,
-}: {
-  n?: number;
-  label: string;
-  note?: string;
-  children: ReactNode;
-}) {
-  const c = useTheme();
-  return (
-    <Animated.View layout={layout} style={styles.step}>
-      <View style={styles.stepHead}>
-        <View style={styles.stepLabelRow}>
-          {n != null && (
-            <View style={styles.stepNum}>
-              <ThemedText style={styles.stepNumText}>{n}</ThemedText>
-            </View>
-          )}
-          <Animated.View key={label} entering={FadeIn.duration(220)} style={styles.stepLabelWrap}>
-            <ThemedText style={styles.stepLabel}>{label}</ThemedText>
-          </Animated.View>
-        </View>
-        {note && (
-          <ThemedText
-            type="small"
-            style={[n != null && styles.noteIndent, { color: c.textSecondary }]}>
-            {note}
-          </ThemedText>
-        )}
-      </View>
-      {children}
-    </Animated.View>
   );
 }
 
@@ -850,21 +810,6 @@ const styles = StyleSheet.create({
   intro: { gap: 12 },
   body: { fontSize: 17, lineHeight: 26 },
   steps: { gap: Spacing.five },
-  step: { gap: 12 },
-  stepHead: { gap: Spacing.one },
-  stepLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stepNum: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepNumText: { color: AccentText, fontFamily: Type.semibold, fontSize: 13, lineHeight: 16 },
-  stepLabelWrap: { flexShrink: 1 },
-  stepLabel: { fontFamily: Type.semibold, fontSize: 17, lineHeight: 24 },
-  noteIndent: { marginLeft: 34 },
   field: {
     flexDirection: 'row',
     alignItems: 'center',

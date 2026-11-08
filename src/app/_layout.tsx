@@ -137,8 +137,11 @@ function RootNavigator() {
       <Stack.Screen name="auth-callback" />
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
-        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="tutorial" options={{ gestureEnabled: false }} />
+        {/* First run: welcome → onboarding → tutorial, each replacing the last.
+            A fade reads as one flow rather than three pushed screens. */}
+        <Stack.Screen name="welcome" options={{ gestureEnabled: false, animation: 'fade' }} />
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
+        <Stack.Screen name="tutorial" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="title/[id]" options={modalOptions} />
         {/* Sibling of the title screen, reachable by a leftward swipe
             (SwipeNav): it slides in like the next page of a pager and the
