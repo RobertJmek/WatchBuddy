@@ -1,6 +1,6 @@
 # WatchBuddy — Child Safety Standards (CSAE)
 
-_Last updated: 29 September 2026_
+_Last updated: 8 November 2026_
 
 WatchBuddy has zero tolerance for child sexual abuse and exploitation (CSAE).
 This page describes our published standards against CSAE, as required by the
@@ -12,15 +12,17 @@ Google Play Child Safety Standards policy.
   children, including child sexual abuse material (CSAM), grooming,
   sextortion, and the trafficking or solicitation of minors.
 - User-generated content in WatchBuddy is limited to movie/TV ratings,
-  written reviews, replies, profile names, and profile pictures. Any use of
+  written reviews, replies, profile names, usernames, bios, and profile
+  pictures. Any use of
   these features to share, request, or link to CSAE content results in
   immediate account termination and content removal.
 
 ## Reporting and blocking
 
 - **In the app:** every review, reply and profile has a **⋯** menu with
-  **Report**. Choose a reason (spam, harassment, spoilers or other) and the
-  content is hidden from you immediately while we review it. Reports are
+  **Report**. Choose a reason (spam, harassment, spoilers or other). A
+  reported review or reply is hidden from you immediately while we review it;
+  to stop seeing a reported profile, block it as well. Reports are
   reviewed promptly and acted on, typically within 48 hours.
 - **Blocking:** the same menu has **Block**. A block is mutual: you and the
   person you block stop seeing each other's reviews, replies, likes and

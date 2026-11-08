@@ -43,9 +43,9 @@ export default function OnboardingScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Seed the display name from the auto-created profile. On email sign-up this is
-  // the email address (the new-user trigger's fallback) — pre-filling lets the
-  // user replace it with a real name instead of starting blank. Seed once: a
+  // Seed the display name from the auto-created profile. Without a provider name
+  // it is a random one ("Sleepy Usher 512", the new-user trigger's fallback since
+  // migration 0022) — pre-filling lets the user replace it instead of starting blank. Seed once: a
   // background refetch must not overwrite edits the user is typing.
   const seeded = useRef(false);
   useEffect(() => {

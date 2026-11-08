@@ -4,6 +4,8 @@ Having trouble with WatchBuddy, found a bug, or want to suggest a feature?
 
 - **Bug reports & feature requests**: open an issue at
   [github.com/RobertJmek/WatchBuddy/issues](https://github.com/RobertJmek/WatchBuddy/issues)
+  (public, so leave personal details out)
+- **Anything else, or anything personal**: email **bunescurobert16@gmail.com**
 - **Privacy questions**: see the [privacy policy](privacy.md)
 - **Account deletion**: see [account deletion](delete-account.md)
 
