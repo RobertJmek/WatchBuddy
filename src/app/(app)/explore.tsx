@@ -21,7 +21,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
 import { UserRow } from '@/components/user-row';
-import { Danger, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticTick } from '@/lib/haptics';
@@ -253,10 +253,10 @@ export default function SearchScreen() {
 
         {/* Errors only replace content when there's nothing cached to show. */}
         {mode === 'search' && search.error && !search.data && (
-          <ThemedText style={styles.error}>{String(search.error)}</ThemedText>
+          <ThemedText themeColor="danger" style={styles.error}>{String(search.error)}</ThemedText>
         )}
         {mode === 'people' && people.error && !people.data && (
-          <ThemedText style={styles.error}>{String(people.error)}</ThemedText>
+          <ThemedText themeColor="danger" style={styles.error}>{String(people.error)}</ThemedText>
         )}
 
         {mode === 'hint' && (
@@ -401,5 +401,5 @@ const styles = StyleSheet.create({
   dimmed: { opacity: 0.4 },
   list: { gap: Spacing.two, paddingVertical: Spacing.three },
   empty: { textAlign: 'center', marginTop: Spacing.five },
-  error: { color: Danger, marginTop: Spacing.three },
+  error: { marginTop: Spacing.three },
 });

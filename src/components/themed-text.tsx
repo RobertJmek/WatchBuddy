@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Accent, Fonts, ThemeColor, Type } from '@/constants/theme';
+import { Fonts, ThemeColor, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -31,7 +31,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'subtitle' && styles.subtitle,
         type === 'meta' && styles.meta,
         type === 'link' && styles.link,
-        type === 'linkPrimary' && styles.linkPrimary,
+        type === 'linkPrimary' && [styles.linkPrimary, { color: theme.tint }],
         type === 'code' && styles.code,
         style,
       ]}
@@ -85,7 +85,6 @@ const styles = StyleSheet.create({
     fontFamily: Type.medium,
     fontSize: 14,
     lineHeight: 30,
-    color: Accent,
   },
   code: {
     fontFamily: Fonts.mono,

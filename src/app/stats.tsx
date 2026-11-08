@@ -83,7 +83,7 @@ function FactRow({
       <ThemedText type="small">{label}</ThemedText>
       <ThemedText
         type="smallBold"
-        style={[styles.factValue, { color: highlight ? c.glow : ACTIVE }]}>
+        style={[styles.factValue, { color: highlight ? c.glow : c.tint }]}>
         {value}
       </ThemedText>
     </View>
@@ -104,7 +104,7 @@ function PersonRow({
       <ThemedText type="small" numberOfLines={1} style={styles.personName}>
         {rank}. {name}
       </ThemedText>
-      <ThemedText type="small" style={styles.personCount}>
+      <ThemedText type="small" themeColor="tint" style={styles.personCount}>
         {count}
       </ThemedText>
     </View>
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.half,
   },
   personName: { flex: 1 },
-  personCount: { color: ACTIVE, fontWeight: '700' },
+  personCount: { fontWeight: '700' },
   factRow: {
     flexDirection: 'row',
     alignItems: 'center',

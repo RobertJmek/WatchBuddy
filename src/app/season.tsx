@@ -12,7 +12,7 @@ import { RowSkeletonList } from '@/components/skeleton';
 import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Danger, NeutralBorder, Spacing } from '@/constants/theme';
+import { Accent, AccentText, NeutralBorder, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
@@ -137,7 +137,7 @@ export default function SeasonScreen() {
       {loading ? (
         <RowSkeletonList />
       ) : error ? (
-        <ThemedText style={styles.error}>{error}</ThemedText>
+        <ThemedText themeColor="danger" style={styles.error}>{error}</ThemedText>
       ) : (
         <FlatList
           data={episodes}
@@ -275,5 +275,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   minusText: { fontSize: 18, opacity: 0.7 },
-  error: { color: Danger, margin: Spacing.three },
+  error: { margin: Spacing.three },
 });

@@ -19,7 +19,7 @@ import { IconSymbol } from '@/components/icon-symbol';
 import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
@@ -201,7 +201,7 @@ export default function EditProfileScreen() {
             accessibilityLabel="Change photo"
             accessibilityState={{ disabled: saving }}>
             <Avatar uri={avatarUri} name={displayName} size={96} />
-            <ThemedText type="smallBold" style={{ color: Accent }}>
+            <ThemedText type="smallBold" themeColor="tint">
               Change photo
             </ThemedText>
           </Pressable>
@@ -242,7 +242,7 @@ export default function EditProfileScreen() {
             onChangeText={setBio}
           />
 
-          {error && <ThemedText style={styles.error}>{error}</ThemedText>}
+          {error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
           <Pressable
             style={[styles.saveBtn, saving && styles.busy]}
@@ -309,7 +309,7 @@ export default function EditProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel="Delete account"
             accessibilityState={{ disabled: saving }}>
-            <ThemedText type="small" style={{ color: Danger }}>
+            <ThemedText type="small" themeColor="danger">
               Delete account…
             </ThemedText>
           </Pressable>
@@ -332,7 +332,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   bio: { minHeight: 96, textAlignVertical: 'top' },
-  error: { color: Danger },
   saveBtn: {
     backgroundColor: Accent,
     borderRadius: Spacing.three,
