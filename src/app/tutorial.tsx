@@ -114,6 +114,9 @@ export default function TutorialScreen() {
     poster_path: defaultQ.data?.title.poster_path ?? null,
   };
   const chosen = picked ?? fallback;
+  // Undo is mentioned only once there is something to undo, and as an aside:
+  // asking for it would take the title back out of the Library and Diary.
+  const pickedLogged = picked != null && logged.has(itemKey(picked));
 
   const pick = (item: SearchResult) => {
     Keyboard.dismiss();
@@ -162,7 +165,10 @@ export default function TutorialScreen() {
         </View>
         <SearchPicks query={query} submitted={submitted} picked={picked} onPick={pick} />
       </Step>
-      <Step n={2} label="Swipe it right to log it" note="To undo, swipe left or tap ✓.">
+      <Step
+        n={2}
+        label={pickedLogged ? 'Logged' : 'Swipe it right to log it'}
+        note={pickedLogged ? 'Changed your mind? Swipe left or tap ✓ to undo.' : undefined}>
         {picked ? (
           <SwipeTry
             item={picked}
@@ -350,7 +356,9 @@ function Step({
               <ThemedText style={styles.stepNumText}>{n}</ThemedText>
             </View>
           )}
-          <ThemedText style={styles.stepLabel}>{label}</ThemedText>
+          <Animated.View key={label} entering={FadeIn.duration(220)} style={styles.stepLabelWrap}>
+            <ThemedText style={styles.stepLabel}>{label}</ThemedText>
+          </Animated.View>
         </View>
         {note && (
           <ThemedText
@@ -543,9 +551,9 @@ function SwipeTry({
             style={styles.success}
             onPress={onNext}
             accessibilityRole="button"
-            accessibilityLabel="Logged. Next: rate it">
+            accessibilityLabel="Next: rate it">
             <ThemedText type="smallBold" style={{ color: Accent }}>
-              Logged. Next: rate it
+              Next: rate it
             </ThemedText>
             <IconSymbol name="chevron.right" size={16} tintColor={Accent} />
           </Pressable>
@@ -825,7 +833,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepNumText: { color: AccentText, fontFamily: Type.semibold, fontSize: 13, lineHeight: 16 },
-  stepLabel: { fontFamily: Type.semibold, fontSize: 17, lineHeight: 24, flexShrink: 1 },
+  stepLabelWrap: { flexShrink: 1 },
+  stepLabel: { fontFamily: Type.semibold, fontSize: 17, lineHeight: 24 },
   noteIndent: { marginLeft: 34 },
   field: {
     flexDirection: 'row',
