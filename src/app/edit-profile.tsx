@@ -7,11 +7,11 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
@@ -187,11 +187,18 @@ export default function EditProfileScreen() {
       {isLoading ? (
         <RowSkeletonList />
       ) : (
-        <ScrollView
+        // Keyboard-aware like sign-in and the first-run screens: the focused field
+        // (the bio, low on the page) scrolls above the keyboard, with room left
+        // for the root's hide-keyboard button.
+        <KeyboardAwareScrollView
           contentContainerStyle={[
             styles.content,
             { paddingBottom: insets.bottom + Spacing.five },
-          ]}>
+          ]}
+          keyboardShouldPersistTaps="handled"
+          // Scrolls to the caret, not the field's bottom: clear the whole bio box
+          // (minHeight 96) plus the hide-keyboard button above the keyboard.
+          bottomOffset={96 + Spacing.six}>
           <Pressable
             style={styles.avatarSection}
             onPress={pickAvatar}
@@ -313,7 +320,7 @@ export default function EditProfileScreen() {
               Delete account…
             </ThemedText>
           </Pressable>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       )}
     </ThemedView>
   );

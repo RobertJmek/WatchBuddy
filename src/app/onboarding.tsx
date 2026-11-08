@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
-import { KeyboardDismissButton } from '@/components/keyboard-dismiss-button';
 import { PressScale } from '@/components/press-scale';
 import { Step } from '@/components/step';
 import { ThemedText } from '@/components/themed-text';
@@ -147,7 +146,9 @@ export default function OnboardingScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        bottomOffset={Spacing.six}>
+        // Scrolls to the caret: clear the whole bio box (minHeight 88) plus the
+        // hide-keyboard button above the keyboard.
+        bottomOffset={88 + Spacing.six}>
         <Animated.View entering={rise(0)} style={styles.intro}>
           <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
             Your profile
@@ -250,7 +251,6 @@ export default function OnboardingScreen() {
           <ThemedText style={styles.primaryText}>{saving ? 'Saving…' : 'Continue'}</ThemedText>
         </PressScale>
       </View>
-      <KeyboardDismissButton />
     </ThemedView>
   );
 }
