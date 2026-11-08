@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import {
@@ -8,6 +9,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -32,7 +34,7 @@ import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { UserRow } from '@/components/user-row';
-import { Accent, AccentText, PlaceholderBg, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Glow, Hero, PlaceholderBg, Spacing, Type } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSuccess, hapticTick } from '@/lib/haptics';
@@ -195,7 +197,7 @@ export default function TutorialScreen() {
       key="library"
       title="Your library"
       body="Sort titles by status. Every watch also goes into your Diary.">
-      <Step label="Tap a status">
+      <Step label="Tap a status" note="Every title's page has these.">
         <TitleControl title={chosen} control="status" />
       </Step>
     </Card>,
@@ -553,46 +555,73 @@ function SwipeTry({
   );
 }
 
-/** The chosen title's poster and name above the real rating bar or status chips. */
+/**
+ * A miniature of the title page around the real control: the same letterboxed
+ * backdrop, poster, Bodoni title and meta line, so the user recognises where
+ * rating and statuses live in the app.
+ */
 function TitleControl({ title, control }: { title: SearchResult; control: 'rating' | 'status' }) {
   const c = useTheme();
   const q = useQuery(titleQueryOptions(title.tmdb_id, title.media_type));
   const row = q.data?.title;
   const poster = imageUrl(row?.poster_path ?? title.poster_path, 'w185');
+  const backdrop = imageUrl(row?.backdrop_path ?? null, 'w780') ?? poster;
   const year = (row?.release_date ?? title.release_date)?.slice(0, 4);
+  const length =
+    row?.media_type === 'tv'
+      ? row.number_of_seasons != null
+        ? `${row.number_of_seasons} Season${row.number_of_seasons === 1 ? '' : 's'}`
+        : null
+      : row?.runtime
+        ? `${row.runtime} Min`
+        : null;
 
   return (
-    <View style={styles.control}>
-      <View style={[styles.titleRow, { backgroundColor: c.backgroundElement }]}>
+    <View style={[styles.page, { borderColor: c.border, backgroundColor: c.background }]}>
+      <View style={styles.pageHero}>
         <Image
-          style={styles.poster}
-          source={poster ? { uri: poster } : undefined}
+          style={StyleSheet.absoluteFill}
+          source={backdrop ? { uri: backdrop } : undefined}
           contentFit="cover"
           transition={200}
         />
-        <View style={styles.titleText}>
-          <ThemedText type="smallBold" numberOfLines={2}>
-            {title.title}
-          </ThemedText>
-          <ThemedText type="small" style={{ color: c.textSecondary }}>
-            {title.media_type === 'tv' ? 'TV' : 'Movie'}
-            {year ? ` · ${year}` : ''}
-          </ThemedText>
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.5)', c.background]}
+          locations={[0, 0.55, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.pageLetterbox} />
+        <View style={styles.pageHeader}>
+          <Image
+            style={styles.pagePoster}
+            source={poster ? { uri: poster } : undefined}
+            contentFit="cover"
+            transition={150}
+          />
+          <View style={styles.pageHeaderText}>
+            <Text style={styles.pageEyebrow}>{title.media_type === 'tv' ? 'TV Series' : 'Film'}</Text>
+            <Text style={styles.pageTitle} numberOfLines={2}>
+              {title.title}
+            </Text>
+            <Text style={styles.pageMeta}>{[year, length].filter(Boolean).join('  ·  ')}</Text>
+          </View>
         </View>
       </View>
-      {row ? (
-        control === 'rating' ? (
-          <RateBlock row={row} />
+      <View style={styles.pageBody}>
+        {row ? (
+          control === 'rating' ? (
+            <RateBlock row={row} />
+          ) : (
+            <LibraryStatusBar titleId={row.id} tmdbId={row.tmdb_id} mediaType={row.media_type} />
+          )
+        ) : q.isError ? (
+          <ThemedText type="small" style={{ color: c.textSecondary }}>
+            Couldn&apos;t load this title. You can skip ahead.
+          </ThemedText>
         ) : (
-          <LibraryStatusBar titleId={row.id} tmdbId={row.tmdb_id} mediaType={row.media_type} />
-        )
-      ) : q.isError ? (
-        <ThemedText type="small" style={{ color: c.textSecondary }}>
-          Couldn&apos;t load this title. You can skip ahead.
-        </ThemedText>
-      ) : (
-        <ActivityIndicator style={styles.spinner} />
-      )}
+          <ActivityIndicator style={styles.spinner} />
+        )}
+      </View>
     </View>
   );
 }
@@ -852,16 +881,51 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     paddingVertical: Spacing.one,
   },
-  control: { gap: Spacing.four },
-  titleRow: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-    alignItems: 'center',
-    padding: Spacing.two,
-    borderRadius: Spacing.three,
+  page: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 20, overflow: 'hidden' },
+  pageHero: { height: 176, justifyContent: 'flex-end', backgroundColor: Hero.letterbox },
+  pageLetterbox: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 14,
+    backgroundColor: Hero.letterbox,
   },
-  poster: { width: 52, height: 78, borderRadius: 4, backgroundColor: PlaceholderBg },
-  titleText: { flex: 1, gap: Spacing.half },
+  pageHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.two,
+    alignItems: 'flex-end',
+  },
+  pagePoster: {
+    width: 64,
+    height: 96,
+    borderRadius: 4,
+    backgroundColor: Hero.scrim,
+    borderWidth: 1,
+    borderColor: Hero.hairline,
+  },
+  pageHeaderText: { flex: 1, gap: 2, paddingBottom: 2 },
+  pageEyebrow: {
+    fontFamily: Type.semibold,
+    fontSize: 10,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: Glow,
+  },
+  pageTitle: { fontFamily: Type.display, color: Hero.text, fontSize: 22, lineHeight: 30 },
+  pageMeta: {
+    fontFamily: Type.semibold,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    color: Hero.textMuted,
+    textShadowColor: Hero.shadow,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  pageBody: { padding: Spacing.three, paddingTop: Spacing.two },
   ghostBand: { position: 'absolute', top: 24, height: 38, left: 0, right: 0 },
   ghostFinger: {
     position: 'absolute',
