@@ -18,6 +18,7 @@ export default function AppLayout() {
   // First-run gate: a freshly signed-up user has a profile row but no username
   // (the new-user trigger leaves it null). Suggest they set one + an avatar so
   // friends can find them. Skippable and remembered — see src/lib/onboarding.ts.
+  // The first run is welcome (before sign-in) → onboarding → tutorial (ADR 0028).
   useEffect(() => {
     if (redirected.current || !session || !profile || profile.username) return;
     let cancelled = false;

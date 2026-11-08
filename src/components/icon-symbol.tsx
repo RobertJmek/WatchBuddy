@@ -7,6 +7,7 @@ const GLYPHS = {
   xmark: 'x',
   calendar: 'calendar',
   'chevron.right': 'chevron-right',
+  'chevron.down': 'chevron-down',
   film: 'film',
   'book.closed': 'book-open',
   'person.2': 'users',
@@ -22,6 +23,8 @@ const GLYPHS = {
   'info.circle': 'info',
   'rectangle.stack.fill': 'layers',
   'person.crop.circle': 'user',
+  'arrow.down': 'arrow-down',
+  camera: 'camera',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

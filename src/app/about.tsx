@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -63,6 +63,7 @@ const BUILD = Constants.expoConfig?.android?.versionCode;
 
 export default function AboutScreen() {
   const c = useTheme();
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
 
   const label = [
@@ -103,6 +104,20 @@ export default function AboutScreen() {
         </Pressable>
 
         <View style={styles.links}>
+          <Pressable
+            style={[styles.link, { borderBottomColor: c.border }]}
+            onPress={() => router.push({ pathname: '/tutorial', params: { replay: '1' } })}
+            accessibilityRole="button"
+            accessibilityLabel="How WatchBuddy works"
+            accessibilityHint="Takes the tour again">
+            <View style={styles.linkText}>
+              <ThemedText type="subtitle">How WatchBuddy works</ThemedText>
+              <ThemedText type="small" style={{ color: c.textSecondary }}>
+                Take the tour again
+              </ThemedText>
+            </View>
+            <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+          </Pressable>
           {LINKS.map(({ label: text, hint, href }) => (
             <Pressable
               key={href}
