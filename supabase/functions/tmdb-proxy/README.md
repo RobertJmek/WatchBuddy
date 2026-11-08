@@ -7,6 +7,19 @@ library. Requires a valid Supabase JWT — **`verify_jwt = true` is pinned in
 because the rate limiter trusts the token's `sub` claim without re-verifying
 its signature.
 
+## Actions
+
+One `POST` endpoint; the body names the action.
+
+| action | params | returns |
+|---|---|---|
+| `search` | `q` | `{ results }` — TMDB `/search/multi` pages 1–3, movies and TV only. Not cached. |
+| `find` | `external_id`, `external_source` (`tvdb_id` \| `imdb_id`) | the TMDB match for an external id |
+| `trending` | none | `{ movies, tv }`, page 1 of each (the shape shipped clients parse) |
+| `trending` | `media_type`, `page?` | `{ results, page, total_pages }` |
+| `title` | `tmdb_id`, `media_type` | `{ title, seasons }`, upserted into the catalog |
+| `season` | `tmdb_id`, `season_number` | `{ episodes }`; `409` until the title is cached |
+
 ## Secrets
 
 Set these on the deployed function (Dashboard → Edge Functions → `tmdb-proxy` →
@@ -35,8 +48,9 @@ switch is the key.
 3. Redeploy: `supabase functions deploy tmdb-proxy`
 
 Existing cached titles backfill their rating the next time they're opened: the
-cache gate forces a refetch for any row that has an `imdb_id` but no
-`imdb_rating` while the key is set. After that the rating is cached and served
+cache gate forces a refetch for a row that has an `imdb_id` but no `imdb_rating`
+while the key is set, if OMDb has never been asked about it or was last asked
+more than `IMDB_RECHECK_HOURS` ago. After that the rating is cached and served
 until the TTL expires.
 
 ## Caching
@@ -52,6 +66,9 @@ refetched from TMDB *and* spent another OMDb request, forever. `titles.imdb_chec
 (migration `0017`) records when OMDb was last asked, whether or not it answered,
 and the gate re-asks only after `IMDB_RECHECK_HOURS`. `src/lib/tmdb.ts` mirrors
 the same rule client-side.
+
+A season's episodes are served from Postgres under the same TTL, judged by the
+newest `cached_at` among them, and served stale if TMDB can't be reached.
 
 ## Rate limiting
 
@@ -72,7 +89,7 @@ Time importer — the heaviest legitimate client — so a real import never feel
 
 Over budget returns **429** with `Retry-After` and a human message. Running the
 `omdb` bucket dry is not an error: the title loads without its IMDb rating and
-the lookup is retried after `IMDB_RECHECK_HOURS`. A refused OMDb lookup — like a
+the lookup is retried after `IMDB_RETRY_MINUTES`. A refused OMDb lookup — like a
 missing `OMDB_API_KEY`, a network error, or OMDb's own `{"Response":"False"}`
 error body — leaves any rating the row already had; **only an actual answer from
 OMDb changes the stored value**, and "OMDb has no rating for this title" counts

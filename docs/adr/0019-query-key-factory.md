@@ -57,7 +57,8 @@ data, it already spelled its key this way, and it was the model for the style.
 ### Two shapes preserved rather than normalized
 
 - **The diary's own filtered key** stays `['diary', period, from, to]`, now
-  spelled `[...keys.diary(), period, …]`. Same bytes, so nothing already sitting
+  spelled `[...keys.diary(), period, …]` (a fifth element, the search term,
+  came with server-side diary search in PR #87). Same bytes, so nothing already sitting
   in the seven-day persisted cache is orphaned. It coexists with
   `['diary', <uuid>]` because a period name is never a uuid.
 - **`['trendingPage', 1, mediaType]` keeps its `1`.** That is a **payload-shape

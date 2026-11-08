@@ -73,7 +73,8 @@ Two design axes had real trade-offs:
   object is the viewer (a follow *of* you, a like/reply on *your* review — those
   are notifications). No per-user privacy toggle yet.
 - Native tab behaviour differs across iOS/Android, so the tab (icon, badge) and
-  the inbox aging must be device-tested on both.
+  the inbox aging must be device-tested on both. (The bar has been a JS view
+  since [ADR 0023](0023-gestures-everywhere.md).)
 
 **Amended by [ADR 0021](0021-feed-segments.md) (2026-09-14):** notifications are no
 longer *pinned above* friends' activity — the Feed tab is split into two segments,

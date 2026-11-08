@@ -19,7 +19,9 @@ the first sign-in.
   It reuses the existing profile layer verbatim — `getMyProfile`,
   `uploadAvatar`, `updateProfile`, `UsernameTakenError`, and the same
   `USERNAME_RE` (`/^[a-z0-9_]{3,20}$/`) and `pickAvatar` flow as
-  `edit-profile.tsx`. No new data layer.
+  `edit-profile.tsx`. No new data layer. (Those helpers are private to
+  `src/lib/profile.ts` now; both screens call `pickAvatarImage`, `saveProfile`
+  and `usernameError` instead.)
 - **Suggested, not mandatory.** The screen leads with copy explaining that a
   username + photo let friends find and follow you, but offers **"Skip for
   now"**. Username stays optional everywhere; if provided it must be valid/free.

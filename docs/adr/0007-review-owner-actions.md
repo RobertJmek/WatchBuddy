@@ -26,6 +26,9 @@ every reply. The alternative is to treat the *review* as only the text.
   from this screen.
 - Both actions write through the existing `setRating` upsert — the single write
   path for `ratings` — so no id-keyed write function and no new RLS surface.
+  **Changed in v1.22.1 (PR #88):** they now call `setReviewText`, an
+  owner-scoped update of the text alone, because `setRating` re-sent the score
+  the thread had cached and could overwrite a newer one.
 
 ## Consequences
 
@@ -39,4 +42,5 @@ every reply. The alternative is to treat the *review* as only the text.
   if the author writes a review again for that title.
 - Saving an edit with empty text is equivalent to delete (navigates back).
 - Applies to both `ReviewThread` variants (root `/review/[ratingId]` and library
-  `/thread/[ratingId]`) since they share the component.
+  `/thread/[ratingId]`) since they share the component. (The library route was
+  deleted in v1.17.0 — see [ADR 0005](0005-tab-bar-on-notification-thread.md).)

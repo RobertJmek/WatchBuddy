@@ -51,6 +51,9 @@ row identity staying stable forever.
 - **Massive reuse.** The viewer-seam inserts and first-watch/movie dedupe
   prefetch come straight from `src/lib/tvtime/db.ts`; only per-event episode
   rewatch dedupe (`prefetchEpisodeRewatchAtKeys`) is new (`src/lib/wb-import/db.ts`).
+  Since v1.20.3 the shared half lives in `src/lib/import-core/` (`watches.ts`
+  for the inserts and prefetches, `run.ts` for the run loop), and `wb-import`
+  no longer imports `tvtime`.
   Exact `tmdb_id`s mean **no fuzzy matching and no manual-match queue** — the
   resolve phase is just a TMDB fetch per distinct title.
 - **Safe to cancel/kill mid-run.** Like TV Time, dedupe state is prefetched fresh
@@ -65,7 +68,7 @@ row identity staying stable forever.
 src/lib/wb-import/
   types.ts    plan / progress / summary types
   parse.ts    pure: validate app + schema_version, re-key watches to TMDB coords
-  db.ts       reuses tvtime/db.ts inserts + prefetch; adds rewatch atKey prefetch
+  db.ts       rewatch atKey prefetch (inserts + prefetches: ../import-core/watches.ts)
   engine.ts   resolvePlan (TMDB) + runImport (episodes → movies), cancellable
 src/app/
   import-data.tsx        chooser hub (TV Time / WatchBuddy)

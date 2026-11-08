@@ -84,7 +84,8 @@ screen turns out to be somewhere people linger.
 
 ## Consequences
 
-- `getTrendingPage(mediaType, page)` keys off `['trendingPage', mediaType]` —
+- `getTrendingPage(mediaType, page)` keys off `['trendingPage', 1, mediaType]` (the
+  `1` is a payload-shape version, added after the v1.16.0 crash) —
   deliberately not `['trending']`, which holds a whole-feed snapshot rather than
   an accumulating page list. Both carry the same 24h `staleTime`.
 - TMDB repeats a title across pages occasionally, so the accumulated list is

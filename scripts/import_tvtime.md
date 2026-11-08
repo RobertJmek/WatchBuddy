@@ -1,7 +1,7 @@
 # Import TV Time history into WatchBuddy
 
-> **There is now an in-app importer.** Open **Edit Profile → Import TV Time data**
-> in the app, pick your GDPR export ZIP, and it does everything below (with a
+> **There is now an in-app importer.** Open **Edit Profile → Import your data →
+> TV Time** in the app, pick your GDPR export ZIP, and it does everything below (with a
 > manual-match step for titles it can't place) as the signed-in user — no
 > service-role key needed. See ADR 0008. This CLI remains as the offline /
 > power-user path; both are idempotent and interoperate.
@@ -15,14 +15,18 @@ WatchBuddy's Supabase backend.
 | Data | Source file |
 |---|---|
 | Followed shows → library items (status inferred) | `followed_tv_show.csv` |
+| Episodes seen per show (feeds the status) | `user_tv_show_data.csv` |
 | Episode first-watches | `tracking-prod-records-v2.csv` |
 | Rewatches (preserving count) | `rewatched_episode.csv` |
+| Movie watches, rewatches and to-watch entries | `tracking-prod-records.csv` |
+| Favorite shows and movies | `lists-prod-lists.csv` |
 
 Ratings are not imported (TV Time's export format does not include numeric
-values). Movies are not imported (TV Time tracks TV only).
+values).
 
-The script is **idempotent** — running it twice will not create duplicate rows.
-Existing WatchBuddy data is never overwritten.
+The script is **idempotent** — running it twice will not create duplicate watch
+rows. It does **not** leave library statuses alone, though: see
+[Library status mapping](#library-status-mapping).
 
 ---
 
@@ -48,7 +52,7 @@ Existing WatchBuddy data is never overwritten.
 
 1. Create a free account at <https://www.themoviedb.org>
 2. Go to Settings → API → **Create → Developer**
-3. Copy the **Read Access Token** (the long JWT, not the short API key)
+3. Copy the **Read Access Token** (the long JWT). The short v3 API key works too.
 
 ---
 
@@ -113,16 +117,20 @@ TMDB API calls, which are rate-limited to stay under 50 req/s).
 
 ---
 
-## Step 7 — Handle unresolved shows (if any)
+## Step 7 — Handle unresolved titles (if any)
 
-If the script cannot match a TV Time show to a TMDB entry, it writes the
-show to `unresolved_shows.csv` in the current directory.
+A show is matched by its TVDB id first, then by name search on TMDB. Anything
+that still can't be matched — shows and movies alike — is written to
+`unresolved_shows.csv` in the current directory.
 
 For each unresolved show:
 
-1. Search for it manually on <https://www.themoviedb.org>
-2. Add the show to WatchBuddy via the Explore screen (this caches it in the DB)
-3. Re-run the script — it will import episode watches for any show now in the catalog
+1. Find it manually on <https://www.themoviedb.org> and note its TMDB TV id
+2. Add it to `SHOW_OVERRIDES` at the top of `scripts/import_tvtime.py`
+   (lowercased TV Time name → TMDB id)
+3. Re-run the script — it skips what it already imported
+
+An unresolved movie has no override; log it by hand in the app.
 
 ---
 
@@ -131,13 +139,17 @@ For each unresolved show:
 | TV Time signal | WatchBuddy status |
 |---|---|
 | `archived = true` | `dropped` |
-| `nb_episodes_seen = 0` | `watchlist` |
+| No episodes seen (the larger of `nb_episodes_seen` and the tracked watches) | `watchlist` |
 | Show ended, seen ≥ total episodes | `completed` |
 | Show ended, seen < total episodes | `on_hold` |
 | Show still airing | `watching` |
 
-If WatchBuddy already has a `library_items` row for a show, the existing
-status is preserved (the upsert only runs when no row exists yet).
+Movies: a watch or rewatch sets `completed`; a to-watch entry sets
+`watchlist`, unless the movie already has a watch on record.
+
+The status is **upserted**: if WatchBuddy already has a `library_items` row for
+the title, its status is replaced by the inferred one. Favorites are only ever
+added, never removed.
 
 ---
 
@@ -150,8 +162,8 @@ Add the key to `.env` as described in Step 4.
 Make sure you're passing the path to the *folder*, not to a zip file.
 
 **TMDB 401 errors**
-Your `TMDB_API_KEY` should be the long **Read Access Token** (JWT), not the
-short API key string.
+`TMDB_API_KEY` is wrong or revoked. Either the v4 **Read Access Token** (a JWT
+starting `eyJ`) or the v3 API key works; the script tells them apart.
 
 **Slow / many TMDB calls**
 The script fetches one TMDB page per season for every season that has watched

@@ -13,9 +13,9 @@ was shaped entirely around reviews — `rating_id` is `not null` with an FK to
 Two other things constrained the design:
 
 - `follow()` in `src/lib/social.ts` swallows a `23505` unique violation, so a
-  follow of someone you already follow is a client-side no-op that never reaches
-  the database.
-- `get_feed` (migration `0011`) **already** emits `'follow'` events for the
+  follow of someone you already follow is a no-op: the insert is refused, no
+  row is written and no trigger fires.
+- `get_feed` (migration `0009`, redefined since) **already** emits `'follow'` events for the
   activity feed, but deliberately excludes follows *of* the viewer, with the
   comment "those are the viewer's business, surfaced elsewhere."
 
