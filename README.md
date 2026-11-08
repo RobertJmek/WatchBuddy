@@ -13,7 +13,7 @@ for your TV Time history and for WatchBuddy export files.
 
 Install the latest Android build directly — no Play Store needed:
 
-### [⬇️ Download the APK](https://github.com/RobertJmek/WatchBuddy/releases/latest/download/watchbuddy-android-arm64.apk) &nbsp;·&nbsp; ~45 MB
+### [⬇️ Download the APK](https://github.com/RobertJmek/WatchBuddy/releases/latest/download/watchbuddy-android-arm64.apk) &nbsp;·&nbsp; ~39 MB
 
 1. Open that link **on your Android phone** and download the file.
 2. Tap it; if prompted, allow your browser/Files app to *install unknown apps*.
@@ -30,7 +30,7 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 ## Features
 
 ### Discover
-- **Live search-as-you-type** across movies and TV (TMDB), backed by a server-side cache;
+- **Live search-as-you-type** across movies and TV (TMDB), proxied through the backend;
   results span multiple TMDB pages for deep matches. Short titles (*It*, *Up*, *M*) are
   reachable too — the magnifier button, or the keyboard's Search key, searches whatever is
   in the box.
@@ -54,13 +54,14 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Movie watch logging** (rewatches included).
 - **Rating or completing counts as watched** — a first rating, or marking a title Completed,
   logs the watch for you (a movie once; a series' aired, unwatched episodes), with an Undo.
+  Rating a series you've already started logs nothing — only Completed fills in the rest.
 - **Swipe to log** — swipe a Search result, a season on a series' page, or a season's episode
   **right** to log a watch, **left** to undo; a movie logs one watch, while a whole series or a
   whole season logs with a longer swipe.
 - **Log whole series** — one tap adds a watch to every aired episode and marks the series
-  Completed; underneath, "Logged N times" counts your complete watch-throughs, with an Undo
-  that takes the latest one off.
-- A dated **Diary** of everything you've watched, filterable by **day / week / month / year /
+  Completed; underneath, "Watched N×" counts your complete watch-throughs (with the date of
+  the last one), and "Undo last" takes the latest one off.
+- A dated **Diary** of everything you've watched, filterable by **all time / week / month / year /
   custom range**, with **editable watch dates** (grouped episode entries move together).
 - **Search inside Library and Diary** — a toggleable title search that composes with the
   existing status/period filters.
@@ -79,8 +80,9 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 - **Activity feed** (its own tab, **Activity | Notifications**) — the *Activity* half is a
   reverse-chronological stream of what the people you follow do: watches, ratings, reviews,
   follows, and review likes/replies (binge episodes collapse into one "watched N episodes"
-  row). It is an **inbox**, not an endless timeline: activity shows unseen-first — unseen
-  items stay until you've seen them, then age out ~24h after you've seen them.
+  row). It is an **inbox**, not an endless timeline: anything newer than your last visit stays until
+  you've seen it; after that, an item drops off once it is more than ~24h older than your
+  latest visit.
 - **In-app notifications** — likes and replies on your reviews, plus new followers, delivered
   live over Supabase Realtime. They live on the feed tab's **own segment**, with the unread
   count on both the tab badge and the segment label — and the badge clears when you actually
@@ -142,8 +144,10 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
 
 **Data model (Postgres):** a shared catalog cache (`titles`, `seasons`, `episodes`, `genres`,
 `people`, `credits`, `networks`) plus per-user, RLS-isolated data (`profiles`, `follows`,
-`library_items`, `episode_watches`, `movie_watches`, `ratings`). Watch data is readable by any
-signed-in user (public-diary model); writes stay owner-only.
+`library_items`, `episode_watches`, `movie_watches`, `ratings`, `review_likes`, `review_replies`,
+`notifications`, `blocks`, `reports`) and a server-only `rate_limits` table. Watch data is
+readable by any signed-in user (public-diary model) except across a block; writes stay
+owner-only.
 
 ---
 
@@ -154,8 +158,10 @@ src/
   app/                     Expo Router routes
     (app)/                 Authenticated tabs: Feed, Library, Search, Profile
     title/[id]/            Title detail (index) + community reviews
-    user/[id]/             Public profile (index) + followers / following
-    season, diary, stats, edit-profile, blocked, library-section, about, sign-in
+    user/[id]/             Public profile (index) + followers / following + ratings
+    review/[ratingId]/     Review thread (index) + likes
+    season, diary, stats, edit-profile, blocked, library-section, trending-section,
+    about, onboarding, sign-in, auth-callback
     import-data (chooser) → import-tvtime / import-watchbuddy
   components/              Reusable UI (avatar, poster shelf, watch bars, rating/review rows,
                            follow button, user row, …)
@@ -165,8 +171,9 @@ src/
     keys.ts                Every TanStack Query key, one root per resource
     navigation.ts          openTitle() — the one place that knows the title route
     tvtime/                In-app TV Time import engine (parse, resolve, status, db, engine)
-    wb-import/             WatchBuddy-export import engine (parse, resolve, db, engine)
-.github/workflows/         CI: type-check + lint on every push and pull request
+    wb-import/             WatchBuddy-export import engine (parse, db, engine)
+    import-core/           What both importers share: the run loop and the watch inserts
+.github/workflows/         CI: type-check + lint + knip on every push and pull request
 scripts/                   TV Time importer CLI (import_tvtime.py + docs) and app-icon generator
 supabase/
   migrations/              SQL schema + RLS, applied in order (0001 init, 0002 favorites,
@@ -179,7 +186,7 @@ supabase/
                            0016 notification dismissal,
                            0017 backend hardening, 0018 rate limits,
                            0019 rate-limit execute grant,
-                           0020 blocks + reports)
+                           0020 blocks + reports, 0021 text limits + review fixes)
   functions/               Edge Functions (tmdb-proxy, delete-account)
 ```
 
@@ -216,7 +223,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
   `0012_ratings_entity_index` → `0013_get_stats_rpc` → `0014_follow_notifications` →
   `0015_like_count_compat` → `0016_notification_dismiss` →
   `0017_backend_hardening` → `0018_rate_limits` →
-  `0019_rate_limit_execute_grant` → `0020_blocks_reports`.
+  `0019_rate_limit_execute_grant` → `0020_blocks_reports` → `0021_review_findings`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
@@ -293,8 +300,8 @@ JSON with everything your account stores; carries a `schema_version` so the Watc
 read it back).
 
 **Power-user CLI (legacy):** the original Python script does the same migration offline against
-your own Supabase project using `SUPABASE_SERVICE_ROLE_KEY`, `TMDB_API_KEY`, and
-`WATCHBUDDY_USER_ID` env vars. See **[`scripts/import_tvtime.md`](scripts/import_tvtime.md)**
+your own Supabase project using `EXPO_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+`TMDB_API_KEY`, and `WATCHBUDDY_USER_ID` env vars. See **[`scripts/import_tvtime.md`](scripts/import_tvtime.md)**
 for that walkthrough. Both paths are idempotent and interoperate (either can run after the other).
 
 ---
@@ -304,14 +311,15 @@ for that walkthrough. Both paths are idempotent and interoperate (either can run
 ```bash
 npm run typecheck                # tsc --noEmit (strict)
 npm run lint                     # expo lint
+npm run knip                     # unused files, exports and dependencies
 npx expo export --platform ios   # bundle without a device (catches route/import breaks)
 ```
 
-The first two run in **GitHub Actions on every push and pull request**
+The first three run in **GitHub Actions on every push and pull request**
 (`.github/workflows/ci.yml`), where lint is enforced at zero warnings
-(`npm run lint:ci`). Neither a type error nor a lint warning can reach `main`
-unnoticed. Nothing else runs in CI — there is no test suite, and `expo export`
-is a slow way to learn what `tsc` already said.
+(`npm run lint:ci`). Neither a type error, a lint warning nor dead code can
+reach `main` unnoticed. Nothing else runs in CI — there is no test suite, and
+`expo export` is a slow way to learn what `tsc` already said.
 
 Note that CI regenerates `expo-env.d.ts` before type-checking: the file is
 gitignored by Expo's own template but supplies the ambient `expo/types`
@@ -323,10 +331,10 @@ compiles fine locally.
 ## Status
 
 The personal core is complete — tracking, library/diary search, editable watch dates, a full
-statistics tab, offline read cache, and email + Google auth — on a teal light/dark design.
+statistics tab, offline read cache, and email + Google + Apple auth — on a teal light/dark design.
 The **social layer** is live: user search, follows, rich public profiles (taste summary +
 shelves), community ratings/reviews per title, **threaded review replies**, **realtime
-in-app notifications** (reply + like activity, delivered over Supabase Realtime), and a
+in-app notifications** (replies, likes and new followers, delivered over Supabase Realtime), and a
 **following activity feed** that folds those notifications into an inbox on its own tab. The
 **TV Time importer** now runs **in the app** (pick your GDPR ZIP; matches through the Edge
 Function, manual-match UI for the rest), alongside a **WatchBuddy-export importer** (ingest an

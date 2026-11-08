@@ -27,6 +27,8 @@ action) or the database itself.
 ## Consequences
 
 - No notification fan-out logic in app code; new event types are new triggers.
-- Read state is coarse (screen open marks all read) — fine for v1.
+- Read state is coarse (screen open marks all read) — fine for v1. Since
+  [ADR 0021](0021-feed-segments.md) it is the Notifications segment being on
+  screen, not the Feed tab, that marks them read.
 - Push notifications later can reuse the same table (e.g. a webhook/edge
   function on insert) without schema changes.

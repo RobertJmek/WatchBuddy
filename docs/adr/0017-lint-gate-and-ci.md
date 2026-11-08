@@ -36,7 +36,8 @@ Those are exactly the changes where a machine catches what review misses.
   --max-warnings 0`). Plain `lint` stays as it was, for iterating locally.
 - **One** GitHub Actions job on push and PR: checkout → setup-node 22 (npm
   cache) → `npm ci` → regenerate `expo-env.d.ts` → `typecheck` → `lint:ci`.
-  Nothing else. There is no test suite to run, and `expo export` in CI is a slow
+  Nothing else. (`npm run knip` joined as a last step in v1.20.3, so unused
+  files, exports and dependencies fail CI too.) There is no test suite to run, and `expo export` in CI is a slow
   way to learn what `tsc` already said.
 
 ### The generated file CI doesn't have
@@ -97,7 +98,10 @@ suppressing a `setState` several lines inside an effect wants a
 - **The lockfile moves.** That is why this was deferred repeatedly and why it
   is its own PR: `npm ci` in CI is only meaningful if `package-lock.json` is
   the thing being validated.
-- **Nineteen suppressions is a lot to carry**, and they are a standing invitation
+- **Nineteen suppressions is a lot to carry** (fifteen directives in `src/` as of
+  v1.24.1, eight of them `set-state-in-effect`; `review-thread` also disables
+  `exhaustive-deps`, and `use-session-log` carries the two `refs` ones that
+  were `explore`'s), and they are a standing invitation
   to be read as decoration. The nine `set-state-in-effect` ones are tracked as a
   real follow-up, to be done as its own PR with a device pass behind it.
 - Every branch from here on gets typecheck + lint automatically, so a PR body

@@ -13,7 +13,7 @@ publishing or Play production.
 
 Two facts about the existing backend shaped the design:
 
-- Watch data and reviews are **open-read** (`using (true)`, ADR 0001 and 0004),
+- Watch data and reviews are **open-read** (`using (true)`, ADR 0001 and migration `0004_follows`),
   and `get_feed` / `get_stats` are `security invoker`, so they read through those
   same policies.
 - Deploying a database change reaches **every installed binary at once** (the

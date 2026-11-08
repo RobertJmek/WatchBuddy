@@ -64,7 +64,7 @@ So `SwipeToLogRow` / `SwipeToDismissRow` carry no accessibility props at all;
 each call site spreads `accessibilityActions` + `onAccessibilityAction` onto its
 own row, and both components document that contract in their doc comment. The
 label a swipe reveals and the label its action offers come from one helper
-(`logLabel()` in `explore.tsx`) so they cannot drift apart.
+(`logLabel()`, now in `search-row.tsx`) so they cannot drift apart.
 
 Which of these are load-bearing differs by screen, and it is worth being precise:
 in a season **both** directions already have buttons (the ✓ and the `−`), so the
@@ -105,6 +105,7 @@ this is easy to ship broken.
   It reads the live values through the same ref the gesture uses, so the two
   cannot disagree, but it is a second path.
 - The native tab bar needed no change: `NativeTabs.Trigger.Label` already gives
-  each tab an accessible name. Screens are still not announced with headings,
+  each tab an accessible name. (Since [ADR 0023](0023-gestures-everywhere.md)
+  the bar is JS: a `tablist` of `tab`s, each with its label and `selected` state.) Screens are still not announced with headings,
   and dynamic type / large text has not been checked at all — neither is in
   scope here.

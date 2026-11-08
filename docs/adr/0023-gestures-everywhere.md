@@ -29,7 +29,8 @@ answer was area: a strip nothing else starts in. That answer cannot scale to
 
 `src/components/swipe-nav.tsx` replaces `EdgeSwipeNav`. One `Gesture.Pan` over
 the whole screen with optional `onSwipeLeft` / `onSwipeRight` / `onPullDown`
-handlers, activating after **20pt** of horizontal travel. Every surface that
+handlers, activating after **20pt** of horizontal travel (**12pt** since
+amendment 1). Every surface that
 owns a horizontal drag activates sooner — `Swipeable` rows at 10, the rating
 bar at ~6, a native scroll at 8dp — and react-native-gesture-handler cancels a
 handler that is still waiting when another one activates on the same touch.
@@ -96,8 +97,8 @@ right on Activity does nothing (Feed is page 0, `overdrag` off).
 
 Android's native stack has no swipe-back, only the OS edge gesture. The root
 `Stack` gets a `screenLayout` that wraps every screen in a `SwipeNav` whose
-rightward swipe calls `navigation.goBack()`. It is defined only when the
-screen can go back, only where the native stack has no gesture of its own —
+rightward swipe calls `navigation.goBack()`. Its rightward handler is set only
+when the screen can go back, only where the native stack has no gesture of its own —
 Android, and the modal routes below on both platforms — and never on a screen
 that set `gestureEnabled: false` (onboarding). No interactive animation: the
 pop plays the screen's own transition at release.
@@ -113,7 +114,10 @@ the same way. Three ways to do the pull-down were on the table:
   simultaneously with the scroll view's pan. It would dismiss mid-list.
 - **`presentation: 'modal'`** — a native iOS sheet that does honour
   scroll-at-top, but iOS-only and a different look.
-- **A JS pan on both platforms** — chosen. `SwipeNav`'s `onPullDown` runs
+- **A JS pan on both platforms** — chosen. (Superseded by both amendments:
+  there is no `onPullDown` or `useSwipeNavScroll` any more. iOS closes on
+  overscroll, 80pt past the top; Android on the `pullDown` pan from the top
+  zone, 80pt or 800pt/s.) `SwipeNav`'s `onPullDown` runs
   *alongside* the scroll (`simultaneousWithExternalGesture` with a
   `Gesture.Native()` on the scrollable, from `useSwipeNavScroll()`), records at
   touch-down whether the page was at the top, and fires at release only if it
@@ -141,12 +145,12 @@ above the modal (`slide_from_right` + `animationMatchesGesture`, as in 0022).
 - Four native pages are attached at launch instead of one visible tab. The JS
   side already mounted all four under `NativeTabs`; the native cost is untested.
 - The collision story is now a threshold table. Any new horizontal control
-  must activate under 20pt (12 inside a tab) or it will lose to the screen
+  must activate under 12pt (20pt before amendment 1) or it will lose to the screen
   swipe; anything that changes `Swipeable`'s `dragOffsetFromLeftEdge` or a
   pan's `activeOffsetX` changes the outcome and is a device pass.
 - What only a device can settle, in order of damage if wrong: iOS rows vs the
   pager (fallback: `blocksHandlers` on the two `Swipeable`s, from
-  `useTabPager()`); iOS segment pan vs the pager (fallback: `setScrollEnabled`
+  `useTabPager()` — never needed, and not in the code); iOS segment pan vs the pager (fallback: `setScrollEnabled`
   lock around the pan); pull-down feel on both (fallback: `bounces={false}`
   on the two scrollables); the Library stack inside a pager page.
 - `SwipeNav` is gesture-only, like `EdgeSwipeNav` was, and needs no

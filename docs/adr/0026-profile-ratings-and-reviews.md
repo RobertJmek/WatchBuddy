@@ -44,5 +44,5 @@ any section renders. A review you reported is hidden from you here as well.
 - Sorting by score is a seq over that one user's ratings (no `(user_id, value)`
   index). A heavy rater has hundreds of rows, not millions; add the index if it
   ever shows up.
-- The badge on a poster is new UI in `PosterShelf` / `GridPoster` (`badge`), and
+- The badge on a poster is new UI in `PosterShelf` / `GridPoster` (`score`), and
   `PosterShelf` gained `count` for a header that previews a longer list.

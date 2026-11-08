@@ -121,8 +121,9 @@ crossed and a `hapticSuccess()` on release. Three things make it behave:
 - `activeOffsetX([-6, 6])` + `failOffsetY([-14, 14])`, because the title screen is
   a vertical `ScrollView`: a drag that starts on the scale but goes up or down has
   to scroll the page, not pick a rating.
-- **A drag never clears.** Tapping your current rating still clears it; releasing a
-  drag on it is a no-op. Stopping your finger on the number you already have is far
+- **A drag never clears.** Tapping your current rating still clears it (after a
+  "Remove your rating?" confirmation when it has a review or likes, since v1.22.1);
+  releasing a drag on it is a no-op. Stopping your finger on the number you already have is far
   too easy to do by accident to spend a rating on.
 
 The scale also **fills live** while you drag — the circles and the selected ring
@@ -140,7 +141,8 @@ can also be tapped to undo.
   rewatch. That matches the season screen's "Log whole season" button (Robert's
   call). "Log whole series" follows the same rule: +1 on every aired episode,
   every press, with no confirmation, and it then marks the series Completed.
-  Under the button, "Logged N times · Undo" is read from the database, not
+  Under the button, the pass count ("Watched N× · last <date> · Undo last"
+  since v1.24.1, shared with the movie bar) is read from the database, not
   from the session, so it shows for logs made before v1.23.6 too: N is the
   number of complete passes (the lowest watch count among the aired episodes,
   so a pass finished by hand counts as well), and Undo takes one pass off by
@@ -204,7 +206,9 @@ src/components/swipe-nav.tsx          tick on a committed navigation swipe
 src/components/rating-bar.tsx         drag-to-rate: pan over the 1–10 scale
 src/components/swipe-to-log-row.tsx   auto-commit swipe wrapper (log / undo)
 src/app/_layout.tsx                   GestureHandlerRootView at the root
-src/app/(app)/explore.tsx             Search: session state, checkmark, log/undo
+src/app/(app)/explore.tsx             Search screen: consumes useSearchLog
+src/components/search-row.tsx         Search rows: swipe, checkmark, log/undo labels
+src/lib/use-search-log.ts             Search's session state (one log per row)
 src/app/season.tsx                    episode rows: swipe mirrors the +/− buttons
 src/lib/use-session-log.ts            session-scoped optimistic log + exact-row undo
 src/app/title/[id]/index.tsx          season rows: long swipe logs a season (+1)

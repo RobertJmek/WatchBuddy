@@ -26,7 +26,8 @@ write history *as the signed-in user*.
   never needs the key. A new **`find` action** (TMDB `/find/{id}?external_source=tvdb_id`)
   was added to `tmdb-proxy` because TV Time identifies shows by **TVDB id**.
 - **Personal writes go through the viewer seam** (`src/lib/tvtime/db.ts`,
-  `requireViewer`/`selectMine`) with the export's **historical `watched_at`** —
+  `requireViewer`/`selectMine`; the watch inserts moved to
+  `src/lib/import-core/watches.ts` in v1.20.3, shared with the WatchBuddy importer) with the export's **historical `watched_at`** —
   the app's normal loggers stamp `now()`, so the importer has its own inserts.
 - **Idempotency is prefetch-based** (the CLI's mechanism): before writing, it
   reads existing watches into a first-watch set + rewatch counts + movie dedupe
@@ -64,4 +65,4 @@ Both live at the bottom of **Edit Profile**, next to Delete account.
 - **Trap hit:** returning a bare Supabase builder from an `async` helper — `await`
   collapses (executes) it, so `.range()` blew up with "undefined is not a function".
   Both the importer and the export paginate through a `{ q }` wrapper (like
-  `selectMine`). See AGENTS.md gotchas.
+  `selectMine`): keep a builder synchronous, or return its awaited result.

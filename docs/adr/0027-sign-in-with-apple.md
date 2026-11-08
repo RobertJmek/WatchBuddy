@@ -9,7 +9,8 @@ App Store Review Guideline 4.8: an app that offers a third-party login
 email and lets the user hide their email. The email one-time code does not
 hide the address, so WatchBuddy needed Sign in with Apple before its first App
 Store submission. `signInWithProvider` already typed `'apple'`, but nothing
-called it.
+called it. (It now takes `'google'` only; Apple has its own `signInWithApple`,
+because the native sheet hands back an ID token rather than a redirect.)
 
 The same submission exposed a sign-in trap on iOS (the number pad hid
 "Verify & sign in"). That fix shipped on its own in v1.23.10 (PR #103) and is
