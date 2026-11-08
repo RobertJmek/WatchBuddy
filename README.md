@@ -186,7 +186,8 @@ supabase/
                            0016 notification dismissal,
                            0017 backend hardening, 0018 rate limits,
                            0019 rate-limit execute grant,
-                           0020 blocks + reports, 0021 text limits + review fixes)
+                           0020 blocks + reports, 0021 text limits + review fixes,
+                           0022 random default display name)
   functions/               Edge Functions (tmdb-proxy, delete-account)
 ```
 
@@ -223,7 +224,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
   `0012_ratings_entity_index` → `0013_get_stats_rpc` → `0014_follow_notifications` →
   `0015_like_count_compat` → `0016_notification_dismiss` →
   `0017_backend_hardening` → `0018_rate_limits` →
-  `0019_rate_limit_execute_grant` → `0020_blocks_reports` → `0021_review_findings`.
+  `0019_rate_limit_execute_grant` → `0020_blocks_reports` → `0021_review_findings` →
+  `0022_random_display_name`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>
