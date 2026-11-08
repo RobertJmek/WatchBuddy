@@ -20,6 +20,7 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getGenres } from '@/lib/genres';
 import { keys } from '@/lib/keys';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 import {
   getLibrary,
   type LibraryStatus,
@@ -39,6 +40,7 @@ const GAP = Spacing.two;
 const PAD = Spacing.three;
 
 export default function LibrarySectionScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   const params = useLocalSearchParams<{
     status?: LibraryStatus;
@@ -146,7 +148,7 @@ export default function LibrarySectionScreen() {
           data={items}
           keyExtractor={(e) => e.id}
           numColumns={COLS}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           columnWrapperStyle={styles.col}
           ListHeaderComponent={
             filtered ? (

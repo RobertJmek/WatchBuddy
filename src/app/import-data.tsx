@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 type Source = {
   route: '/import-tvtime' | '/import-watchbuddy';
@@ -29,11 +30,12 @@ const SOURCES: Source[] = [
 ];
 
 export default function ImportDataScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, title: 'Import your data' }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
         <ThemedText type="small" style={{ color: c.textSecondary }}>
           Where are you importing from?
         </ThemedText>

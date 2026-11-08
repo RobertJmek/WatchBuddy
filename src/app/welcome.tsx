@@ -14,6 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { hapticTick } from '@/lib/haptics';
 import { markWelcomeSeen } from '@/lib/onboarding';
 import { getTrending, imageUrl, type SearchResult } from '@/lib/tmdb';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 const POSTER_W = 92;
 const POSTER_H = 138;
@@ -30,6 +31,7 @@ const rise = (step: number) => FadeInDown.duration(500).delay(200 + step * 90).e
 export default function WelcomeScreen() {
   const c = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomGap = useBottomGap();
   // A plain fetch, not a query: this screen is signed out, and the root layout
   // clears the query cache whenever nobody is signed in. On failure the grey
   // tiles simply stay.
@@ -78,7 +80,7 @@ export default function WelcomeScreen() {
 
       <Animated.View
         entering={rise(1)}
-        style={[styles.bottom, { paddingBottom: insets.bottom + Spacing.three }]}>
+        style={[styles.bottom, { paddingBottom: bottomGap }]}>
         <PressScale
           style={styles.button}
           onPress={() => {

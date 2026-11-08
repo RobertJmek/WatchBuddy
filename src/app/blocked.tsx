@@ -10,12 +10,14 @@ import { UserRow } from '@/components/user-row';
 import { Spacing } from '@/constants/theme';
 import { keys } from '@/lib/keys';
 import { getBlockedUsers } from '@/lib/moderation';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 /**
  * The people you have blocked, each with an Unblock pill. Reached from Edit
  * profile. Opening a row goes to their profile, which also offers Unblock.
  */
 export default function BlockedAccountsScreen() {
+  const bottomGap = useBottomGap();
   const { data, isLoading, isError, isRefetching, refetch } = useQuery({
     queryKey: keys.blockedUsers(),
     queryFn: getBlockedUsers,
@@ -46,7 +48,7 @@ export default function BlockedAccountsScreen() {
         <FlatList
           data={data ?? []}
           keyExtractor={(u) => u.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           ListEmptyComponent={
             <EmptyState
               icon="person.2"

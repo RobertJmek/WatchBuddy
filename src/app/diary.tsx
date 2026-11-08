@@ -38,6 +38,7 @@ import {
 import { groupDiary, type DiaryEntry } from '@/lib/diary-page';
 import { keys } from '@/lib/keys';
 import { getDiaryPage, updateWatchDay, type DiaryRange } from '@/lib/watches';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -53,6 +54,7 @@ function formatDay(d: Date) {
 
 
 export default function DiaryScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   const [period, setPeriod] = useState<DiaryPeriod>('all');
   const [searching, setSearching] = useState(false);
@@ -370,7 +372,7 @@ export default function DiaryScreen() {
             ) : null
           }
           itemLayoutAnimation={LinearTransition.duration(200)}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

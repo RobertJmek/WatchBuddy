@@ -10,6 +10,7 @@ import { Accent, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getStats } from '@/lib/stats';
 import { keys } from '@/lib/keys';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 const ACTIVE = Accent;
 
@@ -129,6 +130,7 @@ function Section({
 }
 
 export default function StatsScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   const {
     data: stats,
@@ -169,7 +171,7 @@ export default function StatsScreen() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: true, headerTitle: 'Statistics' }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
           <ThemedView type="backgroundElement" style={styles.hero}>
             <ThemedText style={styles.heroValue}>
               {formatDuration(stats.totalMinutes)}

@@ -17,6 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
 import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 import {
   airedOnly,
   getEpisodeWatchCounts,
@@ -28,6 +29,7 @@ import {
 const ACTIVE = Accent;
 
 export default function SeasonScreen() {
+  const bottomGap = useBottomGap();
   const { tmdbId, seasonNumber, name } = useLocalSearchParams<{
     tmdbId: string;
     seasonNumber: string;
@@ -142,7 +144,7 @@ export default function SeasonScreen() {
         <FlatList
           data={episodes}
           keyExtractor={(e) => e.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           ListHeaderComponent={
             <View style={styles.header}>
               <ThemedText type="small" style={styles.count}>

@@ -17,6 +17,7 @@ import {
 } from '@/lib/ratings';
 import type { MediaType } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 const SORTS: { value: ReviewSort; label: string }[] = [
   { value: 'top', label: 'Top' },
@@ -26,6 +27,7 @@ const SORTS: { value: ReviewSort; label: string }[] = [
 ];
 
 export default function ReviewsScreen() {
+  const bottomGap = useBottomGap();
   const c = useTheme();
   const { titleId, type } = useLocalSearchParams<{
     id: string;
@@ -54,7 +56,7 @@ export default function ReviewsScreen() {
         <FlatList
           data={reviews}
           keyExtractor={(r) => r.userId}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           ListHeaderComponent={
             data && data.count > 0 ? (
               <View style={styles.summary}>

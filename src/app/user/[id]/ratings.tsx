@@ -18,6 +18,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { keys } from '@/lib/keys';
 import { getUserRatings, type RatingsSort, type UserRating } from '@/lib/ratings';
+import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 const COLS = 3;
 const GAP = Spacing.two;
@@ -36,6 +37,7 @@ const SORTS: Segment<RatingsSort>[] = [
  * headers on their profile open. ADR 0026.
  */
 export default function UserRatingsScreen() {
+  const bottomGap = useBottomGap();
   const { id, kind: kindParam } = useLocalSearchParams<{ id: string; kind?: string }>();
   const kind = kindParam === 'reviews' ? 'reviews' : 'ratings';
   const [sort, setSort] = useState<RatingsSort>('recent');
@@ -114,7 +116,7 @@ export default function UserRatingsScreen() {
           data={items}
           keyExtractor={(r) => r.ratingId}
           numColumns={kind === 'reviews' ? 1 : COLS}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
           columnWrapperStyle={kind === 'reviews' ? undefined : styles.col}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
