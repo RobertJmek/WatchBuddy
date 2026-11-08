@@ -7,6 +7,7 @@ const GLYPHS = {
   xmark: 'x',
   calendar: 'calendar',
   'chevron.right': 'chevron-right',
+  'chevron.down': 'chevron-down',
   film: 'film',
   'book.closed': 'book-open',
   'person.2': 'users',

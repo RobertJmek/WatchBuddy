@@ -1,8 +1,8 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -23,9 +23,11 @@ import Animated, {
   SlideInRight,
   useReducedMotion,
 } from 'react-native-reanimated';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol, type IconName } from '@/components/icon-symbol';
+import { KeyboardDismissButton } from '@/components/keyboard-dismiss-button';
 import { LibraryStatusBar } from '@/components/library-status-bar';
 import { PressScale } from '@/components/press-scale';
 import { RatingBar } from '@/components/rating-bar';
@@ -136,7 +138,15 @@ export default function TutorialScreen() {
     hapticTick();
     go(1);
   };
-  const done = () => (replay ? router.back() : router.replace('/'));
+  const done = () => {
+    Keyboard.dismiss();
+    if (replay) router.back();
+    else router.replace('/');
+  };
+
+  // Leaving the screen any way at all (a tapped profile or title, Skip) takes
+  // the keyboard down with it, so it never stays up over the next screen.
+  useFocusEffect(useCallback(() => () => Keyboard.dismiss(), []));
 
   const field = { backgroundColor: c.backgroundElement };
   const fieldText = [styles.fieldInput, { color: c.text }];
@@ -309,6 +319,7 @@ export default function TutorialScreen() {
           </View>
         </View>
       </SwipeNav>
+      <KeyboardDismissButton />
     </ThemedView>
   );
 }
@@ -316,10 +327,13 @@ export default function TutorialScreen() {
 function Card({ title, body, children }: { title: string; body: string; children: ReactNode }) {
   const c = useTheme();
   return (
-    <ScrollView
+    // Same scroll container as sign-in and the title page: it keeps the focused
+    // field above the keyboard, with room left for the hide-keyboard button.
+    <KeyboardAwareScrollView
       contentContainerStyle={styles.card}
       keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag">
+      keyboardDismissMode="on-drag"
+      bottomOffset={Spacing.six}>
       <Animated.View entering={rise(0)} style={styles.intro}>
         {/* One line on every phone: the type shrinks before it wraps. */}
         <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
@@ -330,7 +344,7 @@ function Card({ title, body, children }: { title: string; body: string; children
       <Animated.View entering={rise(1)} style={styles.steps}>
         {children}
       </Animated.View>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
