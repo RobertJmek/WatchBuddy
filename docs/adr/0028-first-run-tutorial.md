@@ -36,6 +36,25 @@ on. The rule he set is **one real thing to do on every card**.
   title stays on one line (it shrinks before it wraps). Body text is 17/26, and
   each step's instruction sits right above its control. Copy follows the usual
   UX-writing rules: short, verb first, one term per concept, no marketing voice.
+- **The first run is three screens, faded into each other:**
+  1. **Welcome** (`/welcome`): a slow wall of this week's posters (the Search
+     shelves' `trending` query, so usually a cache hit), then "Welcome to
+     WatchBuddy", one line on what it does, and **Get started**. The text sits
+     below the wall, never over it.
+  2. **Your profile** (`/onboarding`): photo, username, name, and a bio
+     (optional), each an unnumbered `Step`. Continue is pinned at the bottom,
+     with Skip at the top right.
+  3. **The tutorial cards.**
+
+  The first-run gate in `(app)/_layout.tsx` now targets `/welcome`. `Step`
+  moved to `src/components/step.tsx`, so the profile step and the cards share
+  one look.
+- **The keyboard works as it does elsewhere.** Cards and the profile step
+  scroll in a `KeyboardAwareScrollView`, the same as sign-in and the title
+  page. Next, Back, Skip, finishing and losing focus all dismiss it. On iOS,
+  a small chevron button (`KeyboardDismissButton`) rides above the keyboard
+  to hide it. iOS keyboards have no hide key and Android's do, so the button
+  is iOS only.
 - **Shown once, right after onboarding.** `onboarding.tsx`'s `finish()` goes
   to `/tutorial` instead of `/`, on both Continue and Skip. Every new account
   passes through onboarding and existing accounts never re-enter it, so
