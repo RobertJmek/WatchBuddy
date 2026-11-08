@@ -192,7 +192,7 @@ export default function TutorialScreen() {
               Choose a title above.
             </ThemedText>
             <Pressable onPress={() => pick(fallback)} hitSlop={8} accessibilityRole="button">
-              <ThemedText type="smallBold" style={{ color: Accent }}>
+              <ThemedText type="smallBold" themeColor="tint">
                 Or use {DEFAULT_TITLE.title}
               </ThemedText>
             </Pressable>
@@ -541,7 +541,7 @@ function SwipeTry({
             onPress={onNext}
             accessibilityRole="button"
             accessibilityLabel="Next: rate it">
-            <ThemedText type="smallBold" style={{ color: Accent }}>
+            <ThemedText type="smallBold" themeColor="tint">
               Next: rate it
             </ThemedText>
             <IconSymbol name="chevron.right" size={16} tintColor={Accent} />
@@ -784,8 +784,8 @@ function TabDemo() {
               accessibilityRole="tab"
               accessibilityLabel={t.label}
               accessibilityState={{ selected: on }}>
-              <IconSymbol name={t.icon} size={18} tintColor={on ? Accent : c.textSecondary} />
-              <ThemedText type="small" style={{ color: on ? Accent : c.textSecondary }}>
+              <IconSymbol name={t.icon} size={18} tintColor={on ? c.tint : c.textSecondary} />
+              <ThemedText type="small" style={{ color: on ? c.tint : c.textSecondary }}>
                 {t.label}
               </ThemedText>
             </Pressable>

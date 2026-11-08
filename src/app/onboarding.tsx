@@ -13,7 +13,7 @@ import { PressScale } from '@/components/press-scale';
 import { Step } from '@/components/step';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Danger, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
@@ -231,7 +231,7 @@ export default function OnboardingScreen() {
           </Step>
 
           {error && (
-            <ThemedText style={{ color: Danger }} accessibilityLiveRegion="polite">
+            <ThemedText themeColor="danger" accessibilityLiveRegion="polite">
               {error}
             </ThemedText>
           )}
