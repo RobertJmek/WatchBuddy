@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { AccentText, Spacing } from '@/constants/theme';
+import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticToggle } from '@/lib/haptics';
 
@@ -72,7 +72,7 @@ export function SegmentedControl<K extends string>({
               {s.label}
             </ThemedText>
             {badge ? (
-              <View style={[styles.badge, { backgroundColor: c.tint }]}>
+              <View style={[styles.badge, { backgroundColor: Accent }]}>
                 <ThemedText type="small" style={styles.badgeText}>
                   {badge}
                 </ThemedText>

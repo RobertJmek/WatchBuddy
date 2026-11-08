@@ -28,7 +28,7 @@ import PagerView, { type PagerViewProps } from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/icon-symbol';
-import { Spacing, Type } from '@/constants/theme';
+import { Accent, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
@@ -297,7 +297,7 @@ function TabButton({
       <View>
         {icon(color)}
         {badge > 0 && (
-          <View style={[styles.badge, { backgroundColor: c.tint }]}>
+          <View style={[styles.badge, { backgroundColor: Accent }]}>
             <Text style={styles.badgeText}>{badge > 99 ? '99+' : String(badge)}</Text>
           </View>
         )}

@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing, Type } from '@/constants/theme';
+import { Spacing, Type } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
@@ -189,7 +189,7 @@ export default function SignInScreen() {
               disabled={busy}
               accessibilityRole="button"
               accessibilityState={{ disabled: busy }}>
-              <ThemedText type="small" style={[styles.link, { color: Accent }]}>
+              <ThemedText type="small" style={[styles.link, { color: c.tint }]}>
                 Use a different email
               </ThemedText>
             </Pressable>

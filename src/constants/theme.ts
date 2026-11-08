@@ -10,9 +10,15 @@ import { Platform } from 'react-native';
 // "Late Show" palette. Teal is the brand/interactive accent (from the logo);
 // amber is the ambient "projector glow" used sparingly for warmth. Both live in
 // the per-scheme Colors as `tint`/`glow` so they adapt to dark vs. warm-paper.
-export const Accent = '#0D9488';
+//
+// Contrast (WCAG AA, measured): `Accent` and `Danger` are FILLS, chosen so white
+// text on them is >= 4.5:1. No single teal or red can also be >= 4.5:1 as text on
+// both themes, so text uses the per-scheme `tint` / `danger` / `glow` instead
+// (`<ThemedText themeColor="tint">`). Every text token below is >= 4.5:1 on
+// background, backgroundElement and backgroundSelected of its scheme.
+export const Accent = '#0F766E';
 export const AccentText = '#ffffff';
-export const Danger = '#E5484D';
+export const Danger = '#C0262D';
 
 /** Neutral fill behind avatars/posters while their image loads (works on any theme). */
 export const PlaceholderBg = '#0002';
@@ -24,10 +30,11 @@ export const Colors = {
     background: '#F4F1EA',
     backgroundElement: '#EBE6DB',
     backgroundSelected: '#E0DACB',
-    textSecondary: '#6B6258',
+    textSecondary: '#5F574D',
     border: '#DED7C9',
-    tint: '#0B7C72',
-    glow: '#B5811D',
+    tint: '#0B6B63',
+    glow: '#7A560D',
+    danger: '#B3261E',
   },
   // The theater — warm near-black, warm projector-light text (never pure white).
   dark: {
@@ -39,6 +46,7 @@ export const Colors = {
     border: '#262220',
     tint: '#14B8A6',
     glow: '#E8B23A',
+    danger: '#F2555A',
   },
 } as const;
 

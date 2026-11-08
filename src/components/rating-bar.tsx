@@ -284,7 +284,7 @@ export function RatingBar({
             onPress={() => void ratingQ.refetch()}
             hitSlop={8}
             accessibilityRole="button">
-            <ThemedText type="small" style={styles.saveText}>
+            <ThemedText type="small" themeColor="tint">
               Retry
             </ThemedText>
           </Pressable>
@@ -360,7 +360,7 @@ export function RatingBar({
                 disabled={saving}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: saving, busy: saving }}>
-                <ThemedText type="small" style={styles.saveText}>
+                <ThemedText type="small" themeColor="tint">
                   Save
                 </ThemedText>
               </Pressable>
@@ -385,8 +385,8 @@ export function RatingBar({
             <ThemedText style={styles.reviewText}>{review}</ThemedText>
             <View style={styles.cardFooter}>
               <View style={styles.editRow}>
-                <IconSymbol name="pencil" size={13} tintColor={ACTIVE} />
-                <ThemedText type="small" style={{ color: ACTIVE }}>
+                <IconSymbol name="pencil" size={13} tintColor={c.tint} />
+                <ThemedText type="small" themeColor="tint">
                   Edit
                 </ThemedText>
               </View>
@@ -419,7 +419,7 @@ export function RatingBar({
           </Pressable>
         ) : (
           <Pressable onPress={startEditing}>
-            <ThemedText type="small" style={styles.link}>
+            <ThemedText type="small" themeColor="tint" style={styles.link}>
               ＋ Add review
             </ThemedText>
           </Pressable>
@@ -500,6 +500,5 @@ const styles = StyleSheet.create({
     borderColor: ACTIVE,
   },
   busy: { opacity: 0.6 },
-  saveText: { color: ACTIVE },
-  link: { color: ACTIVE, marginTop: Spacing.half },
+  link: { marginTop: Spacing.half },
 });

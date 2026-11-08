@@ -21,7 +21,7 @@ import { ThemedText } from '@/components/themed-text';
 import { DiaryRow } from '@/components/diary-row';
 import { RatedReviewRow } from '@/components/rated-review-row';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
@@ -39,7 +39,7 @@ function StatCard({ value, label }: { value: string; label: string }) {
   const c = useTheme();
   return (
     <View style={[styles.statCard, { backgroundColor: c.backgroundElement }]}>
-      <ThemedText style={styles.statValue}>{value}</ThemedText>
+      <ThemedText themeColor="tint" style={styles.statValue}>{value}</ThemedText>
       <ThemedText type="small" style={{ color: c.textSecondary }}>
         {label}
       </ThemedText>
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   statSkeleton: { flex: 1, height: 80, borderRadius: Spacing.three },
-  statValue: { fontSize: 22, fontWeight: '800', color: Accent },
+  statValue: { fontSize: 22, fontWeight: '800' },
   recentHeading: { alignSelf: 'flex-start', marginTop: Spacing.three },
   taste: {
     alignSelf: 'stretch',
