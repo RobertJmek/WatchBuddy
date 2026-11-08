@@ -28,6 +28,7 @@ import { hapticFailure, hapticSuccess, hapticToggle } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { usePullToDismiss } from '@/lib/pull-to-dismiss';
 import { likeReview, setReviewText, unlikeReview } from '@/lib/ratings';
+import { useKeyboardButtonLift } from '@/components/keyboard-dismiss-button';
 import {
   ReviewUnavailableError,
   addReply,
@@ -285,7 +286,14 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
   // The composer sticks above the keyboard; the list gets matching bottom
   // padding so the last replies can still scroll into view.
   const keyboard = useKeyboardState();
+  // The composer rides on the keyboard, so the root's hide-keyboard button
+  // goes above it instead of over Send. Its height grows with the text and the
+  // "Replying to" banner, so it's measured. With the keyboard up, the
+  // composer's bottom safe-area padding is offset away (see KeyboardStickyView
+  // below), so that part doesn't count.
+  const [composerHeight, setComposerHeight] = useState(0);
   const insets = useSafeAreaInsets();
+  useKeyboardButtonLift(Math.max(0, composerHeight - insets.bottom));
 
   // The thread opens from the bottom (`MODAL_ROUTES` in the root layout);
   // pulling it down closes it the same way — past the top on iOS, from the
@@ -502,7 +510,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
 
         {!editing && !unavailable && (
         <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-        <SafeAreaView edges={['bottom']}>
+        <SafeAreaView edges={['bottom']} onLayout={(e) => setComposerHeight(e.nativeEvent.layout.height)}>
           {replyTo && (
             <View style={[styles.replyingTo, { borderTopColor: c.border }]}>
               <ThemedText type="small" style={{ color: c.textSecondary }}>

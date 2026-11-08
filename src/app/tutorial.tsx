@@ -26,7 +26,6 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol, type IconName } from '@/components/icon-symbol';
-import { KeyboardDismissButton } from '@/components/keyboard-dismiss-button';
 import { LibraryStatusBar } from '@/components/library-status-bar';
 import { PressScale } from '@/components/press-scale';
 import { RatingBar } from '@/components/rating-bar';
@@ -320,7 +319,6 @@ export default function TutorialScreen() {
           </View>
         </View>
       </SwipeNav>
-      <KeyboardDismissButton />
     </ThemedView>
   );
 }

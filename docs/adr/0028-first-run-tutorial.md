@@ -58,11 +58,19 @@ on. The rule he set is **one real thing to do on every card**.
   `Step` moved to `src/components/step.tsx`, so the profile step and the cards
   share one look.
 - **The keyboard works as it does elsewhere.** Cards and the profile step
-  scroll in a `KeyboardAwareScrollView`, the same as sign-in and the title
-  page. Next, Back, Skip, finishing and losing focus all dismiss it. On iOS,
-  a small chevron button (`KeyboardDismissButton`) rides above the keyboard
-  to hide it. iOS keyboards have no hide key and Android's do, so the button
-  is iOS only.
+  scroll in a `KeyboardAwareScrollView`, the same as sign-in, the title page
+  and (since 1.25.2) Edit Profile. Next, Back, Skip, finishing and losing focus
+  all dismiss it.
+- **The iOS hide-keyboard button is app-wide (1.25.2).** A small chevron
+  (`KeyboardDismissButton`) rides above the keyboard on every screen.
+  - It is mounted once in the root layout. Per-screen mounts sat a tab bar's
+    height too high inside the tab pager, and 1.25.0/1.25.1 had it only on the
+    first-run screens.
+  - A screen whose own bar rides on the keyboard (the review thread composer)
+    lifts it by that bar's height with `useKeyboardButtonLift`.
+  - It's iOS only: iOS keyboards have no hide key, and Android's do (Robert's
+    call).
+  - It can't appear inside an RN `Modal`. No text field lives in one.
 - **Shown once, right after onboarding.** `onboarding.tsx`'s `finish()` goes
   to `/tutorial` instead of `/`, on both Continue and Skip. Every new account
   passes through onboarding and existing accounts never re-enter it, so

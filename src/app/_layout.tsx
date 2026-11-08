@@ -17,6 +17,7 @@ import { AppState, Platform, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { KeyboardDismissButton } from '@/components/keyboard-dismiss-button';
 import { SwipeNav } from '@/components/swipe-nav';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -119,6 +120,7 @@ function RootNavigator() {
   if (!initialized || !themeLoaded || !fontsLoaded || welcomeSeen === null) return null;
 
   return (
+    <>
     <Stack
       screenLayout={(props) => <StackScreenLayout {...props} />}
       screenOptions={{
@@ -184,6 +186,9 @@ function RootNavigator() {
         <Stack.Screen name="user/[id]/ratings" />
       </Stack.Protected>
     </Stack>
+    {/* iOS hide-keyboard chevron for every screen (ADR 0028). */}
+    <KeyboardDismissButton />
+    </>
   );
 }
 
