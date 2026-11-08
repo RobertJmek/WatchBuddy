@@ -9,9 +9,15 @@ for your TV Time history and for WatchBuddy export files.
 
 ---
 
-## 📲 Download (Android)
+## 📲 Download
 
-Install the latest Android build directly — no Play Store needed:
+### iPhone — [on the App Store](https://apps.apple.com/app/id6791142403)
+
+WatchBuddy is live on the App Store as **WatchBuddy: Movie & TV Tracker**.
+
+### Android — coming soon to Google Play
+
+The Google Play release is on its way. Until then, install the latest Android build directly:
 
 ### [⬇️ Download the APK](https://github.com/RobertJmek/WatchBuddy/releases/latest/download/watchbuddy-android-arm64.apk) &nbsp;·&nbsp; ~39 MB
 
@@ -21,9 +27,8 @@ Install the latest Android build directly — no Play Store needed:
    apps installed outside the Play Store.
 
 Runs on any 64-bit Android phone (~2017 and newer); no account, no expiry. The link always points
-to the newest [release](https://github.com/RobertJmek/WatchBuddy/releases/latest). iOS isn't
-distributed this way — Apple requires installs via Xcode or TestFlight (see
-[Run on a physical device](#run-on-a-physical-device)).
+to the newest [release](https://github.com/RobertJmek/WatchBuddy/releases/latest). There is no
+iOS equivalent of this file — on iPhone, use the App Store link above.
 
 ---
 
@@ -267,8 +272,8 @@ cd android && ./gradlew assembleRelease
 # iOS — a standalone Release build installed over the cable (free Apple ID: same ~7-day expiry)
 npx expo run:ios --configuration Release --device
 ```
-> iOS has no freely-sideloadable equivalent of an APK. iOS builds ship through
-> **TestFlight** (EAS cloud build signed with a distribution certificate; 90-day builds).
+> iOS has no freely-sideloadable equivalent of an APK. iOS builds ship to the **App Store**,
+> with **TestFlight** for testing first (EAS cloud build signed with a distribution certificate).
 > The signing credentials and pipeline notes live outside the repo.
 
 > **Gradle 9 / Android builds:** React Native pins an old `foojay-resolver-convention` plugin that
@@ -345,8 +350,9 @@ all under one "Import your data" hub. Title screens serve from a **read-through 
 with stale fallbacks and request timeouts, so browsing stays fast and keeps working even when
 TMDB is down.
 
-**Distribution:** Android ships as a free sideload APK (GitHub releases) and is in **Google Play
-closed testing**; iOS ships via **TestFlight**.
+**Distribution:** iOS is **live on the [App Store](https://apps.apple.com/app/id6791142403)** (TestFlight for testing first).
+Android ships as a free sideload APK (GitHub releases) and is **coming soon to Google Play**
+(in closed testing now).
 
-**Planned next:** finish Play closed testing → production, a PRO tier (ad-free) with AdMob
+**Planned next:** the Google Play production release, a PRO tier (ad-free) with AdMob
 banners, and over-the-air updates (EAS Update).
