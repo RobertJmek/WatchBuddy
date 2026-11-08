@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticTick } from '@/lib/haptics';
-import { keys } from '@/lib/keys';
+import { markWelcomeSeen } from '@/lib/onboarding';
 import { getTrending, imageUrl, type SearchResult } from '@/lib/tmdb';
 
 const POSTER_W = 92;
@@ -23,23 +23,26 @@ const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const rise = (step: number) => FadeInDown.duration(500).delay(200 + step * 90).easing(EASE_OUT);
 
 /**
- * First stop for a new account (ADR 0028): a slow wall of this week's posters,
- * then one line on what WatchBuddy is. Then the profile step, then the
- * tutorial. Reached from the first-run gate in `(app)/_layout.tsx`.
+ * The first screen of a fresh install, before sign-in (ADR 0028): a slow wall
+ * of this week's posters, then one line on what WatchBuddy is. Shown once per
+ * install (`useWelcomeSeen` in `src/lib/onboarding.ts`).
  */
 export default function WelcomeScreen() {
   const c = useTheme();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
-  // Same query and key as Search's shelves, so it is usually a cache hit.
-  const trending = useQuery({
-    queryKey: keys.trending(),
-    queryFn: getTrending,
-    staleTime: 1000 * 60 * 60 * 24,
-  });
-  const posters = [...(trending.data?.movies ?? []), ...(trending.data?.tv ?? [])].filter(
-    (t) => t.poster_path,
-  );
+  // A plain fetch, not a query: this screen is signed out, and the root layout
+  // clears the query cache whenever nobody is signed in. On failure the grey
+  // tiles simply stay.
+  const [posters, setPosters] = useState<SearchResult[]>([]);
+  useEffect(() => {
+    let live = true;
+    getTrending()
+      .then((t) => live && setPosters([...t.movies, ...t.tv].filter((x) => x.poster_path)))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
 
   return (
     <ThemedView style={styles.container}>
@@ -80,7 +83,8 @@ export default function WelcomeScreen() {
           style={styles.button}
           onPress={() => {
             hapticTick();
-            router.replace('/onboarding');
+            // Drops this screen from the stack; the root layout lands on sign-in.
+            markWelcomeSeen();
           }}
           accessibilityRole="button">
           <ThemedText style={styles.buttonText}>Get started</ThemedText>

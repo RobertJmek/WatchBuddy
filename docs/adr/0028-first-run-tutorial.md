@@ -36,19 +36,27 @@ on. The rule he set is **one real thing to do on every card**.
   title stays on one line (it shrinks before it wraps). Body text is 17/26, and
   each step's instruction sits right above its control. Copy follows the usual
   UX-writing rules: short, verb first, one term per concept, no marketing voice.
-- **The first run is three screens, faded into each other:**
-  1. **Welcome** (`/welcome`): a slow wall of this week's posters (the Search
-     shelves' `trending` query, so usually a cache hit), then "Welcome to
-     WatchBuddy", one line on what it does, and **Get started**. The text sits
-     below the wall, never over it.
-  2. **Your profile** (`/onboarding`): photo, username, name, and a bio
-     (optional), each an unnumbered `Step`. Continue is pinned at the bottom,
-     with Skip at the top right.
-  3. **The tutorial cards.**
+- **The first run is three screens:**
+  1. **Welcome** (`/welcome`), **before sign-in, on an install's first
+     launch**: a slow wall of this week's posters (the public `trending` feed,
+     fetched with the anon key into local state, because the root layout clears
+     the query cache while signed out), then "Welcome to WatchBuddy", one line
+     on what it does, and **Get started**. The text sits below the wall, never
+     over it. No logo: the splash screen and sign-in already show it.
+     - "Seen" is a per-install AsyncStorage key (`wb:welcome-seen`, read via
+       `useWelcomeSeen` in `src/lib/onboarding.ts`). It sits in a nested
+       `Stack.Protected` ahead of sign-in, and Get started flips it, which
+       lands on sign-in.
+     - Any launch with a session marks it seen, so an existing user who signs
+       out later never gets it.
+     - Uninstalling clears it.
+  2. **Your profile** (`/onboarding`), after a new account signs in: photo,
+     username, name, and a bio (optional), each an unnumbered `Step`. Continue
+     is pinned at the bottom, with Skip at the top right.
+  3. **The tutorial cards**, faded in from the profile step.
 
-  The first-run gate in `(app)/_layout.tsx` now targets `/welcome`. `Step`
-  moved to `src/components/step.tsx`, so the profile step and the cards share
-  one look.
+  `Step` moved to `src/components/step.tsx`, so the profile step and the cards
+  share one look.
 - **The keyboard works as it does elsewhere.** Cards and the profile step
   scroll in a `KeyboardAwareScrollView`, the same as sign-in and the title
   page. Next, Back, Skip, finishing and losing focus all dismiss it. On iOS,

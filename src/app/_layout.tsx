@@ -20,6 +20,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SwipeNav } from '@/components/swipe-nav';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { markWelcomeSeen, useWelcomeSeen } from '@/lib/onboarding';
 import { CACHE_MAX_AGE, asyncStoragePersister, queryClient } from '@/lib/query';
 import {
   ThemePreferenceProvider,
@@ -85,6 +86,7 @@ function StackScreenLayout({ route, navigation, options, children }: ScreenLayou
 function RootNavigator() {
   const { session, initialized } = useAuth();
   const { loaded: themeLoaded } = useThemePreference();
+  const welcomeSeen = useWelcomeSeen();
   const [fontsLoaded] = useFonts({
     BodoniModa_700Bold,
     BodoniModa_600SemiBold,
@@ -108,7 +110,13 @@ function RootNavigator() {
   // Wait for the initial session check (avoid flashing sign-in), the saved theme
   // preference (avoid flashing the wrong scheme), and the typefaces (avoid a
   // flash of system font before Bodoni/Archivo load).
-  if (!initialized || !themeLoaded || !fontsLoaded) return null;
+  // Anyone already signed in on this install is past the welcome screen; this
+  // keeps it from appearing after an existing user's later sign-out.
+  useEffect(() => {
+    if (session) markWelcomeSeen();
+  }, [session]);
+
+  if (!initialized || !themeLoaded || !fontsLoaded || welcomeSeen === null) return null;
 
   return (
     <Stack
@@ -130,16 +138,21 @@ function RootNavigator() {
           sign-in must come before auth-callback or logout lands on the
           OAuth-callback error screen. */}
       <Stack.Protected guard={!session}>
-        <Stack.Screen name="sign-in" />
+        {/* The first launch of an install opens on the welcome screen;
+            Get started marks it seen, which drops it from the stack and
+            lands on sign-in (ADR 0028). */}
+        <Stack.Protected guard={!welcomeSeen}>
+          <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
+        </Stack.Protected>
+        <Stack.Screen name="sign-in" options={{ animation: 'fade' }} />
       </Stack.Protected>
       {/* Always reachable — the OAuth redirect deep-links here on Android before
           a session exists, so it must sit outside the session guards. */}
       <Stack.Screen name="auth-callback" />
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
-        {/* First run: welcome → onboarding → tutorial, each replacing the last.
-            A fade reads as one flow rather than three pushed screens. */}
-        <Stack.Screen name="welcome" options={{ gestureEnabled: false, animation: 'fade' }} />
+        {/* A new account's profile step, then the tutorial, each replacing
+            the last. A fade reads as one flow rather than pushed screens. */}
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="tutorial" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="title/[id]" options={modalOptions} />

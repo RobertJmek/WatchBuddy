@@ -129,7 +129,7 @@ distributed this way — Apple requires installs via Xcode or TestFlight (see
   left on a title to reach its reviews; a title or a review thread opens from the bottom and
   pulling it down closes it (past the top on iOS, from the top of the page on Android).
 - **Polish** — press/entry animations and skeleton loading states across all screens.
-- **First run** — a welcome screen, a profile step (photo, username, bio), then five hands-on tutorial cards (log, rate, file, follow, swipe), replayable from About.
+- **First run** — a welcome screen before sign-in, a profile step (photo, username, bio), then five hands-on tutorial cards (log, rate, file, follow, swipe), replayable from About.
 
 ---
 
