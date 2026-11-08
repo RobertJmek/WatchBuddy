@@ -20,7 +20,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SwipeNav } from '@/components/swipe-nav';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
-import { asyncStoragePersister, queryClient } from '@/lib/query';
+import { CACHE_MAX_AGE, asyncStoragePersister, queryClient } from '@/lib/query';
 import {
   ThemePreferenceProvider,
   useThemePreference,
@@ -187,7 +187,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PersistQueryClientProvider
         client={queryClient}
-        persistOptions={{ persister: asyncStoragePersister }}>
+        persistOptions={{ persister: asyncStoragePersister, maxAge: CACHE_MAX_AGE }}>
         <ThemePreferenceProvider>
           <AuthProvider>
             <ThemeProvider value={colorScheme === 'dark' ? NavDark : NavLight}>

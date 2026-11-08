@@ -34,6 +34,18 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
+/** What a failed sign-in says. GoTrue's own text ("invalid flow state, …") means
+ * nothing to a user, and retrying is the only useful action anyway. */
+export const SIGN_IN_FAILED = "We couldn't finish signing you in. Please try again.";
+
+/** Whether a session exists, or shows up within 1.5s (a racing exchange may
+ * still be persisting it). */
+async function sessionAppears() {
+  if ((await supabase.auth.getSession()).data.session) return true;
+  await new Promise((r) => setTimeout(r, 1500));
+  return !!(await supabase.auth.getSession()).data.session;
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [initialized, setInitialized] = useState(false);
@@ -88,7 +100,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       provider,
       options: { redirectTo, skipBrowserRedirect: true },
     });
-    if (error) return { error: error.message };
+    if (error) return { error: SIGN_IN_FAILED };
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== 'success') return { error: null }; // user cancelled
@@ -105,10 +117,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     // so `auth-callback.tsx` races us to exchange the very same code. A PKCE
     // code is single-use: whoever loses gets "invalid flow state, no valid flow
     // state found" even though sign-in succeeded. Only report a failure if no
-    // session actually materialised. (`auth-callback` has the mirror guard.)
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (sessionData.session) return { error: null };
-    return { error: exchangeError.message };
+    // session actually materialised, giving the winner a moment to persist it.
+    // (`auth-callback` has the mirror guard.) Never show GoTrue's own text.
+    if (await sessionAppears()) return { error: null };
+    return { error: SIGN_IN_FAILED };
   }
 
   // Native sheet, then hand Apple's identity token to Supabase. No nonce:
@@ -121,15 +133,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
       });
-      if (!credential.identityToken) return { error: 'No identity token returned' };
+      if (!credential.identityToken) return { error: SIGN_IN_FAILED };
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
       });
-      return { error: error?.message ?? null };
+      return { error: error ? SIGN_IN_FAILED : null };
     } catch (e) {
       if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') return { error: null };
-      return { error: e instanceof Error ? e.message : 'Apple sign-in failed' };
+      return { error: SIGN_IN_FAILED };
     }
   }
 

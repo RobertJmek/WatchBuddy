@@ -1,5 +1,12 @@
 import { supabase } from '@/lib/supabase';
-import { deleteMine, requireViewer, selectMine, updateMine } from '@/lib/viewer';
+import {
+  allPages,
+  deleteMine,
+  requireViewer,
+  selectAllMine,
+  selectMine,
+  updateMine,
+} from '@/lib/viewer';
 
 export type LibraryStatus =
   | 'watchlist'
@@ -46,36 +53,37 @@ export type MyLibraryEntry = LibraryEntry & {
 
 /** All of the current user's library items, newest first, with their titles. */
 export async function getLibrary(): Promise<MyLibraryEntry[]> {
-  const [items, ratings] = await Promise.all([
-    selectMine(
-      'library_items',
-      'id, status, is_favorite, created_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date, title_genres(genre_id))',
-    ).then(({ q }) => q.order('created_at', { ascending: false })),
-    // `ratings.entity_id` is a polymorphic uuid with no FK (it can point at a
-    // title, a season or an episode), so PostgREST can't nest ratings under
-    // library_items — the viewer's title ratings come as their own select and
-    // get paired up by title id below.
-    selectMine('ratings', 'entity_id, value').then(({ q }) =>
-      q.in('entity_type', ['movie', 'show']),
-    ),
-  ]);
-  if (items.error) throw items.error;
-  if (ratings.error) throw ratings.error;
-
-  const byTitle = new Map<string, number>(
-    (ratings.data ?? []).map((r: { entity_id: string; value: number }) => [
-      r.entity_id,
-      r.value,
-    ]),
-  );
-
   type Row = LibraryEntry & {
     title: (NonNullable<LibraryEntry['title']> & {
       title_genres: { genre_id: number }[] | null;
     }) | null;
   };
 
-  return ((items.data ?? []) as unknown as Row[]).map(({ title, ...rest }) => ({
+  // Both paged: a plain select stops at PostgREST's 1000 rows without an error,
+  // and a TV Time import can put more titles than that in a library. Paging
+  // needs a stable order, hence the `id` tie-breaker.
+  const [items, ratings] = await Promise.all([
+    selectAllMine<Row>(
+      'library_items',
+      'id, status, is_favorite, created_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date, title_genres(genre_id))',
+      (q) => q.order('created_at', { ascending: false }).order('id'),
+    ),
+    // `ratings.entity_id` is a polymorphic uuid with no FK (it can point at a
+    // title, a season or an episode), so PostgREST can't nest ratings under
+    // library_items — the viewer's title ratings come as their own select and
+    // get paired up by title id below.
+    selectAllMine<{ entity_id: string; value: number }>(
+      'ratings',
+      'entity_id, value',
+      (q) => q.in('entity_type', ['movie', 'show']).order('id'),
+    ),
+  ]);
+
+  const byTitle = new Map<string, number>(
+    ratings.map((r) => [r.entity_id, r.value]),
+  );
+
+  return items.map(({ title, ...rest }) => ({
     ...rest,
     title: title
       ? {
@@ -96,16 +104,18 @@ export async function getLibrary(): Promise<MyLibraryEntry[]> {
  * Another user's library, for the public profile shelves. Watch data is
  * world-readable under RLS, so this is a plain parametrized read.
  */
-export async function getLibraryFor(userId: string): Promise<LibraryEntry[]> {
-  const { data, error } = await supabase
-    .from('library_items')
-    .select(
-      'id, status, is_favorite, created_at, updated_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date)',
-    )
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as unknown as LibraryEntry[];
+export function getLibraryFor(userId: string): Promise<LibraryEntry[]> {
+  // Paged for the same 1000-row reason as `getLibrary`.
+  return allPages<LibraryEntry>(async () => ({
+    q: supabase
+      .from('library_items')
+      .select(
+        'id, status, is_favorite, created_at, updated_at, title:titles(id, tmdb_id, media_type, title, poster_path, release_date)',
+      )
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .order('id'),
+  }));
 }
 
 /** The current user's status for a title, or null if not in their library. */
