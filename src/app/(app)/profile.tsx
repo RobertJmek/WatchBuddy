@@ -45,8 +45,10 @@ export default function ProfileScreen() {
     }, [refetch, refetchCounts]),
   );
 
-  const email = session?.user.email ?? '';
-  const name = profile?.display_name?.trim() || email;
+  // Same fallback as every other screen, never the session's email: a profile
+  // without a name shows its @username, then a prompt to add one.
+  const displayName = profile?.display_name?.trim();
+  const name = displayName || (profile?.username ? `@${profile.username}` : 'Add your name');
 
   return (
     <ThemedView style={styles.container}>
@@ -74,7 +76,8 @@ export default function ProfileScreen() {
               <ThemedText type="subtitle" numberOfLines={1}>
                 {name}
               </ThemedText>
-              {profile?.username ? (
+              {/* Hidden when the heading above already is the @username. */}
+              {profile?.username && displayName ? (
                 <ThemedText type="small" style={{ color: c.textSecondary }}>
                   @{profile.username}
                 </ThemedText>
