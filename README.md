@@ -127,6 +127,7 @@ iOS equivalent of this file — on iPhone, use the App Store link above.
 - **Accessibility** — every control is labelled for VoiceOver / TalkBack, toggles announce which
   state they're in, and the gesture-only actions have non-gesture equivalents: swipe-to-log,
   swipe-to-dismiss and the two-thumb filter sliders are all reachable from a screen reader.
+  All text meets WCAG AA contrast (4.5:1) in both themes (ADR 0029).
 - **Offline** — read data (Library / Diary / Stats / profiles) is cached and persisted, so the
   app cold-opens and browses offline.
 - **Swipe navigation** — swipe between the four tabs and between the Feed's Activity and
