@@ -4,6 +4,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { Intro } from '@/components/intro';
 import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedView } from '@/components/themed-view';
 import { UserRow } from '@/components/user-row';
@@ -23,14 +24,26 @@ export default function BlockedAccountsScreen() {
     queryFn: getBlockedUsers,
   });
 
+  const intro = (
+    <Intro
+      title="Blocked accounts"
+      body="People you block can't see your reviews or activity, and you can't see theirs."
+    />
+  );
+
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'Blocked accounts' }} />
+      {/* No header title: the Intro is the title (ADR 0030). */}
+      <Stack.Screen options={{ headerShown: true, title: '' }} />
       {isLoading ? (
-        <RowSkeletonList />
+        <>
+          <View style={styles.head}>{intro}</View>
+          <RowSkeletonList />
+        </>
       ) : isError ? (
         // Never let a failed load read as "No blocked accounts" — you may have some.
         <View style={styles.error}>
+          <View style={styles.head}>{intro}</View>
           <EmptyState
             icon="person.2"
             title="Couldn't load your blocked accounts"
@@ -49,11 +62,12 @@ export default function BlockedAccountsScreen() {
           data={data ?? []}
           keyExtractor={(u) => u.id}
           contentContainerStyle={[styles.list, { paddingBottom: bottomGap }]}
+          ListHeaderComponent={<View style={styles.listHead}>{intro}</View>}
           ListEmptyComponent={
             <EmptyState
               icon="person.2"
               title="No blocked accounts"
-              hint="People you block can't see your reviews or activity, and you can't see theirs."
+              hint="You can block someone from their profile."
             />
           }
           renderItem={({ item }) => <UserRow user={item} variant="blocked" />}
@@ -65,7 +79,10 @@ export default function BlockedAccountsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: Spacing.three, gap: Spacing.two, flexGrow: 1 },
+  // The tutorial-card measures: 24pt sides, 32 below the Intro.
+  head: { alignSelf: 'stretch', paddingHorizontal: Spacing.four, paddingTop: Spacing.two },
+  list: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, gap: Spacing.two, flexGrow: 1 },
+  listHead: { paddingBottom: Spacing.five - Spacing.two },
   error: { alignItems: 'center', gap: Spacing.three },
   retryBtn: { paddingHorizontal: Spacing.five },
 });

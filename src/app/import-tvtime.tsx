@@ -12,7 +12,8 @@ import {
   View,
 } from 'react-native';
 
-import { Button } from '@/components/button';
+import { BarButton } from '@/components/bottom-bar';
+import { Intro } from '@/components/intro';
 import { ImportBusy, ImportRunning, useImportRun } from '@/components/import-steps';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -121,7 +122,7 @@ function MatchCard({
 
   return (
     <View style={[styles.matchCard, { borderColor: c.border }]}>
-      <ThemedText type="subtitle">
+      <ThemedText type="label">
         {item.displayName}
         {item.year ? ` (${item.year})` : ''}
       </ThemedText>
@@ -160,7 +161,7 @@ function MatchCard({
           </Pressable>
         ))
       )}
-      <Button title="Skip this title" variant="outline" onPress={onSkip} />
+      <BarButton secondary title="Skip this title" onPress={onSkip} />
     </View>
   );
 }
@@ -258,23 +259,25 @@ export default function ImportTvTimeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'Import TV Time' }} />
+      {/* No header title: each phase's Intro is the title (ADR 0030). */}
+      <Stack.Screen options={{ headerShown: true, title: '' }} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
         {state.step === 'idle' && (
           <>
-            <ThemedText type="subtitle">Bring your TV Time history</ThemedText>
+            <Intro
+              title="Import TV Time"
+              body="Your shows, episodes, rewatches, movies and favorites come in with their original watch dates."
+            />
             <ThemedText type="small" style={{ color: c.textSecondary }}>
-              Your shows, episodes, rewatches, movies and favorites are imported
-              with their original watch dates. Running the import twice never
-              creates duplicates, and it never changes anything already in your
-              library.
+              Running the import twice never creates duplicates, and it never changes
+              anything already in your library.
             </ThemedText>
             {state.error ? (
               <ThemedText type="small" themeColor="danger">
                 {state.error}
               </ThemedText>
             ) : null}
-            <Button title="Choose ZIP" onPress={pickZip} />
+            <BarButton title="Choose ZIP" onPress={pickZip} />
           </>
         )}
 
@@ -304,10 +307,10 @@ export default function ImportTvTimeScreen() {
 
         {state.step === 'confirm' && (
           <>
-            <ThemedText type="subtitle">Ready to import</ThemedText>
-            <ThemedText style={{ color: c.textSecondary }}>
-              {`${state.resolution.shows.size} shows · ${state.plan.episodeWatches.length} episode watches · ${state.plan.rewatches.length} rewatch records · ${state.plan.movies.length} movie records`}
-            </ThemedText>
+            <Intro
+              title="Ready to import"
+              body={`${state.resolution.shows.size} shows · ${state.plan.episodeWatches.length} episode watches · ${state.plan.rewatches.length} rewatch records · ${state.plan.movies.length} movie records`}
+            />
             {state.resolution.unresolved.length > 0 ? (
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 {`${state.resolution.unresolved.length} titles stay unmatched and will be skipped.`}
@@ -316,7 +319,7 @@ export default function ImportTvTimeScreen() {
             <ThemedText type="small" style={{ color: c.textSecondary }}>
               This can take a few minutes. Keep the app open.
             </ThemedText>
-            <Button title="Start import" onPress={startImport} />
+            <BarButton title="Start import" onPress={startImport} />
           </>
         )}
 
@@ -332,13 +335,15 @@ export default function ImportTvTimeScreen() {
 
         {state.step === 'done' && (
           <>
-            <ThemedText type="subtitle">Import complete 🎉</ThemedText>
-            <ThemedText style={{ color: c.textSecondary }}>
-              {`Shows: ${state.summary.showsImported} imported\n` +
+            <Intro
+              title="Import complete"
+              body={
+                `Shows: ${state.summary.showsImported} imported\n` +
                 `Episodes: ${state.summary.firstWatchesInserted} watches + ${state.summary.rewatchesInserted} rewatches\n` +
                 `Movies: ${state.summary.moviesInserted} watches\n` +
-                `Favorites: ${state.summary.favoritesSet} marked`}
-            </ThemedText>
+                `Favorites: ${state.summary.favoritesSet} marked`
+              }
+            />
             {state.summary.firstWatchesSkipped +
               state.summary.rewatchesSkipped +
               state.summary.moviesSkipped >
@@ -365,7 +370,8 @@ export default function ImportTvTimeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.three },
+  // The tutorial-card measures: 24pt sides; the Intro sits 32 above the rest.
+  content: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, gap: Spacing.three },
   matchCard: {
     borderWidth: 1,
     borderRadius: 12,

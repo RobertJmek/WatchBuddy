@@ -6,15 +6,14 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PressScale } from '@/components/press-scale';
-import { ThemedText } from '@/components/themed-text';
+import { BarButton, BottomBar } from '@/components/bottom-bar';
+import { Intro } from '@/components/intro';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
+import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticTick } from '@/lib/haptics';
 import { markWelcomeSeen } from '@/lib/onboarding';
 import { getTrending, imageUrl, type SearchResult } from '@/lib/tmdb';
-import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 const POSTER_W = 92;
 const POSTER_H = 138;
@@ -31,7 +30,6 @@ const rise = (step: number) => FadeInDown.duration(500).delay(200 + step * 90).e
 export default function WelcomeScreen() {
   const c = useTheme();
   const insets = useSafeAreaInsets();
-  const bottomGap = useBottomGap();
   // A plain fetch, not a query: this screen is signed out, and the root layout
   // clears the query cache whenever nobody is signed in. On failure the grey
   // tiles simply stay.
@@ -69,29 +67,24 @@ export default function WelcomeScreen() {
         />
       </View>
 
-      <Animated.View entering={rise(0)} style={styles.intro}>
-        <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-          Welcome to WatchBuddy
-        </ThemedText>
-        <ThemedText style={[styles.body, { color: c.textSecondary }]}>
-          Track what you watch and see what your friends are watching.
-        </ThemedText>
-      </Animated.View>
+      <View style={styles.intro}>
+        <Intro
+          entering={rise(0)}
+          title="Welcome to WatchBuddy"
+          body="Track what you watch and see what your friends are watching."
+        />
+      </View>
 
-      <Animated.View
-        entering={rise(1)}
-        style={[styles.bottom, { paddingBottom: bottomGap }]}>
-        <PressScale
-          style={styles.button}
+      <BottomBar entering={rise(1)}>
+        <BarButton
+          title="Get started"
           onPress={() => {
             hapticTick();
             // Drops this screen from the stack; the root layout lands on sign-in.
             markWelcomeSeen();
           }}
-          accessibilityRole="button">
-          <ThemedText style={styles.buttonText}>Get started</ThemedText>
-        </PressScale>
-      </Animated.View>
+        />
+      </BottomBar>
     </ThemedView>
   );
 }
@@ -147,14 +140,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: GAP },
   poster: { width: POSTER_W, height: POSTER_H, borderRadius: Spacing.two },
   // Same measures as a tutorial card: 24pt sides, 12pt inside the group.
-  intro: { flex: 1, paddingHorizontal: Spacing.four, paddingTop: Spacing.five, gap: 12 },
-  body: { fontSize: 17, lineHeight: 26 },
-  bottom: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two },
-  button: {
-    backgroundColor: Accent,
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  buttonText: { color: AccentText, fontWeight: '700', fontSize: 16 },
+  intro: { flex: 1, paddingHorizontal: Spacing.four, paddingTop: Spacing.five },
 });

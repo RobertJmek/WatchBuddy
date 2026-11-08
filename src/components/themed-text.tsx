@@ -9,6 +9,7 @@ export type ThemedTextProps = TextProps & {
     | 'title'
     | 'small'
     | 'smallBold'
+    | 'label'
     | 'subtitle'
     | 'meta'
     | 'link'
@@ -28,6 +29,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'title' && styles.title,
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
+        type === 'label' && styles.label,
         type === 'subtitle' && styles.subtitle,
         type === 'meta' && styles.meta,
         type === 'link' && styles.link,
@@ -57,13 +59,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  // Letter-spaced small caps — the "2024 · 166 MIN · SCI-FI" metadata + eyebrows.
+  // A Step's label and a tappable row's text (ADR 0030).
+  label: {
+    fontFamily: Type.semibold,
+    fontSize: 17,
+    lineHeight: 24,
+  },
+  // Small semibold metadata: counts, field captions. Sentence case since ADR 0030,
+  // which dropped the uppercase + letter-spacing.
   meta: {
     fontFamily: Type.semibold,
     fontSize: 12,
     lineHeight: 16,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
   },
   // --- display: Bodoni Moda (tall figures need ~1.3x line height or iOS clips) ---
   title: {

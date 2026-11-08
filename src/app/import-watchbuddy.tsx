@@ -4,11 +4,12 @@ import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
-import { Button } from '@/components/button';
+import { BarButton } from '@/components/bottom-bar';
+import { Intro } from '@/components/intro';
 import { ImportBusy, ImportRunning, useImportRun } from '@/components/import-steps';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { importErrorMessage } from '@/lib/import-core/run';
@@ -112,16 +113,21 @@ export default function ImportWatchBuddyScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'Import WatchBuddy' }} />
+      {/* No header title: each phase's Intro is the title (ADR 0030). */}
+      <Stack.Screen options={{ headerShown: true, title: '' }} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
         {state.step === 'idle' && (
           <>
-            <ThemedText type="subtitle">Import a WatchBuddy export</ThemedText>
-            <ThemedText type="small" style={{ color: c.textSecondary }}>
-              Pick a WatchBuddy export file (the JSON from “Export your data”). This
-              may be someone else’s export — its watch history will be added to{' '}
-              <ThemedText type="smallBold">your account, as your own</ThemedText>.
-            </ThemedText>
+            <Intro
+              title="Import WatchBuddy"
+              body={
+                <>
+                  Pick a WatchBuddy export (the JSON from Export your data). It may be
+                  someone else’s: its watch history is added to{' '}
+                  <ThemedText style={styles.strong}>your account, as your own</ThemedText>.
+                </>
+              }
+            />
             <ThemedText type="small" style={{ color: c.textSecondary }}>
               Only episode and movie watches are imported, with their original
               dates. It never changes your library or ratings, and running it twice
@@ -132,7 +138,7 @@ export default function ImportWatchBuddyScreen() {
                 {state.error}
               </ThemedText>
             ) : null}
-            <Button title="Choose export file" onPress={pickJson} />
+            <BarButton title="Choose export file" onPress={pickJson} />
           </>
         )}
 
@@ -149,10 +155,10 @@ export default function ImportWatchBuddyScreen() {
 
         {state.step === 'confirm' && (
           <>
-            <ThemedText type="subtitle">Ready to import</ThemedText>
-            <ThemedText style={{ color: c.textSecondary }}>
-              {`${state.plan.showCount} shows · ${state.plan.episodeWatches.length} episode watches · ${state.plan.movieCount} movies · ${state.plan.movieWatches.length} movie watches`}
-            </ThemedText>
+            <Intro
+              title="Ready to import"
+              body={`${state.plan.showCount} shows · ${state.plan.episodeWatches.length} episode watches · ${state.plan.movieCount} movies · ${state.plan.movieWatches.length} movie watches`}
+            />
             {state.resolution.unresolved > 0 ? (
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 {`${state.resolution.unresolved} titles couldn’t be found and will be skipped.`}
@@ -162,7 +168,7 @@ export default function ImportWatchBuddyScreen() {
               These watches will be saved under your account as your own. This can
               take a few minutes — keep the app open.
             </ThemedText>
-            <Button title="Yes, import as mine" onPress={startImport} />
+            <BarButton title="Yes, import as mine" onPress={startImport} />
           </>
         )}
 
@@ -177,11 +183,13 @@ export default function ImportWatchBuddyScreen() {
 
         {state.step === 'done' && (
           <>
-            <ThemedText type="subtitle">Import complete 🎉</ThemedText>
-            <ThemedText style={{ color: c.textSecondary }}>
-              {`Episodes: ${state.summary.episodeWatchesInserted} watches added\n` +
-                `Movies: ${state.summary.movieWatchesInserted} watches added`}
-            </ThemedText>
+            <Intro
+              title="Import complete"
+              body={
+                `Episodes: ${state.summary.episodeWatchesInserted} watches added\n` +
+                `Movies: ${state.summary.movieWatchesInserted} watches added`
+              }
+            />
             {state.summary.episodeWatchesSkipped + state.summary.movieWatchesSkipped >
             0 ? (
               <ThemedText type="small" style={{ color: c.textSecondary }}>
@@ -208,5 +216,7 @@ export default function ImportWatchBuddyScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.three },
+  strong: { fontFamily: Type.semibold },
+  // The tutorial-card measures: 24pt sides; the Intro sits 32 above the rest.
+  content: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, gap: Spacing.three },
 });

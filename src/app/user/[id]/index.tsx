@@ -295,20 +295,20 @@ export default function UserProfileScreen() {
           </View>
           {stats.topActors.length > 0 && (
             <View style={styles.tasteBlock}>
-              <ThemedText type="meta" style={{ color: c.textSecondary }}>
+              <ThemedText type="subtitle" accessibilityRole="header">
                 Often watches
               </ThemedText>
-              <ThemedText type="small" numberOfLines={1}>
+              <ThemedText numberOfLines={2}>
                 {stats.topActors.slice(0, 3).map((a) => a.name).join(' · ')}
               </ThemedText>
             </View>
           )}
           {stats.topDirectors.length > 0 && (
             <View style={styles.tasteBlock}>
-              <ThemedText type="meta" style={{ color: c.textSecondary }}>
+              <ThemedText type="subtitle" accessibilityRole="header">
                 Favorite directors
               </ThemedText>
-              <ThemedText type="small" numberOfLines={1}>
+              <ThemedText numberOfLines={2}>
                 {stats.topDirectors.slice(0, 3).map((d) => d.name).join(' · ')}
               </ThemedText>
             </View>
@@ -438,7 +438,8 @@ export default function UserProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: Spacing.three, gap: Spacing.two },
+  // 24pt sides, 12 inside a section, 32 between sections (ADR 0030).
+  list: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three, gap: Spacing.two },
   header: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.three },
   bio: { textAlign: 'center', lineHeight: 21 },
   counts: {
@@ -463,21 +464,21 @@ const styles = StyleSheet.create({
   },
   statSkeleton: { flex: 1, height: 80, borderRadius: Spacing.three },
   statValue: { fontSize: 22, fontWeight: '800' },
-  recentHeading: { alignSelf: 'flex-start', marginTop: Spacing.three },
+  recentHeading: { alignSelf: 'flex-start', marginTop: Spacing.five },
   taste: {
     alignSelf: 'stretch',
-    gap: Spacing.three,
-    marginTop: Spacing.three,
+    gap: Spacing.five,
+    marginTop: Spacing.five,
   },
-  tasteBlock: { gap: Spacing.half },
+  tasteBlock: { gap: 12 },
   genreChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chip: {
     borderRadius: 999,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
   },
-  shelves: { alignSelf: 'stretch', gap: Spacing.four, marginTop: Spacing.three },
-  reviews: { gap: Spacing.two },
+  shelves: { alignSelf: 'stretch', gap: Spacing.five, marginTop: Spacing.five },
+  reviews: { gap: 12 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

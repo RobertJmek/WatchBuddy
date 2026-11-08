@@ -26,7 +26,7 @@ import {
 
 const COLS = 3;
 const GAP = Spacing.two;
-const PAD = Spacing.three;
+const PAD = Spacing.four; // 24pt sides (ADR 0030)
 
 // TMDB's trending list runs to hundreds of pages, but "trending" stops meaning
 // anything a few hundred titles down. Cap the scroll rather than let it run.

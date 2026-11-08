@@ -195,17 +195,6 @@ export default function LibraryScreen() {
   return (
     <ThemedView style={styles.container}>
       <TopSafeAreaView style={styles.safeArea}>
-        <ThemedText type="meta" style={[styles.eyebrow, { color: c.textSecondary }]}>
-          {(() => {
-            const { total, shown } = counts;
-            const noun = total === 1 ? 'Title' : 'Titles';
-            // Say so when you're looking at a slice — a vanished shelf is
-            // otherwise indistinguishable from an emptied one.
-            return narrowed && shown !== total
-              ? `${shown} of ${total} ${noun}`
-              : `${total} ${noun}`;
-          })()}
-        </ThemedText>
         <View style={styles.headingRow}>
           <ThemedText type="title" style={styles.heading}>
             Library
@@ -238,6 +227,18 @@ export default function LibraryScreen() {
             </Pressable>
           </View>
         </View>
+        {/* Under the heading, not over it: an eyebrow is what ADR 0030 retires. */}
+        <ThemedText type="meta" style={[styles.count, { color: c.textSecondary }]}>
+          {(() => {
+            const { total, shown } = counts;
+            const noun = total === 1 ? 'title' : 'titles';
+            // Say so when you're looking at a slice — a vanished shelf is
+            // otherwise indistinguishable from an emptied one.
+            return narrowed && shown !== total
+              ? `${shown} of ${total} ${noun}`
+              : `${total} ${noun}`;
+          })()}
+        </ThemedText>
 
         {searching && (
           <View style={styles.inputRow}>
@@ -345,14 +346,14 @@ export default function LibraryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1, paddingHorizontal: Spacing.three },
-  eyebrow: { marginTop: Spacing.three },
+  safeArea: { flex: 1, paddingHorizontal: Spacing.four },
+  count: { marginBottom: Spacing.three },
   headingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  heading: { marginTop: Spacing.half, marginBottom: Spacing.two },
+  heading: { marginTop: Spacing.three },
   searchBtn: { padding: Spacing.half },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   inputRow: { justifyContent: 'center', marginBottom: Spacing.two },

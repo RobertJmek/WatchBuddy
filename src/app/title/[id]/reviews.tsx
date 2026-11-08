@@ -111,7 +111,8 @@ export default function ReviewsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: Spacing.three, gap: Spacing.two },
+  // 24pt sides (ADR 0030).
+  list: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three, gap: Spacing.two },
   summary: { alignItems: 'center', gap: Spacing.half, marginBottom: Spacing.two },
   average: { fontFamily: Type.display, fontSize: 48, lineHeight: 64 },
   sortRow: { flexDirection: 'row', gap: Spacing.one, marginTop: Spacing.two },

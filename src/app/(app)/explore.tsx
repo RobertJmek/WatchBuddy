@@ -377,7 +377,7 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1, paddingHorizontal: Spacing.three },
+  safeArea: { flex: 1, paddingHorizontal: Spacing.four }, // 24pt sides (ADR 0030)
   atHint: { paddingHorizontal: Spacing.two },
   heading: { marginTop: Spacing.three, marginBottom: Spacing.two },
   inputRow: { justifyContent: 'center' },

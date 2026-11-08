@@ -415,7 +415,9 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     gap: Spacing.three,
-    padding: Spacing.three,
+    // Lines up with the body's 24pt column (ADR 0030).
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
     alignItems: 'flex-end',
   },
   poster: {
@@ -467,11 +469,12 @@ const styles = StyleSheet.create({
   },
   pillWb: { borderColor: Glow },
   pillWbText: { color: Glow },
-  body: { padding: Spacing.three, gap: Spacing.three },
+  // 24pt sides (ADR 0030); sections sit 32 apart, 12 below their heading.
+  body: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three, gap: Spacing.three },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.one },
-  reviews: { gap: Spacing.two },
+  reviews: { gap: 12 },
   overview: { lineHeight: 22 },
-  seasons: { gap: Spacing.two, marginTop: Spacing.two },
+  seasons: { gap: 12, marginTop: Spacing.three },
   seasonRow: {
     flexDirection: 'row',
     alignItems: 'center',

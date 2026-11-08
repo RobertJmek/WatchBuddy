@@ -5,7 +5,8 @@ import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser'
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { IconSymbol } from '@/components/icon-symbol';
+import { Intro } from '@/components/intro';
+import { RowLink } from '@/components/row-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -85,8 +86,11 @@ export default function AboutScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'About' }} />
+      {/* No header title: the Intro is the title (ADR 0030). */}
+      <Stack.Screen options={{ headerShown: true, title: '' }} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
+        <Intro title="About" body="Your build, the tour, and the policies behind the app." />
+
         {/* Tappable because the first thing anyone reporting a bug is asked for
             is which build they're on, and nobody wants to retype it. */}
         <Pressable
@@ -105,41 +109,25 @@ export default function AboutScreen() {
           </ThemedView>
         </Pressable>
 
-        <View style={styles.links}>
-          <Pressable
-            style={[styles.link, { borderBottomColor: c.border }]}
+        <View>
+          <RowLink
+            label="How WatchBuddy works"
+            note="Take the tour again"
             onPress={() => router.push({ pathname: '/tutorial', params: { replay: '1' } })}
-            accessibilityRole="button"
-            accessibilityLabel="How WatchBuddy works"
-            accessibilityHint="Takes the tour again">
-            <View style={styles.linkText}>
-              <ThemedText type="subtitle">How WatchBuddy works</ThemedText>
-              <ThemedText type="small" style={{ color: c.textSecondary }}>
-                Take the tour again
-              </ThemedText>
-            </View>
-            <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
-          </Pressable>
+            accessibilityHint="Takes the tour again"
+          />
           {LINKS.map(({ label: text, hint, href }) => (
-            <Pressable
+            <RowLink
               key={href}
-              style={[styles.link, { borderBottomColor: c.border }]}
+              label={text}
+              note={hint}
+              accessibilityRole="link"
               onPress={() =>
                 openBrowserAsync(href, {
                   presentationStyle: WebBrowserPresentationStyle.AUTOMATIC,
                 })
               }
-              accessibilityRole="link"
-              accessibilityLabel={text}
-              accessibilityHint={hint}>
-              <View style={styles.linkText}>
-                <ThemedText type="subtitle">{text}</ThemedText>
-                <ThemedText type="small" style={{ color: c.textSecondary }}>
-                  {hint}
-                </ThemedText>
-              </View>
-              <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
-            </Pressable>
+            />
           ))}
         </View>
 
@@ -154,22 +142,13 @@ export default function AboutScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.four },
+  // The tutorial-card measures: 24pt sides, 32 between groups.
+  content: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, gap: Spacing.five },
   buildCard: {
     borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.half,
     alignItems: 'center',
   },
-  links: { gap: 0 },
-  link: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-    paddingVertical: Spacing.three,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  linkText: { flex: 1, gap: Spacing.half },
   credit: { textAlign: 'center' },
 });

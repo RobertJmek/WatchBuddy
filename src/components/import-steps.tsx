@@ -2,7 +2,8 @@ import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { Button } from '@/components/button';
+import { BarButton } from '@/components/bottom-bar';
+import { Intro } from '@/components/intro';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -57,14 +58,11 @@ export function ImportRunning({
   const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
   return (
     <>
-      <ThemedText type="subtitle">{title}</ThemedText>
-      <ThemedText type="small" style={{ color: c.textSecondary }}>
-        {progress && detail ? detail : 'Starting…'}
-      </ThemedText>
+      <Intro title={title} body={progress && detail ? detail : 'Starting…'} />
       <View style={[styles.barTrack, { backgroundColor: c.border }]}>
         <View style={[styles.barFill, { width: `${pct}%` }]} />
       </View>
-      <Button title="Cancel" variant="outline" onPress={onCancel} />
+      <BarButton secondary title="Cancel" onPress={onCancel} />
     </>
   );
 }

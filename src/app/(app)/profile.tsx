@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/avatar';
 import { Button } from '@/components/button';
 import { IconSymbol } from '@/components/icon-symbol';
+import { RowLink } from '@/components/row-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TopSafeAreaView } from '@/components/top-safe-area';
@@ -56,123 +57,106 @@ export default function ProfileScreen() {
         {/* Scrolls so a small phone or a long bio can't push Sign out under
             the tab bar. */}
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.headingRow}>
-            <ThemedText type="title">Profile</ThemedText>
-            {/* Version, build and the policy pages. Nothing here is needed while
-                using the app, so it sits behind one tap instead of taking up the
-                bottom of this screen. */}
-            <Pressable
-              onPress={() => router.push('/about')}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="About WatchBuddy">
-              <IconSymbol name="info.circle" size={22} tintColor={c.textSecondary} />
-            </Pressable>
-          </View>
-
-          <View style={styles.identity}>
-            <Avatar uri={profile?.avatar_url} name={name} size={64} />
-            <View style={styles.identityText}>
-              <ThemedText type="subtitle" numberOfLines={1}>
-                {name}
-              </ThemedText>
-              {/* Hidden when the heading above already is the @username. */}
-              {profile?.username && displayName ? (
-                <ThemedText type="small" style={{ color: c.textSecondary }}>
-                  @{profile.username}
-                </ThemedText>
-              ) : null}
-            </View>
-          </View>
-
-          {profile?.bio ? (
-            <ThemedText style={styles.bio}>{profile.bio}</ThemedText>
-          ) : null}
-
-          {myId ? (
-            <View style={styles.counts}>
+          {/* Three groups 32pt apart (ADR 0030): you, then settings, then Sign
+              out. Three rows don't need a heading each; the space separates them. */}
+          <View style={styles.group}>
+            <View style={styles.headingRow}>
+              <ThemedText type="title">Profile</ThemedText>
+              {/* Version, build and the policy pages. Nothing here is needed while
+                  using the app, so it sits behind one tap instead of taking up the
+                  bottom of this screen. */}
               <Pressable
-                style={styles.countItem}
-                onPress={() =>
-                  router.push({
-                    pathname: '/user/[id]/followers',
-                    params: { id: myId },
-                  })
-                }
+                onPress={() => router.push('/about')}
+                hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={`${counts?.followers ?? 0} followers`}>
-                <ThemedText type="smallBold">{counts?.followers ?? 0}</ThemedText>
-                <ThemedText type="small" style={{ color: c.textSecondary }}>
-                  {' followers'}
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                style={styles.countItem}
-                onPress={() =>
-                  router.push({
-                    pathname: '/user/[id]/following',
-                    params: { id: myId },
-                  })
-                }
-                accessibilityRole="button"
-                accessibilityLabel={`Following ${counts?.following ?? 0} people`}>
-                <ThemedText type="smallBold">{counts?.following ?? 0}</ThemedText>
-                <ThemedText type="small" style={{ color: c.textSecondary }}>
-                  {' following'}
-                </ThemedText>
+                accessibilityLabel="About WatchBuddy">
+                <IconSymbol name="info.circle" size={22} tintColor={c.textSecondary} />
               </Pressable>
             </View>
-          ) : null}
 
-          <Button
-            title="Edit Profile"
-            variant="outline"
-            onPress={() => router.push('/edit-profile')}
-          />
+            <View style={styles.identity}>
+              <Avatar uri={profile?.avatar_url} name={name} size={64} />
+              <View style={styles.identityText}>
+                <ThemedText type="subtitle" numberOfLines={1}>
+                  {name}
+                </ThemedText>
+                {/* Hidden when the heading above already is the @username. */}
+                {profile?.username && displayName ? (
+                  <ThemedText type="small" style={{ color: c.textSecondary }}>
+                    @{profile.username}
+                  </ThemedText>
+                ) : null}
+              </View>
+            </View>
 
-          <Pressable
-            style={[styles.link, { borderBottomColor: c.border }]}
-            onPress={() =>
-              myId &&
-              router.push({ pathname: '/user/[id]', params: { id: myId } })
-            }
-            accessibilityRole="button">
-            <ThemedText type="subtitle">View my profile</ThemedText>
-            <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
-          </Pressable>
-          <Pressable
-            style={[styles.link, { borderBottomColor: c.border }]}
-            onPress={() => router.push('/stats')}
-            accessibilityRole="button">
-            <ThemedText type="subtitle">Statistics</ThemedText>
-            <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
-          </Pressable>
-          <Pressable
-            style={[styles.link, { borderBottomColor: c.border }]}
-            onPress={() => router.push('/diary')}
-            accessibilityRole="button">
-            <ThemedText type="subtitle">Diary</ThemedText>
-            <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
-          </Pressable>
-          <Pressable
-            style={[styles.link, { borderBottomColor: c.border }]}
-            onPress={cycle}
-            accessibilityRole="button"
-            accessibilityLabel={`Theme: ${THEME_LABEL[pref]}`}
-            accessibilityHint="Cycles between light, dark and system">
-            <ThemedText type="subtitle">Theme</ThemedText>
-            <ThemedView style={styles.value}>
-              <ThemedText type="small">{THEME_LABEL[pref]}</ThemedText>
-              <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
-            </ThemedView>
-          </Pressable>
+            {profile?.bio ? (
+              <ThemedText style={styles.bio}>{profile.bio}</ThemedText>
+            ) : null}
 
-          <Button
-            title="Sign out"
-            variant="danger"
-            style={{ marginTop: Spacing.two }}
-            onPress={signOut}
-          />
+            {myId ? (
+              <View style={styles.counts}>
+                <Pressable
+                  style={styles.countItem}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/user/[id]/followers',
+                      params: { id: myId },
+                    })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`${counts?.followers ?? 0} followers`}>
+                  <ThemedText type="smallBold">{counts?.followers ?? 0}</ThemedText>
+                  <ThemedText type="small" style={{ color: c.textSecondary }}>
+                    {' followers'}
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  style={styles.countItem}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/user/[id]/following',
+                      params: { id: myId },
+                    })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Following ${counts?.following ?? 0} people`}>
+                  <ThemedText type="smallBold">{counts?.following ?? 0}</ThemedText>
+                  <ThemedText type="small" style={{ color: c.textSecondary }}>
+                    {' following'}
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
+
+            <Button
+              title="Edit profile"
+              variant="outline"
+              onPress={() => router.push('/edit-profile')}
+            />
+          </View>
+
+          <View>
+            <RowLink
+              label="View my profile"
+              onPress={() =>
+                myId && router.push({ pathname: '/user/[id]', params: { id: myId } })
+              }
+            />
+            <RowLink label="Statistics" onPress={() => router.push('/stats')} />
+            <RowLink label="Diary" onPress={() => router.push('/diary')} />
+          </View>
+
+          <View>
+            <RowLink
+              label="Theme"
+              value={THEME_LABEL[pref]}
+              onPress={cycle}
+              accessibilityLabel={`Theme: ${THEME_LABEL[pref]}`}
+              accessibilityHint="Cycles between light, dark and system"
+            />
+          </View>
+
+          <Button title="Sign out" variant="danger" onPress={signOut} />
         </ScrollView>
       </TopSafeAreaView>
     </ThemedView>
@@ -182,11 +166,13 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
+  // The tutorial-card measures: 24pt sides, 32 between groups.
   content: {
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.four,
-    gap: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.five,
+    gap: Spacing.five,
   },
+  group: { gap: Spacing.three },
   // The top margin lives on the row, not on the title: with it on the child,
   // `alignItems: center` would measure the title's margin box and sit the ⓘ
   // above the text it belongs beside.
@@ -199,24 +185,11 @@ const styles = StyleSheet.create({
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   identityText: { flex: 1, gap: Spacing.half },
   bio: { lineHeight: 21 },
+  // Left-aligned with the rest of the card column (ADR 0030).
   counts: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: Spacing.three,
   },
   countItem: { flexDirection: 'row', alignItems: 'center' },
-  link: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.three,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  value: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: 'transparent',
-  },
 });

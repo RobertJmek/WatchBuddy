@@ -1,6 +1,6 @@
 # ADR 0030 — Card-style screens
 
-**Status:** accepted · targets v1.26.0 onwards (one PR per slice)
+**Status:** proposed · v1.26.0 (one PR, pending Robert's look on a device)
 
 ## Context
 
@@ -64,27 +64,32 @@ headers"):
    (three rows don't need a Bodoni heading each): View my profile · Statistics ·
    Diary, then Theme, then Sign out. Edit profile stays a button under the
    identity block, and the ⓘ → About link is unchanged.
-7. **Release cadence.** Each slice is its own PR and carries its own bump, so a
-   fast merge never strands it. It starts at 1.26.0 / vc 78 because the change is
-   visible, then 1.26.1, 1.26.2 and so on. Releases happen only on Robert's word,
-   and several slices may ship under the last number. New user-visible copy is
-   shown in each PR with light and dark screenshots for Robert to approve.
+7. **One PR, one bump: 1.26.0 / vc 78.** The plan was one PR per slice.
+   Robert then asked for the whole redesign in a single PR, so he can see it
+   on a device and decide whether he wants it at all. It ships only on his word.
+   New user-visible copy is in the PR for him to approve.
 
-## Slices
+## What the PR does
 
 1. Primitives: `components/intro.tsx`, `components/bottom-bar.tsx`, the `label`
    text type and the `meta` change. Welcome, onboarding and the tutorial move
    onto them and must stay pixel-identical.
-2. Sign-in. 3. Edit Profile. 4. The Profile tab. 5. Stats (measures and
-   headings). 6. The title page and public profile (layout only; they are
-   gesture-heavy). 7. Secondary screens.
+   Onboarding and Edit Profile share `components/profile-fields.tsx`, and every
+   settings-type row is `components/row-link.tsx`.
+2. Sign-in, Edit Profile, the Profile tab, About, Blocked, import-data and both
+   importers become card screens.
+3. Lists take the measures and the heading rules only: Stats, the title page
+   and public profile (layout only; they are gesture-heavy), Diary, the grid
+   sections, followers/following, the tab roots. Library's title count moves
+   from over its heading to under it.
 
 ## Consequences
 
 - Client-only. No SQL, edge function, RPC or query-key change, so installed
   builds are unaffected.
-- Uppercase text survives only where a platform draws it. The app itself no
-  longer writes any.
+- Uppercase text survives in two places only: the title hero's metadata line
+  (its own exception, text over a photo) and the month initials on Stats' chart
+  axis.
 - The pinned bar is a WatchBuddy convention on both platforms. On Android it
   departs from Material's trailing FAB on purpose, to match onboarding.
 - `subtitle` now means only a heading. A row in Bodoni is a bug.

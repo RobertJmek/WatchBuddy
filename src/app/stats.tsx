@@ -120,12 +120,15 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <ThemedView type="backgroundElement" style={styles.section}>
-      <ThemedText type="meta" style={styles.sectionTitle}>
+    // A section heading over its card, 12 apart (ADR 0030).
+    <View style={styles.sectionGroup}>
+      <ThemedText type="subtitle" accessibilityRole="header">
         {title}
       </ThemedText>
-      {children}
-    </ThemedView>
+      <ThemedView type="backgroundElement" style={styles.section}>
+        {children}
+      </ThemedView>
+    </View>
   );
 }
 
@@ -148,7 +151,7 @@ export default function StatsScreen() {
     return (
       <ThemedView style={styles.container}>
         <Stack.Screen options={{ headerShown: true, headerTitle: 'Statistics' }} />
-        <View style={{ padding: Spacing.three, gap: Spacing.two }}>
+        <View style={{ padding: Spacing.four, gap: Spacing.two }}>
           <Skeleton style={{ height: 160, borderRadius: 12 }} />
           <View style={{ flexDirection: 'row', gap: Spacing.two }}>
             <Skeleton style={{ flex: 1, height: 110, borderRadius: 12 }} />
@@ -385,7 +388,8 @@ export default function StatsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.three },
+  // 24pt sides, 32 between sections (ADR 0030).
+  content: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, gap: Spacing.five },
   hero: {
     borderRadius: Spacing.three,
     paddingVertical: Spacing.five,
@@ -411,10 +415,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.two,
   },
-  sectionTitle: {
-    opacity: 0.55,
-    marginBottom: Spacing.half,
-  },
+  sectionGroup: { gap: 12 },
   barRow: {
     flexDirection: 'row',
     alignItems: 'center',

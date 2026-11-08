@@ -52,6 +52,7 @@ export function FollowList({ kind }: { kind: keyof typeof LISTS }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: Spacing.three, gap: Spacing.two },
+  // 24pt sides (ADR 0030).
+  list: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three, gap: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.five },
 });

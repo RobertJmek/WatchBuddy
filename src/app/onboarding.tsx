@@ -1,30 +1,27 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '@/components/avatar';
-import { IconSymbol } from '@/components/icon-symbol';
-import { PressScale } from '@/components/press-scale';
-import { Step } from '@/components/step';
+import { BarButton, BottomBar } from '@/components/bottom-bar';
+import { Intro } from '@/components/intro';
+import { BIO_MIN_HEIGHT, ProfileFields } from '@/components/profile-fields';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Spacing, Type } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { markOnboardingSeen } from '@/lib/onboarding';
-import { useBottomGap } from '@/hooks/use-bottom-gap';
 import {
   getMyProfile,
   pickAvatarImage,
   saveProfile,
   saveProfileErrorMessage,
-  PROFILE_LIMITS,
   usernameError,
   type PickedImage,
 } from '@/lib/profile';
@@ -36,7 +33,6 @@ export default function OnboardingScreen() {
   const c = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const bottomGap = useBottomGap();
   const queryClient = useQueryClient();
   const { session } = useAuth();
 
@@ -120,8 +116,6 @@ export default function OnboardingScreen() {
     }
   }
 
-  const field = [styles.field, { backgroundColor: c.backgroundElement }];
-
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
@@ -148,109 +142,32 @@ export default function OnboardingScreen() {
         keyboardDismissMode="on-drag"
         // Scrolls to the caret: clear the whole bio box (minHeight 88) plus the
         // hide-keyboard button above the keyboard.
-        bottomOffset={88 + Spacing.six}>
-        <Animated.View entering={rise(0)} style={styles.intro}>
-          <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-            Your profile
-          </ThemedText>
-          <ThemedText style={[styles.body, { color: c.textSecondary }]}>
-            Help friends find you. You can change this later.
-          </ThemedText>
-        </Animated.View>
+        bottomOffset={BIO_MIN_HEIGHT + Spacing.six}>
+        <Intro
+          entering={rise(0)}
+          title="Your profile"
+          body="Help friends find you. You can change this later."
+        />
 
         <Animated.View entering={rise(1)} style={styles.steps}>
-          <Step label="Photo">
-            <Pressable
-              style={styles.photoRow}
-              onPress={pickAvatar}
-              disabled={saving}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={avatarUri ? 'Change photo' : 'Choose a photo'}
-              accessibilityState={{ disabled: saving }}>
-              {avatarUri ? (
-                <Avatar uri={avatarUri} name={displayName} size={72} />
-              ) : (
-                <View style={[styles.photoEmpty, { borderColor: c.textSecondary }]}>
-                  <IconSymbol name="camera" size={24} tintColor={c.textSecondary} />
-                </View>
-              )}
-              <ThemedText type="smallBold" style={{ color: c.tint }}>
-                {avatarUri ? 'Change photo' : 'Choose a photo'}
-              </ThemedText>
-            </Pressable>
-          </Step>
-
-          <Step label="Username" note="3 to 20 letters, numbers or _">
-            <View style={field}>
-              <ThemedText style={[styles.prefix, { color: c.textSecondary }]}>@</ThemedText>
-              <TextInput
-                style={[styles.input, { color: c.text }]}
-                placeholder="username"
-                placeholderTextColor={c.textSecondary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="username"
-                maxLength={PROFILE_LIMITS.username}
-                value={username}
-                editable={!saving}
-                onChangeText={setUsername}
-                accessibilityLabel="Username"
-              />
-            </View>
-          </Step>
-
-          <Step label="Name">
-            <View style={field}>
-              <TextInput
-                style={[styles.input, { color: c.text }]}
-                placeholder="Your name"
-                placeholderTextColor={c.textSecondary}
-                maxLength={PROFILE_LIMITS.displayName}
-                value={displayName}
-                editable={!saving}
-                onChangeText={setDisplayName}
-                textContentType="name"
-                autoComplete="name"
-                accessibilityLabel="Name"
-              />
-            </View>
-          </Step>
-
-          <Step label="Bio" note={`Optional, up to ${PROFILE_LIMITS.bio} characters`}>
-            <View style={field}>
-              <TextInput
-                style={[styles.input, styles.bio, { color: c.text }]}
-                placeholder="What do you like to watch?"
-                placeholderTextColor={c.textSecondary}
-                maxLength={PROFILE_LIMITS.bio}
-                multiline
-                value={bio}
-                editable={!saving}
-                onChangeText={setBio}
-                accessibilityLabel="Bio"
-              />
-            </View>
-          </Step>
-
-          {error && (
-            <ThemedText themeColor="danger" accessibilityLiveRegion="polite">
-              {error}
-            </ThemedText>
-          )}
+          <ProfileFields
+            avatarUri={avatarUri}
+            username={username}
+            displayName={displayName}
+            bio={bio}
+            onUsername={setUsername}
+            onDisplayName={setDisplayName}
+            onBio={setBio}
+            onPickAvatar={pickAvatar}
+            saving={saving}
+            error={error}
+          />
         </Animated.View>
       </KeyboardAwareScrollView>
 
-      <View style={[styles.bottom, { paddingBottom: bottomGap }]}>
-        <PressScale
-          style={[styles.primaryBtn, saving && styles.busy]}
-          onPress={handleContinue}
-          disabled={saving}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: saving, busy: saving }}>
-          <ThemedText style={styles.primaryText}>{saving ? 'Saving…' : 'Continue'}</ThemedText>
-        </PressScale>
-      </View>
+      <BottomBar>
+        <BarButton title={saving ? 'Saving…' : 'Continue'} onPress={handleContinue} busy={saving} />
+      </BottomBar>
     </ThemedView>
   );
 }
@@ -265,37 +182,5 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     gap: Spacing.five,
   },
-  intro: { gap: 12 },
-  body: { fontSize: 17, lineHeight: 26 },
   steps: { gap: Spacing.five },
-  photoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, alignSelf: 'flex-start' },
-  photoEmpty: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // The tutorial's search field: one rounded row, an optional prefix inside.
-  field: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-  },
-  prefix: { fontFamily: Type.body, fontSize: 16 },
-  input: { flex: 1, fontFamily: Type.body, fontSize: 16, paddingVertical: 14 },
-  bio: { minHeight: 88, textAlignVertical: 'top' },
-  bottom: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two },
-  primaryBtn: {
-    backgroundColor: Accent,
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  busy: { opacity: 0.6 },
-  primaryText: { color: AccentText, fontWeight: '700', fontSize: 16 },
 });

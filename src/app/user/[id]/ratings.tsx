@@ -22,7 +22,7 @@ import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 const COLS = 3;
 const GAP = Spacing.two;
-const PAD = Spacing.three;
+const PAD = Spacing.four; // 24pt sides (ADR 0030)
 const PAGE = 30;
 
 const SORTS: Segment<RatingsSort>[] = [

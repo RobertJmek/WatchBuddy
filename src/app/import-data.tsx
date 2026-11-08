@@ -1,11 +1,10 @@
 import { Stack, router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { IconSymbol } from '@/components/icon-symbol';
-import { ThemedText } from '@/components/themed-text';
+import { Intro } from '@/components/intro';
+import { RowLink } from '@/components/row-link';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 type Source = {
@@ -31,31 +30,22 @@ const SOURCES: Source[] = [
 
 export default function ImportDataScreen() {
   const bottomGap = useBottomGap();
-  const c = useTheme();
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'Import your data' }} />
+      {/* No header title: the Intro is the title (ADR 0030). */}
+      <Stack.Screen options={{ headerShown: true, title: '' }} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomGap }]}>
-        <ThemedText type="small" style={{ color: c.textSecondary }}>
-          Where are you importing from?
-        </ThemedText>
-        {SOURCES.map((s) => (
-          <Pressable
-            key={s.route}
-            style={[styles.card, { borderColor: c.border }]}
-            onPress={() => router.push(s.route)}
-            accessibilityRole="button"
-            accessibilityLabel={s.title}
-            accessibilityHint={s.description}>
-            <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">{s.title}</ThemedText>
-              <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
-            </View>
-            <ThemedText type="small" style={{ color: c.textSecondary }}>
-              {s.description}
-            </ThemedText>
-          </Pressable>
-        ))}
+        <Intro title="Import your data" body="Where are you importing from?" />
+        <View>
+          {SOURCES.map((s) => (
+            <RowLink
+              key={s.route}
+              label={s.title}
+              note={s.description}
+              onPress={() => router.push(s.route)}
+            />
+          ))}
+        </View>
       </ScrollView>
     </ThemedView>
   );
@@ -63,16 +53,6 @@ export default function ImportDataScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.three },
-  card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  // The tutorial-card measures: 24pt sides, 32 between groups.
+  content: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, gap: Spacing.five },
 });

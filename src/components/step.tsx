@@ -36,7 +36,7 @@ export function Step({
             </View>
           )}
           <Animated.View key={label} entering={FadeIn.duration(220)} style={styles.labelWrap}>
-            <ThemedText style={styles.label}>{label}</ThemedText>
+            <ThemedText type="label">{label}</ThemedText>
           </Animated.View>
         </View>
         {note && (
@@ -64,6 +64,5 @@ const styles = StyleSheet.create({
   },
   numText: { color: AccentText, fontFamily: Type.semibold, fontSize: 13, lineHeight: 16 },
   labelWrap: { flexShrink: 1 },
-  label: { fontFamily: Type.semibold, fontSize: 17, lineHeight: 24 },
   noteIndent: { marginLeft: 34 },
 });

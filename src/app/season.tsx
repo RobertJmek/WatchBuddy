@@ -241,7 +241,8 @@ export default function SeasonScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: Spacing.three, gap: Spacing.three },
+  // 24pt sides (ADR 0030).
+  list: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three, gap: Spacing.three },
   header: { gap: Spacing.two, marginBottom: Spacing.two },
   count: { opacity: 0.7 },
   seasonButton: {

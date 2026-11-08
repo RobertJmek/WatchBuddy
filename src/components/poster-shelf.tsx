@@ -144,7 +144,8 @@ export const PosterShelf = memo(function PosterShelf({
 });
 
 const styles = StyleSheet.create({
-  shelf: { gap: Spacing.two },
+  // 12 from the heading to its posters (ADR 0030).
+  shelf: { gap: 12 },
   headerBtn: {
     flexDirection: 'row',
     alignItems: 'center',

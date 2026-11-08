@@ -25,9 +25,10 @@ import Animated, {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BarButton, BottomBar } from '@/components/bottom-bar';
 import { IconSymbol, type IconName } from '@/components/icon-symbol';
+import { Intro } from '@/components/intro';
 import { LibraryStatusBar } from '@/components/library-status-bar';
-import { PressScale } from '@/components/press-scale';
 import { RatingBar } from '@/components/rating-bar';
 import { SearchRow } from '@/components/search-row';
 import { Step } from '@/components/step';
@@ -50,7 +51,6 @@ import {
   type TitleRow,
 } from '@/lib/tmdb';
 import { itemKey, useSearchLog } from '@/lib/use-search-log';
-import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 /**
  * "How WatchBuddy works": five cards, each with one real thing to do, shown
@@ -97,7 +97,6 @@ export default function TutorialScreen() {
   const c = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const bottomGap = useBottomGap();
   const { replay } = useLocalSearchParams<{ replay?: string }>();
   const [index, setIndex] = useState(0);
   const [forward, setForward] = useState(true);
@@ -270,7 +269,7 @@ export default function TutorialScreen() {
           </Animated.View>
         </View>
 
-        <View style={[styles.bottom, { paddingBottom: bottomGap }]}>
+        <BottomBar>
           <View
             style={styles.dots}
             accessible
@@ -292,39 +291,33 @@ export default function TutorialScreen() {
           </View>
           <View style={styles.buttons}>
             {index > 0 && (
-              <PressScale
-                style={[styles.button, styles.secondaryBtn, { borderColor: c.text }]}
+              <BarButton
+                secondary
+                title="Back"
+                style={styles.secondaryBtn}
                 onPress={() => {
                   hapticTick();
                   go(-1);
                 }}
-                accessibilityRole="button"
-                accessibilityLabel="Back">
-                <ThemedText style={styles.buttonText}>Back</ThemedText>
-              </PressScale>
+              />
             )}
-            <PressScale
-              style={[styles.button, styles.primaryBtn]}
+            <BarButton
+              title={last ? 'Get started' : 'Next'}
+              style={styles.primaryBtn}
               onPress={() => {
                 if (!last) return next();
                 hapticSuccess();
                 done();
               }}
-              accessibilityRole="button"
-              accessibilityLabel={last ? 'Get started' : 'Next'}>
-              <ThemedText style={[styles.buttonText, { color: AccentText }]}>
-                {last ? 'Get started' : 'Next'}
-              </ThemedText>
-            </PressScale>
+            />
           </View>
-        </View>
+        </BottomBar>
       </SwipeNav>
     </ThemedView>
   );
 }
 
 function Card({ title, body, children }: { title: string; body: string; children: ReactNode }) {
-  const c = useTheme();
   return (
     // Same scroll container as sign-in and the title page: it keeps the focused
     // field above the keyboard, with room left for the hide-keyboard button.
@@ -333,13 +326,7 @@ function Card({ title, body, children }: { title: string; body: string; children
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       bottomOffset={Spacing.six}>
-      <Animated.View entering={rise(0)} style={styles.intro}>
-        {/* One line on every phone: the type shrinks before it wraps. */}
-        <ThemedText type="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-          {title}
-        </ThemedText>
-        <ThemedText style={[styles.body, { color: c.textSecondary }]}>{body}</ThemedText>
-      </Animated.View>
+      <Intro entering={rise(0)} title={title} body={body} />
       <Animated.View entering={rise(1)} style={styles.steps}>
         {children}
       </Animated.View>
@@ -807,8 +794,6 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     gap: Spacing.five,
   },
-  intro: { gap: 12 },
-  body: { fontSize: 17, lineHeight: 26 },
   steps: { gap: Spacing.five },
   field: {
     flexDirection: 'row',
@@ -938,16 +923,9 @@ const styles = StyleSheet.create({
   demoGhostBand: { position: 'absolute', top: 150, height: 38, left: 0, right: 0 },
   demoBar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth },
   demoTab: { flex: 1, alignItems: 'center', gap: Spacing.half, paddingVertical: Spacing.two },
-  bottom: { paddingHorizontal: Spacing.four, gap: Spacing.three, paddingTop: Spacing.two },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.two },
   dot: { height: 8, borderRadius: 4 },
   buttons: { flexDirection: 'row', gap: Spacing.three },
-  button: {
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  secondaryBtn: { flex: 1, borderWidth: 1.5 },
-  primaryBtn: { flex: 2, backgroundColor: Accent },
-  buttonText: { fontWeight: '700', fontSize: 16 },
+  secondaryBtn: { flex: 1 },
+  primaryBtn: { flex: 2 },
 });

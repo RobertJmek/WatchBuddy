@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   chipBar: { flexGrow: 0 },
   searchRow: {
     justifyContent: 'center',
-    marginHorizontal: Spacing.three,
+    marginHorizontal: Spacing.four,
     marginBottom: Spacing.two,
   },
   searchInput: {
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   searchClear: { position: 'absolute', right: Spacing.three },
   chips: {
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two,
   },
   chip: {
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   customRow: {
     flexDirection: 'row',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.two,
   },
   dateField: {
@@ -477,7 +477,8 @@ const styles = StyleSheet.create({
     backgroundColor: Accent,
   },
   doneText: { color: AccentText, fontWeight: '700' },
-  list: { padding: Spacing.three, gap: Spacing.two },
+  // 24pt sides (ADR 0030).
+  list: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three, gap: Spacing.two },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   stale: { opacity: 0.5 },
   footer: { paddingVertical: Spacing.three },
