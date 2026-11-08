@@ -56,10 +56,11 @@ export function SwipeToDismissRow({
       // reversible (an Undo strip takes its place), so it doesn't earn the long,
       // deliberate drag a whole series does.
       leftThreshold={width * 0.22}
-      onSwipeableWillOpen={() => {
-        onDismiss();
-        ref.current?.close();
-      }}
+      onSwipeableWillOpen={() => onDismiss()}
+      // Close from Open, never from inside WillOpen: RNGH starts the open spring
+      // in the same tick, and a `close()` there can lose to it on iOS and leave
+      // the row stuck open (see `swipe-to-log-row.tsx`).
+      onSwipeableOpen={() => ref.current?.close()}
       // Left actions are what a *right* drag reveals.
       renderLeftActions={() => (
         <View style={styles.action}>

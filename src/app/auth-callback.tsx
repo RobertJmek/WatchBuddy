@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/lib/auth-context';
+import { SIGN_IN_FAILED, useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -73,7 +73,7 @@ export default function AuthCallback() {
       // state, no valid flow state found") means nothing to a user — retrying
       // is the only useful action anyway.
       if (active && !data.session) {
-        setError("We couldn't finish signing you in. Please try again.");
+        setError(SIGN_IN_FAILED);
       }
     })();
     return () => {
