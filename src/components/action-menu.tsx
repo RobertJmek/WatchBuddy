@@ -2,7 +2,7 @@ import { useCallback, useState, type ReactElement } from 'react';
 import { ActionSheetIOS, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Danger, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /** One row of a ⋯ menu. */
@@ -76,7 +76,7 @@ function ActionSheet({
                 onClose();
                 a.run();
               }}>
-              <ThemedText style={a.destructive ? styles.destructive : undefined}>
+              <ThemedText themeColor={a.destructive ? 'danger' : undefined}>
                 {a.label}
               </ThemedText>
             </Pressable>
@@ -112,7 +112,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
   },
-  destructive: { color: Danger },
   divider: {
     height: StyleSheet.hairlineWidth,
     marginVertical: Spacing.one,

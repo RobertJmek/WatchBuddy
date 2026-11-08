@@ -7,7 +7,7 @@ import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { handleOf, useModerationMenu } from '@/components/moderation-menu';
 import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
@@ -211,12 +211,12 @@ export const ReviewRow = memo(function ReviewRow({
             <IconSymbol
               name="heart"
               size={16}
-              tintColor={liked ? Accent : c.textSecondary}
+              tintColor={liked ? c.tint : c.textSecondary}
             />
             {likes > 0 && (
               <ThemedText
                 type="small"
-                style={{ color: liked ? Accent : c.textSecondary }}>
+                style={{ color: liked ? c.tint : c.textSecondary }}>
                 {likes}
               </ThemedText>
             )}

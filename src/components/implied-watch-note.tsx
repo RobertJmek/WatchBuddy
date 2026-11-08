@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
@@ -111,7 +111,7 @@ export function ImpliedWatchNote({
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={`Undo: ${text.toLowerCase()}`}>
-        <ThemedText type="small" style={styles.undo}>
+        <ThemedText type="small" themeColor="tint" style={styles.undo}>
           Undo
         </ThemedText>
       </Pressable>
@@ -121,5 +121,5 @@ export function ImpliedWatchNote({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  undo: { color: Accent, fontWeight: '600' },
+  undo: { fontWeight: '600' },
 });

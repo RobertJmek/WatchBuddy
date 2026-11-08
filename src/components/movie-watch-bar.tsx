@@ -72,7 +72,7 @@ export function WatchSummary({
         accessibilityRole="button"
         accessibilityLabel={undoLabel}
         accessibilityState={{ disabled: busy }}>
-        <ThemedText type="small" style={styles.undo}>
+        <ThemedText type="small" themeColor="tint">
           Undo last
         </ThemedText>
       </Pressable>
@@ -168,5 +168,4 @@ const styles = StyleSheet.create({
   },
   buttonBusy: { opacity: 0.6 },
   buttonText: { color: AccentText, fontWeight: '600' },
-  undo: { color: ACTIVE },
 });

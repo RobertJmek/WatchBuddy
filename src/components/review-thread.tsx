@@ -392,7 +392,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
                       <Pressable hitSlop={8} disabled={savingReview} onPress={saveReview}>
                         <ThemedText
                           type="smallBold"
-                          style={{ color: savingReview ? c.textSecondary : Accent }}>
+                          style={{ color: savingReview ? c.textSecondary : c.tint }}>
                           Save
                         </ThemedText>
                       </Pressable>
@@ -436,12 +436,12 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
                       <IconSymbol
                         name="heart"
                         size={16}
-                        tintColor={liked ? Accent : c.textSecondary}
+                        tintColor={liked ? c.tint : c.textSecondary}
                       />
                       {likes > 0 && (
                         <ThemedText
                           type="small"
-                          style={{ color: liked ? Accent : c.textSecondary }}>
+                          style={{ color: liked ? c.tint : c.textSecondary }}>
                           {likes}
                         </ThemedText>
                       )}
@@ -487,7 +487,7 @@ export function ReviewThread({ ratingId }: { ratingId: string }) {
                   ) : (
                     <ThemedText style={styles.text}>
                       {item.replyToUsername ? (
-                        <ThemedText type="smallBold" style={{ color: Accent }}>
+                        <ThemedText type="smallBold" themeColor="tint">
                           @{item.replyToUsername}{' '}
                         </ThemedText>
                       ) : null}

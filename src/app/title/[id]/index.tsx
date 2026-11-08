@@ -23,7 +23,7 @@ import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { TvWatchBar } from '@/components/tv-watch-bar';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Danger, Glow, Hero, Spacing, Type } from '@/constants/theme';
+import { Accent, AccentText, Glow, Hero, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import { fetchAllEpisodes, imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
@@ -158,7 +158,7 @@ export default function TitleDetailScreen() {
             </View>
           </View>
         )}
-        {error && <ThemedText style={styles.error}>{error}</ThemedText>}
+        {error && <ThemedText themeColor="danger" style={styles.error}>{error}</ThemedText>}
 
         {title && (
           <>
@@ -342,7 +342,7 @@ export default function TitleDetailScreen() {
                                 }
                                 accessibilityState={{ busy: stack.at(-1)!.pending }}>
                                 {stack.length > 1 && (
-                                  <ThemedText type="smallBold" style={{ color: Accent }}>
+                                  <ThemedText type="smallBold" themeColor="tint">
                                     ×{stack.length}
                                   </ThemedText>
                                 )}
@@ -373,7 +373,7 @@ export default function TitleDetailScreen() {
                     ))}
                     {ratingsQ.data.reviews.length > 3 && (
                       <Pressable onPress={openReviews} accessibilityRole="button">
-                        <ThemedText type="smallBold" style={{ color: Accent }}>
+                        <ThemedText type="smallBold" themeColor="tint">
                           See all {ratingsQ.data.reviews.length} reviews ›
                         </ThemedText>
                       </Pressable>
@@ -490,5 +490,5 @@ const styles = StyleSheet.create({
   },
   logged: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   checkPending: { opacity: 0.55 },
-  error: { color: Danger, marginTop: Spacing.six, textAlign: 'center' },
+  error: { marginTop: Spacing.six, textAlign: 'center' },
 });

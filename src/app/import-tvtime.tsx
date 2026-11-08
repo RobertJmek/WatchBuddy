@@ -16,7 +16,7 @@ import { Button } from '@/components/button';
 import { ImportBusy, ImportRunning, useImportRun } from '@/components/import-steps';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Danger, PlaceholderBg, Spacing } from '@/constants/theme';
+import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { importErrorMessage } from '@/lib/import-core/run';
@@ -268,7 +268,7 @@ export default function ImportTvTimeScreen() {
               library.
             </ThemedText>
             {state.error ? (
-              <ThemedText type="small" style={styles.error}>
+              <ThemedText type="small" themeColor="danger">
                 {state.error}
               </ThemedText>
             ) : null}
@@ -364,7 +364,6 @@ export default function ImportTvTimeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three },
-  error: { color: Danger },
   matchCard: {
     borderWidth: 1,
     borderRadius: 12,
