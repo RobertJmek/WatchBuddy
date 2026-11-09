@@ -9,6 +9,7 @@ export type ThemedTextProps = TextProps & {
     | 'title'
     | 'small'
     | 'smallBold'
+    | 'label'
     | 'subtitle'
     | 'meta'
     | 'link'
@@ -28,6 +29,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'title' && styles.title,
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
+        type === 'label' && styles.label,
         type === 'subtitle' && styles.subtitle,
         type === 'meta' && styles.meta,
         type === 'link' && styles.link,
@@ -56,6 +58,12 @@ const styles = StyleSheet.create({
     fontFamily: Type.semibold,
     fontSize: 14,
     lineHeight: 20,
+  },
+  // A Step's label and a tappable row's text (same as step.tsx's label).
+  label: {
+    fontFamily: Type.semibold,
+    fontSize: 17,
+    lineHeight: 24,
   },
   // Letter-spaced small caps — the "2024 · 166 MIN · SCI-FI" metadata + eyebrows.
   meta: {
