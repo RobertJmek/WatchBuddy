@@ -24,9 +24,10 @@ Edit Profile becomes a card screen, built from #118's pieces:
   (`components/bottom-bar.tsx`). A Save in the scroll or in the navigation bar
   is the form button people miss most, and they leave without saving. The bar
   sits at the bottom gap, so no button is lower than Delete account.
-- "Your data" is a Bodoni `subtitle` heading over three rows (Import, Blocked,
-  Export) in 17/24 semibold with a chevron (`components/row-link.tsx`,
-  `ThemedText type="label"`). Delete account stays in the scroll, under them.
+- The data rows (Import, Blocked, Export) stay exactly as they were: Bodoni
+  `subtitle` text with a chevron and a hairline, no group heading. #118's
+  smaller semibold rows were tried and declined. Delete account stays in the
+  scroll, under them.
 
 Onboarding keeps its own copy of the fields for now. Moving it onto
 `ProfileFields` is a refactor that should leave it pixel-identical, and it isn't

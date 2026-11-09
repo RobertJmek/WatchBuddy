@@ -3,17 +3,18 @@ import { File, Paths } from 'expo-file-system';
 import { Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { BarButton, BottomBar } from '@/components/bottom-bar';
+import { IconSymbol } from '@/components/icon-symbol';
 import { Intro } from '@/components/intro';
 import { BIO_MIN_HEIGHT, ProfileFields } from '@/components/profile-fields';
-import { RowLink } from '@/components/row-link';
 import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { buildExport } from '@/lib/export';
@@ -28,6 +29,7 @@ import {
 } from '@/lib/profile';
 
 export default function EditProfileScreen() {
+  const c = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { deleteAccount } = useAuth();
@@ -200,28 +202,39 @@ export default function EditProfileScreen() {
               error={error}
             />
 
-            <View style={styles.group}>
-              <ThemedText type="subtitle" accessibilityRole="header">
-                Your data
-              </ThemedText>
-              <View>
-                <RowLink
-                  label="Import your data"
-                  disabled={busy}
-                  onPress={() => router.push('/import-data')}
-                />
-                <RowLink
-                  label="Blocked accounts"
-                  disabled={busy}
-                  onPress={() => router.push('/blocked')}
-                />
-                <RowLink
-                  label="Export your data"
-                  disabled={busy}
-                  busy={exporting}
-                  onPress={exportMyData}
-                />
-              </View>
+            {/* The data rows as on main: Robert kept these as they were. */}
+            <View>
+              <Pressable
+                style={[styles.link, { borderBottomColor: c.border }]}
+                disabled={busy}
+                onPress={() => router.push('/import-data')}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy }}>
+                <ThemedText type="subtitle">Import your data</ThemedText>
+                <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+              </Pressable>
+              <Pressable
+                style={[styles.link, { borderBottomColor: c.border }]}
+                disabled={busy}
+                onPress={() => router.push('/blocked')}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy }}>
+                <ThemedText type="subtitle">Blocked accounts</ThemedText>
+                <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+              </Pressable>
+              <Pressable
+                style={[styles.link, { borderBottomColor: c.border }]}
+                disabled={busy}
+                onPress={exportMyData}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy, busy: exporting }}>
+                <ThemedText type="subtitle">Export your data</ThemedText>
+                {exporting ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+                )}
+              </Pressable>
             </View>
 
             <Pressable
@@ -260,6 +273,12 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     gap: Spacing.five,
   },
-  group: { gap: 12 },
+  link: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.three,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   deleteRow: { alignSelf: 'center' },
 });
