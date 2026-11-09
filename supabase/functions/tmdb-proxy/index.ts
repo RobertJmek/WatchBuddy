@@ -368,33 +368,44 @@ function needsImdbLookup(row: {
   return Date.now() - new Date(row.imdb_checked_at).getTime() > IMDB_RECHECK_MS;
 }
 
-async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
+/**
+ * The cached title with its seasons, in one round trip instead of two.
+ *
+ * `.then` matters: a Supabase builder is lazy, so without it the read would
+ * start only when awaited. Started here, it runs while the rate limiter is
+ * being asked (see `plan`), and a cached title costs one round trip, not three.
+ */
+function readCachedTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
+  return admin
+    .from('titles')
+    .select('*, seasons(*)')
+    .eq('tmdb_id', tmdbId)
+    .eq('media_type', mediaType)
+    .order('season_number', { referencedTable: 'seasons' })
+    .maybeSingle()
+    .then((result) => result);
+}
+
+async function handleTitle(
+  tmdbId: number,
+  mediaType: 'movie' | 'tv',
+  cachedRead = readCachedTitle(tmdbId, mediaType),
+) {
   // Cache gate: serve a recent copy without re-hitting TMDB + OMDb. We still
   // force a refetch for a row that *could* carry an IMDb rating but doesn't yet
   // (OMDb key now set, imdb_id known, imdb_rating still null) so enabling the
   // key backfills on next view instead of after the TTL window expires.
-  const { data: cached } = await admin
-    .from('titles')
-    .select('*')
-    .eq('tmdb_id', tmdbId)
-    .eq('media_type', mediaType)
-    .maybeSingle();
+  const { data: row } = await cachedRead;
+  // `seasons` is the embed, not a column: the response's `title` never had it.
+  const { seasons: cachedSeasons, ...cachedTitle } = row ?? { seasons: [] };
+  const cached = row ? (cachedTitle as any) : null;
 
   if (cached) {
     const fresh =
       Date.now() - new Date(cached.cached_at).getTime() < TITLE_CACHE_TTL_MS;
     const couldBackfillImdb = needsImdbLookup(cached);
     if (fresh && !couldBackfillImdb) {
-      const seasons =
-        mediaType === 'tv'
-          ? ((
-              await admin
-                .from('seasons')
-                .select('*')
-                .eq('title_id', cached.id)
-                .order('season_number')
-            ).data ?? [])
-          : [];
+      const seasons = mediaType === 'tv' ? (cachedSeasons ?? []) : [];
       return json({ title: cached, seasons });
     }
   }
@@ -581,30 +592,67 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
 }
 
 // --- season (episodes + cache) -----------------------------------------
-async function handleSeason(tmdbId: number, seasonNumber: number) {
-  const { data: title } = await admin
-    .from('titles')
-    .select('id')
-    .eq('tmdb_id', tmdbId)
-    .eq('media_type', 'tv')
-    .single();
-  if (!title) return json({ error: 'Title not cached yet' }, 409);
-
-  const { data: season } = await admin
+/**
+ * A cached season with its title and episodes, in one round trip instead of
+ * three. Null when the title or the season isn't cached. Started eagerly, like
+ * `readCachedTitle`.
+ */
+function readCachedSeason(tmdbId: number, seasonNumber: number) {
+  return admin
     .from('seasons')
-    .select('id')
-    .eq('title_id', title.id)
+    .select('id, title_id, titles!inner(id), episodes(*)')
     .eq('season_number', seasonNumber)
-    .single();
-  if (!season) return json({ error: 'Season not cached yet' }, 409);
+    .eq('titles.tmdb_id', tmdbId)
+    .eq('titles.media_type', 'tv')
+    .order('episode_number', { referencedTable: 'episodes' })
+    // The separate episodes read this replaces stopped at PostgREST's 1000 rows.
+    .limit(1000, { referencedTable: 'episodes' })
+    .maybeSingle()
+    .then((result) => result);
+}
 
+async function handleSeason(
+  tmdbId: number,
+  seasonNumber: number,
+  cachedRead = readCachedSeason(tmdbId, seasonNumber),
+) {
+  const { data: hit } = await cachedRead;
+  let title: { id: string };
+  let season: { id: string };
   // Cache gate: serve stored episodes while fresh, and fall back to them
   // (stale) if TMDB is unreachable — episode metadata barely changes.
-  const { data: cachedEps } = await admin
-    .from('episodes')
-    .select('*')
-    .eq('season_id', season.id)
-    .order('episode_number');
+  let cachedEps: any[] | null;
+
+  if (hit) {
+    title = { id: hit.title_id };
+    season = { id: hit.id };
+    cachedEps = hit.episodes;
+  } else {
+    // A miss: look each level up on its own to say which one is missing.
+    const { data: titleRow } = await admin
+      .from('titles')
+      .select('id')
+      .eq('tmdb_id', tmdbId)
+      .eq('media_type', 'tv')
+      .single();
+    if (!titleRow) return json({ error: 'Title not cached yet' }, 409);
+
+    const { data: seasonRow } = await admin
+      .from('seasons')
+      .select('id')
+      .eq('title_id', titleRow.id)
+      .eq('season_number', seasonNumber)
+      .single();
+    if (!seasonRow) return json({ error: 'Season not cached yet' }, 409);
+
+    title = titleRow;
+    season = seasonRow;
+    ({ data: cachedEps } = await admin
+      .from('episodes')
+      .select('*')
+      .eq('season_id', season.id)
+      .order('episode_number'));
+  }
   if (cachedEps?.length) {
     const newest = Math.max(
       ...cachedEps.map((e: any) => new Date(e.cached_at ?? 0).getTime()),
@@ -700,7 +748,9 @@ function plan(
       if (!type) return badRequest('media_type must be movie or tv');
       const id = wholeNumber(body.tmdb_id, 1, MAX_TMDB_ID);
       if (id === null) return badRequest('tmdb_id must be a positive whole number');
-      return { cost: 1, run: () => handleTitle(id, type) };
+      // Start the cache read now, so it overlaps the rate-limit check.
+      const cached = readCachedTitle(id, type);
+      return { cost: 1, run: () => handleTitle(id, type, cached) };
     }
     case 'season': {
       const id = wholeNumber(body.tmdb_id, 1, MAX_TMDB_ID);
@@ -708,7 +758,9 @@ function plan(
       // Season 0 is TMDB's specials season, so the floor is 0 and not 1.
       const season = wholeNumber(body.season_number, 0, MAX_SEASON_NUMBER);
       if (season === null) return badRequest('season_number must be a whole number');
-      return { cost: 1, run: () => handleSeason(id, season) };
+      // Start the cache read now, so it overlaps the rate-limit check.
+      const cached = readCachedSeason(id, season);
+      return { cost: 1, run: () => handleSeason(id, season, cached) };
     }
     default:
       return json({ error: `Unknown action: ${String(action)}` }, 400);
