@@ -1,5 +1,4 @@
 import * as ImagePicker from 'expo-image-picker';
-import { Alert } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 import { currentViewer, requireViewer, updateMine } from '@/lib/viewer';
@@ -40,15 +39,15 @@ export type PickedImage = { uri: string; mimeType?: string };
 
 /** Let the user pick a square avatar from their library; null if they don't. */
 export async function pickAvatarImage(): Promise<PickedImage | null> {
-  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!perm.granted) {
-    Alert.alert('Photo access is needed to choose a picture.');
-    return null;
-  }
+  // No permission request: the system photo picker runs out of process and
+  // needs none (expo-image-picker asks only on iOS 10). Asking anyway showed
+  // the "Allow access" prompt, then iOS's own limited-access prompt.
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     allowsEditing: true,
     aspect: [1, 1],
+    // Round like the avatar. Android only: iOS's crop box is always a square.
+    shape: 'oval',
     quality: 0.7,
   });
   if (result.canceled) return null;
