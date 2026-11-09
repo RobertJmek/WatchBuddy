@@ -230,8 +230,8 @@ secure_password_change = false
 max_frequency = "1s"
 # Number of characters used in the email OTP.
 otp_length = 6
-# Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+# Number of seconds before the email OTP expires (15 minutes; prod is set in the dashboard).
+otp_expiry = 900
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]
@@ -242,6 +242,16 @@ otp_expiry = 3600
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# Sign-in code email. Local only: the hosted project's copy is pasted into
+# Dashboard -> Authentication -> Email Templates (Magic Link + Confirm signup).
+[auth.email.template.magic_link]
+subject = "Your WatchBuddy sign-in code"
+content_path = "./supabase/templates/sign-in-code.html"
+
+[auth.email.template.confirmation]
+subject = "Your WatchBuddy sign-in code"
+content_path = "./supabase/templates/sign-in-code.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
