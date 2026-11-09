@@ -114,7 +114,8 @@ iOS equivalent of this file — on iPhone, use the App Store link above.
 - **Auth** — passwordless email one-time code, Google sign-in (OAuth), and Sign in with Apple on iOS.
 - **First-run onboarding** — new accounts are gently prompted to set a username and photo so
   friends can find and follow them; skippable and shown once.
-- **Editable profile** — display name, unique username, bio, and avatar upload.
+- **Editable profile** — display name, unique username, bio, and a photo you frame in a circle
+  (drag and pinch), the same shape as your avatar. Save stays pinned at the bottom.
 - **Import & export your data** — one **Import your data** hub (bottom of Edit Profile) brings in
   your **TV Time** history (pick your GDPR export ZIP → shows, episode/movie watches, rewatches
   and favorites with their original dates) or the **watch history from a WatchBuddy export JSON**
