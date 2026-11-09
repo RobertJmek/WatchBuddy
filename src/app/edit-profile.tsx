@@ -3,12 +3,13 @@ import { File, Paths } from 'expo-file-system';
 import { Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { BarButton, BottomBar } from '@/components/bottom-bar';
 import { IconSymbol } from '@/components/icon-symbol';
 import { Intro } from '@/components/intro';
+import { Pressable } from '@/components/pressable';
 import { BIO_MIN_HEIGHT, ProfileFields } from '@/components/profile-fields';
 import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';

@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { IconSymbol } from '@/components/icon-symbol';
+import { Pressable } from '@/components/pressable';
 import { Step } from '@/components/step';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, Type } from '@/constants/theme';

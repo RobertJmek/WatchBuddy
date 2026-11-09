@@ -2,10 +2,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { type useRouter } from 'expo-router';
 import { memo } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
+import { Pressable } from '@/components/pressable';
 import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';

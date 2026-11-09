@@ -11,7 +11,6 @@ import {
   Alert,
   Modal,
   Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,6 +21,7 @@ import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated'
 
 import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
+import { Pressable } from '@/components/pressable';
 import { RowSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { DiaryRow } from '@/components/diary-row';
@@ -277,6 +277,7 @@ export default function DiaryScreen() {
           animationType="fade"
           onRequestClose={() => setPicking(null)}>
           <Pressable
+            dim={false}
             style={styles.backdrop}
             onPress={() => setPicking(null)}
             accessibilityRole="button"
@@ -329,6 +330,7 @@ export default function DiaryScreen() {
           animationType="fade"
           onRequestClose={() => setEditing(null)}>
           <Pressable
+            dim={false}
             style={styles.backdrop}
             onPress={() => setEditing(null)}
             accessibilityRole="button"

@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   FlatList,
   Keyboard,
-  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -15,6 +14,7 @@ import {
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
 import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
+import { Pressable } from '@/components/pressable';
 import { SearchRow } from '@/components/search-row';
 import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';

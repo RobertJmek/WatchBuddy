@@ -18,7 +18,6 @@ import {
 import {
   Image,
   type ImageSourcePropType,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -28,6 +27,7 @@ import PagerView, { type PagerViewProps } from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/icon-symbol';
+import { Pressable } from '@/components/pressable';
 import { Accent, Spacing, Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';

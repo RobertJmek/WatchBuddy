@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Button } from '@/components/button';
 import { IconSymbol } from '@/components/icon-symbol';
+import { Pressable } from '@/components/pressable';
 import { RangeSlider } from '@/components/range-slider';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
@@ -133,6 +134,7 @@ export function LibraryFilterSheet({
           never fire on Android. */}
       <GestureHandlerRootView style={styles.root}>
         <Pressable
+          dim={false}
           style={styles.backdrop}
           onPress={onClose}
           accessibilityRole="button"

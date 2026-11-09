@@ -4,13 +4,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import {
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
+import { Pressable } from '@/components/pressable';
 import { SwipeNav } from '@/components/swipe-nav';
 import { FavoriteButton } from '@/components/favorite-button';
 import { IconSymbol } from '@/components/icon-symbol';
