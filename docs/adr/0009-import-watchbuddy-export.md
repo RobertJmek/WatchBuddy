@@ -44,7 +44,7 @@ row identity staying stable forever.
 
 ## Consequences
 
-- **No library status is set.** Imported shows/movies populate the **Diary and
+- **No library status is set** (superseded by ADR 0031: the database now adds one). Imported shows/movies populate the **Diary and
   Stats** (both watch-based) but do **not** appear on the Library shelves unless a
   row already exists. Deliberate scope choice; trivially extendable later with one
   `setLibraryStatusIfAbsent` call per resolved title.
