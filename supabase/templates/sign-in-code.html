@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Your WatchBuddy sign-in code</title>
+<style>
+  @media (prefers-color-scheme: dark) {
+    .page { background: #0A0A0B !important; }
+    .card { background: #141211 !important; border-color: #262220 !important; }
+    .text { color: #F5F1E8 !important; }
+    .muted { color: #9A938A !important; }
+    .code { background: #201D1B !important; border-color: #262220 !important; color: #F5F1E8 !important; }
+    .rule { border-color: #262220 !important; }
+    .link { color: #14B8A6 !important; }
+  }
+  @media (max-width: 520px) {
+    .card-pad { padding: 28px 24px !important; }
+    .code { font-size: 30px !important; letter-spacing: 6px !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0;">
+<!-- Inbox preview line; hidden in the body. -->
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">Enter it in WatchBuddy to sign in. It expires in 15 minutes.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" class="page" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F1EA;">
+  <tr>
+    <td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+        <tr>
+          <td style="padding:0 0 24px 4px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle;">
+                  <img src="https://robertjmek.github.io/WatchBuddy/email/logo.png" width="44" height="44" alt="WatchBuddy" style="display:block; border:0; border-radius:10px;">
+                </td>
+                <td class="text" style="vertical-align:middle; padding-left:12px; font-family:'Bodoni 72', Didot, 'Bodoni MT', Georgia, serif; font-size:22px; font-weight:700; color:#1A1714;">WatchBuddy</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td class="card card-pad" style="background:#FFFFFF; border:1px solid #DED7C9; border-radius:16px; padding:36px 40px;">
+            <h1 class="text" style="margin:0 0 12px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:24px; line-height:32px; font-weight:700; color:#1A1714;">Your sign-in code</h1>
+            <p class="muted" style="margin:0 0 24px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:16px; line-height:24px; color:#5F574D;">Enter this code in WatchBuddy to sign in.</p>
+            <div class="code" style="background:#F4F1EA; border:1px solid #DED7C9; border-radius:12px; padding:20px 12px; text-align:center; font-family:ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace; font-size:36px; line-height:44px; font-weight:700; letter-spacing:8px; color:#1A1714;">{{ .Token }}</div>
+            <p class="muted" style="margin:16px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:14px; line-height:20px; color:#5F574D;">It expires in 15 minutes and works once.</p>
+            <hr class="rule" style="margin:28px 0 20px; border:0; border-top:1px solid #DED7C9;">
+            <p class="muted" style="margin:0; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:14px; line-height:20px; color:#5F574D;">Didn't ask for this? You can ignore this email. Nobody can sign in without the code. WatchBuddy will never ask you for it.</p>
+          </td>
+        </tr>
+        <tr>
+          <td class="muted" style="padding:24px 4px 0; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:12px; line-height:18px; color:#5F574D;">
+            Sent to {{ .Email }}<br>
+            <a class="link" href="https://robertjmek.github.io/WatchBuddy/support" style="color:#0B6B63; text-decoration:underline;">Support</a>
+            &nbsp;·&nbsp;
+            <a class="link" href="https://robertjmek.github.io/WatchBuddy/privacy" style="color:#0B6B63; text-decoration:underline;">Privacy</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
