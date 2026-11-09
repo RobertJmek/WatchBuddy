@@ -484,7 +484,11 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
     const directors = (detail.credits?.crew ?? []).filter(
       (c: any) => c.job === 'Director',
     );
-    const people = [...cast, ...directors];
+    // The same person can appear twice (an actor who also directs, two roles);
+    // a batched upsert can't touch a row twice, so dedupe by TMDB id.
+    const people = [
+      ...new Map([...cast, ...directors].map((p: any) => [p.id, p])).values(),
+    ];
     if (people.length) {
       await admin.from('people').upsert(
         people.map((p: any) => ({
@@ -499,7 +503,7 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
         .select('id, tmdb_id')
         .in('tmdb_id', people.map((p: any) => p.id));
       const idByTmdb = new Map(peopleRows?.map((r) => [r.tmdb_id, r.id]));
-      const credits = [
+      const allCredits = [
         ...cast.map((c: any) => ({
           title_id: title.id,
           person_id: idByTmdb.get(c.id),
@@ -517,6 +521,10 @@ async function handleTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
           sort_order: null,
         })),
       ].filter((c) => c.person_id);
+      // Same rule for the (title, person, job) key.
+      const credits = [
+        ...new Map(allCredits.map((c) => [`${c.person_id}:${c.job}`, c])).values(),
+      ];
       if (credits.length) {
         await admin
           .from('credits')
