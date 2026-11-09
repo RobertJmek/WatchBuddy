@@ -29,14 +29,25 @@ Edit Profile becomes a card screen, built from #118's pieces:
   smaller semibold rows were tried and declined. Delete account stays in the
   scroll, under them.
 
+**The photo is framed in a circle, on our own screen.** The system crop box is
+always a square on iOS (expo-image-picker's `shape: 'oval'` is Android only),
+and the avatar is round. So the picker no longer edits: `pickAvatarImage()`
+opens `components/avatar-cropper.tsx` ("Move and scale"), where you drag and
+pinch the photo under a circle, then crops it to a 512px JPEG with
+`expo-image-manipulator` (a new native module, so it needs a new build). The
+same screen serves onboarding and both platforms. The picker is also called
+without asking for photo access first: the system picker needs none, and
+asking showed two prompts in a row on iOS.
+
 Onboarding keeps its own copy of the fields for now. Moving it onto
 `ProfileFields` is a refactor that should leave it pixel-identical, and it isn't
 part of this change.
 
 ## Consequences
 
-- Client-only. No SQL, edge function, RPC or query-key change, so installed
-  builds are unaffected.
+- Needs a new binary (expo-image-manipulator). Still client-only: no SQL, edge
+  function, RPC or query-key change, so installed builds are unaffected. Old
+  builds keep uploading their square crop, which shows round anyway.
 - `meta` keeps its uppercase on every other screen.
 - The keyboard covers the bottom bar, as on onboarding. The hide-keyboard
   button puts it away.
