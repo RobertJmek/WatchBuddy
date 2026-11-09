@@ -17,6 +17,7 @@ import { AppState, Platform, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { AvatarCropperHost } from '@/components/avatar-cropper';
 import { KeyboardDismissButton } from '@/components/keyboard-dismiss-button';
 import { SwipeNav } from '@/components/swipe-nav';
 import { Colors } from '@/constants/theme';
@@ -188,6 +189,8 @@ function RootNavigator() {
     </Stack>
     {/* iOS hide-keyboard chevron for every screen (ADR 0028). */}
     <KeyboardDismissButton />
+    {/* The round avatar crop that pickAvatarImage() opens. */}
+    <AvatarCropperHost />
     </>
   );
 }

@@ -3,23 +3,17 @@ import { File, Paths } from 'expo-file-system';
 import { Stack, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '@/components/avatar';
+import { BarButton, BottomBar } from '@/components/bottom-bar';
 import { IconSymbol } from '@/components/icon-symbol';
+import { Intro } from '@/components/intro';
+import { BIO_MIN_HEIGHT, ProfileFields } from '@/components/profile-fields';
 import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, Spacing, Type } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
@@ -30,7 +24,6 @@ import {
   pickAvatarImage,
   saveProfile,
   saveProfileErrorMessage,
-  PROFILE_LIMITS,
   usernameError,
   type PickedImage,
 } from '@/lib/profile';
@@ -40,7 +33,6 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { deleteAccount } = useAuth();
-  const insets = useSafeAreaInsets();
 
   // Two explicit gates — deletion is irreversible, one tap must never do it.
   function confirmDeleteAccount() {
@@ -174,153 +166,98 @@ export default function EditProfileScreen() {
     }
   }
 
-  const inputStyle = [
-    styles.input,
-    { color: c.text, backgroundColor: c.backgroundElement },
-  ];
+  const busy = saving || exporting;
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: true, title: 'Edit Profile' }} />
-      {/* Edge-to-edge: without the bottom inset, Delete account… sits under
-          the home indicator / gesture bar and can't be tapped. */}
+      {/* No header title: the Intro is the title (ADR 0030). */}
+      <Stack.Screen options={{ headerShown: true, title: '' }} />
       {isLoading ? (
         <RowSkeletonList />
       ) : (
-        // Keyboard-aware like sign-in and the first-run screens: the focused field
-        // (the bio, low on the page) scrolls above the keyboard, with room left
-        // for the root's hide-keyboard button.
-        <KeyboardAwareScrollView
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: insets.bottom + Spacing.five },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          // Scrolls to the caret, not the field's bottom: clear the whole bio box
-          // (minHeight 96) plus the hide-keyboard button above the keyboard.
-          bottomOffset={96 + Spacing.six}>
-          <Pressable
-            style={styles.avatarSection}
-            onPress={pickAvatar}
-            disabled={saving}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Change photo"
-            accessibilityState={{ disabled: saving }}>
-            <Avatar uri={avatarUri} name={displayName} size={96} />
-            <ThemedText type="smallBold" themeColor="tint">
-              Change photo
-            </ThemedText>
-          </Pressable>
+        <>
+          {/* Keyboard-aware like sign-in and the first-run screens: the focused
+              field (the bio, low on the page) scrolls above the keyboard, with
+              room left for the root's hide-keyboard button. */}
+          <KeyboardAwareScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            // Scrolls to the caret: clear the whole bio box plus the
+            // hide-keyboard button above the keyboard.
+            bottomOffset={BIO_MIN_HEIGHT + Spacing.six}>
+            <Intro title="Edit profile" body="This is how friends see you." />
 
-          <ThemedText type="smallBold">Display name</ThemedText>
-          <TextInput
-            style={inputStyle}
-            placeholder="Your name"
-            placeholderTextColor={c.textSecondary}
-            maxLength={PROFILE_LIMITS.displayName}
-            value={displayName}
-            editable={!saving}
-            onChangeText={setDisplayName}
-          />
+            <ProfileFields
+              avatarUri={avatarUri}
+              username={username}
+              displayName={displayName}
+              bio={bio}
+              onUsername={setUsername}
+              onDisplayName={setDisplayName}
+              onBio={setBio}
+              onPickAvatar={pickAvatar}
+              saving={saving}
+              error={error}
+            />
 
-          <ThemedText type="smallBold">Username</ThemedText>
-          <TextInput
-            style={inputStyle}
-            placeholder="username"
-            placeholderTextColor={c.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={PROFILE_LIMITS.username}
-            value={username}
-            editable={!saving}
-            onChangeText={setUsername}
-          />
+            {/* The data rows as on main: Robert kept these as they were. */}
+            <View>
+              <Pressable
+                style={[styles.link, { borderBottomColor: c.border }]}
+                disabled={busy}
+                onPress={() => router.push('/import-data')}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy }}>
+                <ThemedText type="subtitle">Import your data</ThemedText>
+                <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+              </Pressable>
+              <Pressable
+                style={[styles.link, { borderBottomColor: c.border }]}
+                disabled={busy}
+                onPress={() => router.push('/blocked')}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy }}>
+                <ThemedText type="subtitle">Blocked accounts</ThemedText>
+                <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+              </Pressable>
+              <Pressable
+                style={[styles.link, { borderBottomColor: c.border }]}
+                disabled={busy}
+                onPress={exportMyData}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy, busy: exporting }}>
+                <ThemedText type="subtitle">Export your data</ThemedText>
+                {exporting ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+                )}
+              </Pressable>
+            </View>
 
-          <ThemedText type="smallBold">Bio</ThemedText>
-          <TextInput
-            style={[inputStyle, styles.bio]}
-            placeholder="A little about you…"
-            placeholderTextColor={c.textSecondary}
-            multiline
-            maxLength={PROFILE_LIMITS.bio}
-            value={bio}
-            editable={!saving}
-            onChangeText={setBio}
-          />
-
-          {error && <ThemedText themeColor="danger">{error}</ThemedText>}
-
-          <Pressable
-            style={[styles.saveBtn, saving && styles.busy]}
-            onPress={handleSave}
-            disabled={saving}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: saving, busy: saving }}>
-            <ThemedText style={styles.saveText}>
-              {saving ? 'Saving…' : 'Save'}
-            </ThemedText>
-          </Pressable>
-
-          <View style={styles.dataSection}>
             <Pressable
-              style={[styles.link, { borderBottomColor: c.border }]}
-              disabled={saving || exporting}
-              onPress={() => router.push('/import-data')}
+              onPress={confirmDeleteAccount}
+              disabled={saving}
+              hitSlop={8}
+              style={styles.deleteRow}
               accessibilityRole="button"
-              accessibilityState={{ disabled: saving || exporting }}>
-              <ThemedText type="subtitle">Import your data</ThemedText>
-              <IconSymbol
-                name="chevron.right"
-                size={18}
-                tintColor={c.textSecondary}
-              />
+              accessibilityLabel="Delete account"
+              accessibilityState={{ disabled: saving }}>
+              <ThemedText type="small" themeColor="danger">
+                Delete account…
+              </ThemedText>
             </Pressable>
-            <Pressable
-              style={[styles.link, { borderBottomColor: c.border }]}
-              disabled={saving || exporting}
-              onPress={() => router.push('/blocked')}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: saving || exporting }}>
-              <ThemedText type="subtitle">Blocked accounts</ThemedText>
-              <IconSymbol
-                name="chevron.right"
-                size={18}
-                tintColor={c.textSecondary}
-              />
-            </Pressable>
-            <Pressable
-              style={[styles.link, { borderBottomColor: c.border }]}
-              disabled={saving || exporting}
-              onPress={exportMyData}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: saving || exporting, busy: exporting }}>
-              <ThemedText type="subtitle">Export your data</ThemedText>
-              {exporting ? (
-                <ActivityIndicator size="small" />
-              ) : (
-                <IconSymbol
-                  name="chevron.right"
-                  size={18}
-                  tintColor={c.textSecondary}
-                />
-              )}
-            </Pressable>
-          </View>
+          </KeyboardAwareScrollView>
 
-          <Pressable
-            onPress={confirmDeleteAccount}
-            disabled={saving}
-            hitSlop={8}
-            style={styles.deleteRow}
-            accessibilityRole="button"
-            accessibilityLabel="Delete account"
-            accessibilityState={{ disabled: saving }}>
-            <ThemedText type="small" themeColor="danger">
-              Delete account…
-            </ThemedText>
-          </Pressable>
-        </KeyboardAwareScrollView>
+          {/* Pinned Save (ADR 0030): a Save in the scroll or the header is the
+              button people miss. It sits at the bottom gap, the lowest any
+              button goes. */}
+          <BottomBar>
+            <BarButton title={saving ? 'Saving…' : 'Save'} onPress={handleSave} busy={saving} />
+          </BottomBar>
+        </>
       )}
     </ThemedView>
   );
@@ -328,26 +265,14 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: Spacing.three, gap: Spacing.two },
-  avatarSection: { alignSelf: 'center', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
-  input: {
-    fontFamily: Type.body,
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-    marginBottom: Spacing.two,
+  scroll: { flex: 1 },
+  // The tutorial-card measures: 24pt sides, 12 inside a group, 32 between groups.
+  content: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.five,
+    gap: Spacing.five,
   },
-  bio: { minHeight: 96, textAlignVertical: 'top' },
-  saveBtn: {
-    backgroundColor: Accent,
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-    marginTop: Spacing.two,
-  },
-  busy: { opacity: 0.6 },
-  dataSection: { marginTop: Spacing.four },
   link: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -355,6 +280,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  deleteRow: { alignItems: 'center', marginTop: Spacing.five },
-  saveText: { color: AccentText, fontWeight: '700', fontSize: 16 },
+  deleteRow: { alignSelf: 'center' },
 });

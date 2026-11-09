@@ -1,7 +1,7 @@
 {
   "name": "watchbuddy",
   "main": "expo-router/entry",
-  "version": "1.25.2",
+  "version": "1.25.3",
   "dependencies": {
     "@expo-google-fonts/archivo": "^0.4.2",
     "@expo-google-fonts/bodoni-moda": "^0.4.2",
@@ -22,6 +22,7 @@
     "expo-font": "~56.0.7",
     "expo-haptics": "~56.0.3",
     "expo-image": "~56.0.11",
+    "expo-image-manipulator": "~56.0.26",
     "expo-image-picker": "~56.0.18",
     "expo-keep-awake": "~56.0.3",
     "expo-linear-gradient": "~56.0.4",

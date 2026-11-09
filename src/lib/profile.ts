@@ -1,5 +1,4 @@
 import * as ImagePicker from 'expo-image-picker';
-import { Alert } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 import { currentViewer, requireViewer, updateMine } from '@/lib/viewer';
@@ -38,22 +37,32 @@ export function usernameError(handle: string): string | null {
 /** An image the user picked but hasn't uploaded yet. */
 export type PickedImage = { uri: string; mimeType?: string };
 
-/** Let the user pick a square avatar from their library; null if they don't. */
+/** A picked photo on its way to the round crop screen. */
+export type CropSource = { uri: string; width: number; height: number };
+type CropOpener = (src: CropSource, done: (img: PickedImage | null) => void) => void;
+
+// The crop screen (components/avatar-cropper.tsx) is mounted once in the root
+// layout and registers itself here, so callers just await pickAvatarImage().
+let openCropper: CropOpener | null = null;
+export function registerAvatarCropper(fn: CropOpener | null) {
+  openCropper = fn;
+}
+
+/**
+ * Let the user pick a photo and frame it in a circle; null if they back out.
+ * The crop is our own screen: the system one is always a square on iOS, and
+ * the avatar is round.
+ */
 export async function pickAvatarImage(): Promise<PickedImage | null> {
-  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!perm.granted) {
-    Alert.alert('Photo access is needed to choose a picture.');
-    return null;
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.7,
-  });
+  // No permission request: the system photo picker runs out of process and
+  // needs none (expo-image-picker asks only on iOS 10). Asking anyway showed
+  // the "Allow access" prompt, then iOS's own limited-access prompt.
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] });
   if (result.canceled) return null;
-  const asset = result.assets[0];
-  return { uri: asset.uri, mimeType: asset.mimeType ?? undefined };
+  const { uri, width, height } = result.assets[0];
+  const open = openCropper;
+  if (!open) return { uri };
+  return new Promise((resolve) => open({ uri, width, height }, resolve));
 }
 
 /** Thrown when a username update collides with the unique constraint. */
