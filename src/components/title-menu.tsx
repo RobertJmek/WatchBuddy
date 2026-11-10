@@ -370,12 +370,17 @@ export function TitleMenuHost() {
           EDGE,
           w - EDGE - POSTER_W,
         );
-        const top = clamp(
-          from.y + from.height / 2 - POSTER_H / 2,
-          i.top + EDGE,
-          h - i.bottom - EDGE - STACK_H,
-        );
-        // Under the poster, sharing its edge on the side it sits on.
+        // The poster lifts where it is. The menu goes under it, or over it when
+        // the title sits low; only when neither fits does the poster give way,
+        // by the smaller of the two moves.
+        const lo = i.top + EDGE;
+        const hi = h - i.bottom - EDGE;
+        const want = clamp(from.y + from.height / 2 - POSTER_H / 2, lo, hi - POSTER_H);
+        const under = Math.min(want, hi - STACK_H); // poster top with the menu below
+        const over = Math.max(want, lo + STACK_H - POSTER_H); // …with the menu above
+        const below = want - under <= over - want;
+        const top = below ? under : over;
+        // Sharing the poster's edge on the side it sits on.
         const menuLeft = left + POSTER_W / 2 < w / 2 ? left : left + POSTER_W - MENU_W;
         const next: Open = {
           title,
@@ -384,7 +389,7 @@ export function TitleMenuHost() {
           poster: { left, top },
           menu: {
             left: clamp(menuLeft, EDGE, w - EDGE - MENU_W),
-            top: top + POSTER_H + GAP,
+            top: below ? top + POSTER_H + GAP : top - STACK_H + POSTER_H,
           },
         };
         hapticHold();
@@ -395,7 +400,8 @@ export function TitleMenuHost() {
         setActive(-1);
         setOpen(next);
         lift.value = 0;
-        lift.value = withSpring(1, { damping: 22, stiffness: 260 });
+        // Critically damped: it arrives, it does not bounce.
+        lift.value = withSpring(1, { damping: 32, stiffness: 260 });
       },
       move(x, y) {
         const { open: o, active: was } = live.current;
