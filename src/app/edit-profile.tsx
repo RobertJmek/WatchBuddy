@@ -211,7 +211,7 @@ export default function EditProfileScreen() {
                 onPress={() => router.push('/import-data')}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: busy }}>
-                <ThemedText type="subtitle">Import your data</ThemedText>
+                <ThemedText type="label">Import your data</ThemedText>
                 <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
               </Pressable>
               <Pressable
@@ -220,7 +220,7 @@ export default function EditProfileScreen() {
                 onPress={() => router.push('/blocked')}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: busy }}>
-                <ThemedText type="subtitle">Blocked accounts</ThemedText>
+                <ThemedText type="label">Blocked accounts</ThemedText>
                 <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
               </Pressable>
               <Pressable
@@ -229,7 +229,7 @@ export default function EditProfileScreen() {
                 onPress={exportMyData}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: busy, busy: exporting }}>
-                <ThemedText type="subtitle">Export your data</ThemedText>
+                <ThemedText type="label">Export your data</ThemedText>
                 {exporting ? (
                   <ActivityIndicator size="small" />
                 ) : (

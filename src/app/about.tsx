@@ -114,7 +114,7 @@ export default function AboutScreen() {
             accessibilityLabel="How WatchBuddy works"
             accessibilityHint="Takes the tour again">
             <View style={styles.linkText}>
-              <ThemedText type="subtitle">How WatchBuddy works</ThemedText>
+              <ThemedText type="label">How WatchBuddy works</ThemedText>
               <ThemedText type="small" style={{ color: c.textSecondary }}>
                 Take the tour again
               </ThemedText>
@@ -134,7 +134,7 @@ export default function AboutScreen() {
               accessibilityLabel={text}
               accessibilityHint={hint}>
               <View style={styles.linkText}>
-                <ThemedText type="subtitle">{text}</ThemedText>
+                <ThemedText type="label">{text}</ThemedText>
                 <ThemedText type="small" style={{ color: c.textSecondary }}>
                   {hint}
                 </ThemedText>

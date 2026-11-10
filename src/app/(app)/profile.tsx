@@ -138,21 +138,21 @@ export default function ProfileScreen() {
               router.push({ pathname: '/user/[id]', params: { id: myId } })
             }
             accessibilityRole="button">
-            <ThemedText type="subtitle">View my profile</ThemedText>
+            <ThemedText type="label">View my profile</ThemedText>
             <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
           </Pressable>
           <Pressable
             style={[styles.link, { borderBottomColor: c.border }]}
             onPress={() => router.push('/stats')}
             accessibilityRole="button">
-            <ThemedText type="subtitle">Statistics</ThemedText>
+            <ThemedText type="label">Statistics</ThemedText>
             <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
           </Pressable>
           <Pressable
             style={[styles.link, { borderBottomColor: c.border }]}
             onPress={() => router.push('/diary')}
             accessibilityRole="button">
-            <ThemedText type="subtitle">Diary</ThemedText>
+            <ThemedText type="label">Diary</ThemedText>
             <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
           </Pressable>
           <Pressable
@@ -161,7 +161,7 @@ export default function ProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Theme: ${THEME_LABEL[pref]}`}
             accessibilityHint="Cycles between light, dark and system">
-            <ThemedText type="subtitle">Theme</ThemedText>
+            <ThemedText type="label">Theme</ThemedText>
             <ThemedView style={styles.value}>
               <ThemedText type="small">{THEME_LABEL[pref]}</ThemedText>
               <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />

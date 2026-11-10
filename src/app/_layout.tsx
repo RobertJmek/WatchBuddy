@@ -4,10 +4,7 @@ import {
   Archivo_600SemiBold,
   Archivo_700Bold,
 } from '@expo-google-fonts/archivo';
-import {
-  BodoniModa_600SemiBold,
-  BodoniModa_700Bold,
-} from '@expo-google-fonts/bodoni-moda';
+import { LeagueGothic_400Regular } from '@expo-google-fonts/league-gothic';
 import { focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
@@ -90,8 +87,7 @@ function RootNavigator() {
   const { loaded: themeLoaded } = useThemePreference();
   const welcomeSeen = useWelcomeSeen();
   const [fontsLoaded] = useFonts({
-    BodoniModa_700Bold,
-    BodoniModa_600SemiBold,
+    LeagueGothic_400Regular,
     Archivo_400Regular,
     Archivo_500Medium,
     Archivo_600SemiBold,
@@ -111,7 +107,7 @@ function RootNavigator() {
 
   // Wait for the initial session check (avoid flashing sign-in), the saved theme
   // preference (avoid flashing the wrong scheme), and the typefaces (avoid a
-  // flash of system font before Bodoni/Archivo load).
+  // flash of system font before the fonts load).
   // Anyone already signed in on this install is past the welcome screen; this
   // keeps it from appearing after an existing user's later sign-out.
   useEffect(() => {

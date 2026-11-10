@@ -10,6 +10,7 @@ export type ThemedTextProps = TextProps & {
     | 'small'
     | 'smallBold'
     | 'subtitle'
+    | 'label'
     | 'meta'
     | 'link'
     | 'linkPrimary'
@@ -29,6 +30,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
         type === 'subtitle' && styles.subtitle,
+        type === 'label' && styles.label,
         type === 'meta' && styles.meta,
         type === 'link' && styles.link,
         type === 'linkPrimary' && [styles.linkPrimary, { color: theme.tint }],
@@ -57,23 +59,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  // Letter-spaced small caps — the "2024 · 166 MIN · SCI-FI" metadata + eyebrows.
-  meta: {
+  // A row or field label: names the thing, in the UI face.
+  label: {
     fontFamily: Type.semibold,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 1.5,
+    fontSize: 17,
+    lineHeight: 24,
+  },
+  // --- display: League Gothic ---
+  // The billing block: the "2024 · 166 MIN · SCI-FI" metadata, in the display
+  // face's capitals. Condensed, so it is set larger than body small text.
+  meta: {
+    fontFamily: Type.display,
+    fontSize: 16,
+    lineHeight: 20,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  // --- display: Bodoni Moda (tall figures need ~1.3x line height or iOS clips) ---
   title: {
     fontFamily: Type.display,
-    fontSize: 44,
-    lineHeight: 58,
+    fontSize: 56,
+    lineHeight: 60,
   },
   subtitle: {
-    fontFamily: Type.displaySemi,
-    fontSize: 26,
+    fontFamily: Type.display,
+    fontSize: 32,
     lineHeight: 36,
   },
   link: {

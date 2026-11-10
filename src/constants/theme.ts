@@ -7,9 +7,10 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-// "Late Show" palette. Teal is the brand/interactive accent (from the logo);
-// amber is the ambient "projector glow" used sparingly for warmth. Both live in
-// the per-scheme Colors as `tint`/`glow` so they adapt to dark vs. warm-paper.
+// Posters carry the colour, so the chrome is neutral: a true-black auditorium
+// in dark, a white screen in light. Teal is the brand/interactive accent (from
+// the logo); amber is used sparingly. Both live in the per-scheme Colors as
+// `tint`/`glow`.
 //
 // Contrast (WCAG AA, measured): `Accent` and `Danger` are FILLS, chosen so white
 // text on them is >= 4.5:1. No single teal or red can also be >= 4.5:1 as text on
@@ -24,26 +25,26 @@ export const Danger = '#C0262D';
 export const PlaceholderBg = '#0002';
 
 export const Colors = {
-  // Daylight matinee — warm paper, not clinical white.
+  // The lit screen: white, with cool neutral greys.
   light: {
-    text: '#1A1714',
-    background: '#F4F1EA',
-    backgroundElement: '#EBE6DB',
-    backgroundSelected: '#E0DACB',
-    textSecondary: '#5F574D',
-    border: '#DED7C9',
+    text: '#111214',
+    background: '#FFFFFF',
+    backgroundElement: '#F0F1F3',
+    backgroundSelected: '#E3E5E9',
+    textSecondary: '#555A63',
+    border: '#D9DCE1',
     tint: '#0B6B63',
     glow: '#7A560D',
     danger: '#B3261E',
   },
-  // The theater — warm near-black, warm projector-light text (never pure white).
+  // The auditorium: true black (letterbox bars, OLED), cool neutral greys.
   dark: {
-    text: '#F5F1E8',
-    background: '#0A0A0B',
-    backgroundElement: '#141211',
-    backgroundSelected: '#201D1B',
-    textSecondary: '#9A938A',
-    border: '#262220',
+    text: '#F4F5F7',
+    background: '#000000',
+    backgroundElement: '#141518',
+    backgroundSelected: '#212328',
+    textSecondary: '#9DA1A9',
+    border: '#2A2C31',
     tint: '#14B8A6',
     glow: '#E8B23A',
     danger: '#F2555A',
@@ -71,11 +72,11 @@ export const Hero = {
   /** Translucent black under the poster while its image loads. */
   scrim: '#0003',
   text: Colors.dark.text,
-  textMuted: 'rgba(245,241,232,0.7)',
+  textMuted: 'rgba(244,245,247,0.7)',
   /** The poster's own edge. */
-  hairline: 'rgba(245,241,232,0.15)',
+  hairline: 'rgba(244,245,247,0.15)',
   /** Outline of the metadata pills. */
-  border: 'rgba(245,241,232,0.28)',
+  border: 'rgba(244,245,247,0.28)',
   /**
    * Fill of the metadata pills. The hero fades into the page background, which
    * is cream in light mode, so the pills carry their own dark ground.
@@ -90,14 +91,14 @@ export const Hero = {
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 /**
- * Type voice. Display = Bodoni Moda (high-contrast Didone, the film-poster /
- * end-credits serif); body & UI = Archivo. Family names are the per-weight keys
- * loaded by `useFonts` in the root layout — RN bakes the weight into the family,
- * so set `fontFamily` (not `fontWeight`) when using these.
+ * Type voice. Display = League Gothic (the condensed gothic of film posters and
+ * their billing blocks; one weight, and narrow enough that a long title fits
+ * large); body & UI = Archivo. Family names are the per-weight keys loaded by
+ * `useFonts` in the root layout — RN bakes the weight into the family, so set
+ * `fontFamily` (not `fontWeight`) when using these.
  */
 export const Type = {
-  display: 'BodoniModa_700Bold',
-  displaySemi: 'BodoniModa_600SemiBold',
+  display: 'LeagueGothic_400Regular',
   body: 'Archivo_400Regular',
   medium: 'Archivo_500Medium',
   semibold: 'Archivo_600SemiBold',
