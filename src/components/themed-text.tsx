@@ -82,9 +82,9 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: Type.display,
-    fontSize: 24,
-    lineHeight: 30,
-    letterSpacing: -0.4,
+    fontSize: 30,
+    lineHeight: 36,
+    letterSpacing: -0.6,
   },
   link: {
     fontFamily: Type.medium,
