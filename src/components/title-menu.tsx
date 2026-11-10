@@ -280,29 +280,58 @@ function useActions(open: Open | null): Action[] {
       run: () => {
         hapticSuccess();
         // A whole series takes seconds to write. Everything on screen that
-        // the log changes moves now; `refresh` then replaces it with the truth,
-        // which on a failure is the state before.
-        if (titleId) {
-          const at = new Date().toISOString();
-          queryClient.setQueryData(keys.libraryStatus(titleId), 'completed');
-          queryClient.setQueryData<MyLibraryEntry[]>(keys.library(), (list) =>
-            list?.map((e) =>
-              e.title?.id === titleId ? { ...e, status: 'completed' } : e,
-            ),
-          );
-          // Not through Search's own log: it never refreshes this key, and the
-          // placeholder row would outlive the write.
-          if (isMovie && !open.options.onLog)
-            queryClient.setQueryData<MovieWatch[]>(keys.movieWatches(titleId), (w) => [
-              { id: `pending-${at}`, watched_at: at },
-              ...(w ?? []),
-            ]);
-          else if (!isMovie)
-            queryClient.setQueryData<Passes>(
-              keys.seriesPasses(titleId),
-              (p) => p && { ...p, passes: p.passes + 1, lastAt: at },
+        // the log changes moves now; the refetch that follows replaces it
+        // with the truth, which on a failure is the state before.
+        const { posterPath } = open.title;
+        const viaScreen = !!open.options.onLog;
+        queryClient
+          .fetchQuery(titleQueryOptions(tmdbId, mediaType))
+          .then(({ title }) => {
+            const at = new Date().toISOString();
+            queryClient.setQueryData(keys.libraryStatus(title.id), 'completed');
+            // In the Library already: it changes shelf. Not yet (a title held in
+            // Search or Hot): it joins Completed as a stand-in row.
+            queryClient.setQueryData<MyLibraryEntry[]>(keys.library(), (list) =>
+              !list
+                ? list
+                : list.some((e) => e.title?.id === title.id)
+                  ? list.map((e) =>
+                      e.title?.id === title.id ? { ...e, status: 'completed' } : e,
+                    )
+                  : [
+                      {
+                        id: `pending-${title.id}`,
+                        status: 'completed',
+                        is_favorite: false,
+                        created_at: at,
+                        title: {
+                          id: title.id,
+                          tmdb_id: tmdbId,
+                          media_type: mediaType,
+                          title: title.title,
+                          poster_path: posterPath,
+                          release_date: title.release_date,
+                        },
+                        genreIds: [],
+                        myRating: null,
+                      },
+                      ...list,
+                    ],
             );
-        }
+            // Not through Search's own log: it never refreshes this key, and
+            // the placeholder row would outlive the write.
+            if (isMovie && !viaScreen)
+              queryClient.setQueryData<MovieWatch[]>(keys.movieWatches(title.id), (w) => [
+                { id: `pending-${at}`, watched_at: at },
+                ...(w ?? []),
+              ]);
+            else if (!isMovie)
+              queryClient.setQueryData<Passes>(
+                keys.seriesPasses(title.id),
+                (p) => p && { ...p, passes: p.passes + 1, lastAt: at },
+              );
+          })
+          .catch(() => {});
         if (open.options.onLog) return open.options.onLog();
         logTitleWatch(tmdbId, mediaType).then(
           (rows) => refresh(rows.titleId),
