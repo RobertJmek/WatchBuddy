@@ -3,7 +3,6 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
-  Pressable,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -13,6 +12,7 @@ import { FilterChips } from '@/components/filter-chips';
 import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryFilterSheet } from '@/components/library-filter-sheet';
 import { GridPoster } from '@/components/grid-poster';
+import { Pressable } from '@/components/pressable';
 import { GridSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';

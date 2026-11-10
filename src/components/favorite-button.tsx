@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 // The heart sits on the title hero, which is always dark (see `Hero`).
+import { Pressable } from '@/components/pressable';
 import { Colors } from '@/constants/theme';
 import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { getFavorite, setFavorite } from '@/lib/library';

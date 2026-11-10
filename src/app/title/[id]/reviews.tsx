@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 
+import { Pressable } from '@/components/pressable';
 import { ReviewRow } from '@/components/review-row';
 import { RowSkeletonList } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';

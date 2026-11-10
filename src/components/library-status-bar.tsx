@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { ImpliedWatchNote, useImpliedWatch } from '@/components/implied-watch-note';
+import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
 import { hapticFailure, hapticTick, hapticUndo } from '@/lib/haptics';

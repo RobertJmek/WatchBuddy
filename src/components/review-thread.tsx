@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, View } from 'react-native';
 import {
   KeyboardStickyView,
   useKeyboardState,
@@ -18,6 +18,7 @@ import { Avatar } from '@/components/avatar';
 import { EmptyState } from '@/components/empty-state';
 import { IconSymbol } from '@/components/icon-symbol';
 import { handleOf, useModerationMenu } from '@/components/moderation-menu';
+import { Pressable } from '@/components/pressable';
 import { RowSkeletonList } from '@/components/skeleton';
 import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';

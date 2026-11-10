@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { memo, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { PressScale } from '@/components/press-scale';
 
 import { FollowButton } from '@/components/follow-button';
 import { useModerationMenu } from '@/components/moderation-menu';
+import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';

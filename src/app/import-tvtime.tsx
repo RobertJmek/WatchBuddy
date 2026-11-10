@@ -6,7 +6,6 @@ import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -14,6 +13,7 @@ import {
 
 import { Button } from '@/components/button';
 import { ImportBusy, ImportRunning, useImportRun } from '@/components/import-steps';
+import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PlaceholderBg, Spacing } from '@/constants/theme';

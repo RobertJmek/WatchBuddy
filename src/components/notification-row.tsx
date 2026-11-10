@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import { memo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { formatEventTime } from '@/components/feed-row';
+import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';

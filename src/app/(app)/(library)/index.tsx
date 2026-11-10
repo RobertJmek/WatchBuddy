@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,6 +14,7 @@ import { FilterChips } from '@/components/filter-chips';
 import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryFilterSheet } from '@/components/library-filter-sheet';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
+import { Pressable } from '@/components/pressable';
 import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';

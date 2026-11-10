@@ -3,11 +3,11 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   FlatList,
-  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 
+import { Pressable } from '@/components/pressable';
 import { RowSkeletonList } from '@/components/skeleton';
 import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';

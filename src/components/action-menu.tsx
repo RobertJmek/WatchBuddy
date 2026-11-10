@@ -1,6 +1,7 @@
 import { useCallback, useState, type ReactElement } from 'react';
-import { ActionSheetIOS, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Modal, Platform, StyleSheet, View } from 'react-native';
 
+import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -58,6 +59,7 @@ function ActionSheet({
   return (
     <Modal visible={actions != null} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable
+        dim={false}
         style={styles.backdrop}
         onPress={onClose}
         accessibilityRole="button"

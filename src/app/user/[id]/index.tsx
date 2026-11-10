@@ -3,7 +3,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   FlatList,
-  Pressable,
   RefreshControl,
   StyleSheet,
   View,
@@ -16,6 +15,7 @@ import { FollowButton } from '@/components/follow-button';
 import { IconSymbol } from '@/components/icon-symbol';
 import { handleOf, useModerationMenu } from '@/components/moderation-menu';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
+import { Pressable } from '@/components/pressable';
 import { RowSkeletonList, Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { DiaryRow } from '@/components/diary-row';

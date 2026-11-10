@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { memo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
+import { Pressable } from '@/components/pressable';
 import { ReviewRow } from '@/components/review-row';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';

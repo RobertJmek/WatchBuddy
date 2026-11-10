@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
+import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';

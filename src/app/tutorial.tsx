@@ -6,7 +6,6 @@ import { useCallback, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol, type IconName } from '@/components/icon-symbol';
 import { LibraryStatusBar } from '@/components/library-status-bar';
 import { PressScale } from '@/components/press-scale';
+import { Pressable } from '@/components/pressable';
 import { RatingBar } from '@/components/rating-bar';
 import { SearchRow } from '@/components/search-row';
 import { Step } from '@/components/step';
