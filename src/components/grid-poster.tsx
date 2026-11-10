@@ -7,6 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import { PressScale } from '@/components/press-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Hero, PlaceholderBg } from '@/constants/theme';
+import { TitleHold } from '@/components/title-menu';
 import { openTitle } from '@/lib/navigation';
 import { imageUrl, type MediaType } from '@/lib/tmdb';
 
@@ -40,26 +41,29 @@ export const GridPoster = memo(function GridPoster({
 }) {
   const router = useRouter();
   return (
-    <PressScale
-      style={{ width }}
-      onPress={() => openTitle(router, { tmdbId, mediaType, name })}
-      accessibilityRole="button"
-      accessibilityLabel={score != null ? `${name}, rated ${score}` : name}>
-      <Image
-        style={{
-          width,
-          height: width * 1.5,
-          borderRadius: 8,
-          backgroundColor: PlaceholderBg,
-          borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.35)',
-        }}
-        source={{ uri: imageUrl(posterPath, 'w342') ?? undefined }}
-        contentFit="cover"
-        transition={150}
-      />
-      {score != null ? <PosterScore value={score} /> : null}
-    </PressScale>
+    <TitleHold title={{ tmdbId, mediaType, name, posterPath }}>
+      <PressScale
+        style={{ width }}
+        onPress={() => openTitle(router, { tmdbId, mediaType, name })}
+        accessibilityHint="Hold for more actions"
+        accessibilityRole="button"
+        accessibilityLabel={score != null ? `${name}, rated ${score}` : name}>
+        <Image
+          style={{
+            width,
+            height: width * 1.5,
+            borderRadius: 8,
+            backgroundColor: PlaceholderBg,
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.35)',
+          }}
+          source={{ uri: imageUrl(posterPath, 'w342') ?? undefined }}
+          contentFit="cover"
+          transition={150}
+        />
+        {score != null ? <PosterScore value={score} /> : null}
+      </PressScale>
+    </TitleHold>
   );
 });
 

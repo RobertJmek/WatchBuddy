@@ -56,9 +56,13 @@ export function ProfileFields({
               <IconSymbol name="camera" size={24} tintColor={c.textSecondary} />
             </View>
           )}
-          <ThemedText type="smallBold" style={{ color: c.tint }}>
-            {avatarUri ? 'Change photo' : 'Choose a photo'}
-          </ThemedText>
+          {/* A filled chip, like the app's other quiet buttons: bare teal text
+              did not read as something to press. */}
+          <View style={[photoChip, { backgroundColor: c.backgroundElement }]}>
+            <ThemedText type="smallBold" themeColor="tint">
+              {avatarUri ? 'Change photo' : 'Choose a photo'}
+            </ThemedText>
+          </View>
         </Pressable>
       </Step>
 
@@ -125,6 +129,13 @@ export function ProfileFields({
 
 /** The bio box's minimum height; screens clear it when scrolling to the caret. */
 export const BIO_MIN_HEIGHT = 88;
+
+/** The "Change photo" chip beside the avatar; Onboarding draws the same row. */
+export const photoChip = {
+  paddingHorizontal: Spacing.three,
+  paddingVertical: 10,
+  borderRadius: 12,
+} as const;
 
 const styles = StyleSheet.create({
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, alignSelf: 'flex-start' },
