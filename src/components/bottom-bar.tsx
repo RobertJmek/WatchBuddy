@@ -22,13 +22,23 @@ import { useTheme } from '@/hooks/use-theme';
 export function BottomBar({
   children,
   entering,
+  divided,
 }: {
   children: ReactNode;
+  /** A hairline on top, for a bar that content scrolls under. */
+  divided?: boolean;
   entering?: AnimatedProps<ViewProps>['entering'];
 }) {
   const bottomGap = useBottomGap();
+  const c = useTheme();
   return (
-    <Animated.View entering={entering} style={[styles.bar, { paddingBottom: bottomGap }]}>
+    <Animated.View
+      entering={entering}
+      style={[
+        styles.bar,
+        { paddingBottom: bottomGap },
+        divided && [styles.divided, { borderTopColor: c.border }],
+      ]}>
       {children}
     </Animated.View>
   );
@@ -82,6 +92,7 @@ export function BarButton({
 
 const styles = StyleSheet.create({
   bar: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, gap: Spacing.three },
+  divided: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.three },
   button: { borderRadius: Spacing.three, paddingVertical: Spacing.three, alignItems: 'center' },
   primary: { backgroundColor: Accent },
   secondary: { borderWidth: 1.5 },

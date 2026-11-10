@@ -179,6 +179,8 @@ export default function DiaryScreen() {
             <Pressable
               key={p.value}
               onPress={() => setPeriod(p.value)}
+              // The bar's own 8pt padding is the room this grows into.
+              hitSlop={{ top: 8, bottom: 8 }}
               style={[
                 styles.chip,
                 { borderColor: c.border },

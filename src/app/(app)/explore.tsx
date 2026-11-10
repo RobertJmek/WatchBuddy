@@ -339,7 +339,7 @@ export default function SearchScreen() {
           ) : (
             <ScrollView
               ref={trendingRef}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={styles.shelves}
               keyboardShouldPersistTaps="handled">
               {trending.error != null && (
                 <ThemedText
@@ -400,6 +400,7 @@ const styles = StyleSheet.create({
   },
   dimmed: { opacity: 0.4 },
   list: { gap: Spacing.two, paddingVertical: Spacing.three },
+  shelves: { gap: Spacing.five, paddingVertical: Spacing.three },
   empty: { textAlign: 'center', marginTop: Spacing.five },
   error: { marginTop: Spacing.three },
 });

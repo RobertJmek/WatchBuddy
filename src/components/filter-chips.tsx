@@ -44,7 +44,7 @@ export function FilterChips({
       {chips.map((chip) => (
         <Pressable
           key={chip.key}
-          hitSlop={4}
+          hitSlop={SLOP}
           onPress={() => {
             hapticToggle(false);
             onChange(removeChip(filter, chip.key));
@@ -58,7 +58,7 @@ export function FilterChips({
       ))}
       <View style={styles.divider} />
       <Pressable
-        hitSlop={4}
+        hitSlop={SLOP}
         onPress={() => {
           hapticToggle(false);
           onChange(EMPTY_FILTER);
@@ -74,9 +74,12 @@ export function FilterChips({
   );
 }
 
+// A 28pt chip reaches 44pt through the bar's vertical padding.
+const SLOP = { top: 8, bottom: 8, left: 4, right: 4 };
+
 const styles = StyleSheet.create({
-  bar: { flexGrow: 0, marginBottom: Spacing.two },
-  chips: { gap: Spacing.two, alignItems: 'center' },
+  bar: { flexGrow: 0 },
+  chips: { gap: Spacing.two, alignItems: 'center', paddingVertical: Spacing.two },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
