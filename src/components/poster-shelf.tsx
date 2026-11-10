@@ -9,6 +9,7 @@ import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
+import { openTitleMenu } from '@/components/title-menu';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { imageUrl, titleQueryOptions } from '@/lib/tmdb';
@@ -30,18 +31,22 @@ function PosterCard({
   score,
   onPress,
   onPressIn,
+  onLongPress,
 }: {
   posterPath: string | null;
   label?: string;
   score?: number;
   onPress: () => void;
   onPressIn?: () => void;
+  onLongPress: () => void;
 }) {
   return (
     <PressScale
       style={styles.card}
       onPress={onPress}
       onPressIn={onPressIn}
+      onLongPress={onLongPress}
+      accessibilityHint="Hold for more actions"
       accessibilityRole="button"
       accessibilityLabel={label}>
       <Image
@@ -97,6 +102,9 @@ export const PosterShelf = memo(function PosterShelf({
         label={item.score != null ? `${item.title}, rated ${item.score}` : item.title}
         score={item.score}
         onPress={() => onPressItem(item)}
+        onLongPress={() =>
+          openTitleMenu({ tmdbId: item.tmdb_id, mediaType: item.media_type, name: item.title })
+        }
         // Warm the detail cache while the finger is still down.
         onPressIn={() =>
           queryClient.prefetchQuery(

@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { openTitleMenu } from '@/components/title-menu';
 import { openTitle } from '@/lib/navigation';
 import { imageUrl } from '@/lib/tmdb';
 import type { DiaryEntry } from '@/lib/diary-page';
@@ -45,7 +46,11 @@ export function DiaryRow({
           mediaType: item.mediaType,
           name: item.titleName,
         })
-      }>
+      }
+      onLongPress={() =>
+        openTitleMenu({ tmdbId: item.tmdbId, mediaType: item.mediaType, name: item.titleName })
+      }
+      accessibilityHint="Hold for more actions">
       <Image
         style={[styles.poster, large && styles.posterLarge]}
         source={{ uri: imageUrl(item.posterPath, 'w185') ?? undefined }}

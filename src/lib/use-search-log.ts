@@ -8,7 +8,12 @@ import {
   setLibraryStatus,
   type LibraryStatus,
 } from '@/lib/library';
-import { fetchAllEpisodes, getTitle, type SearchResult } from '@/lib/tmdb';
+import {
+  fetchAllEpisodes,
+  getTitle,
+  type MediaType,
+  type SearchResult,
+} from '@/lib/tmdb';
 import { useSessionLog } from '@/lib/use-session-log';
 import {
   airedOnly,
@@ -29,6 +34,32 @@ type LoggedRows = {
   watchIds: string[];
   priorStatus: LibraryStatus | null;
 };
+
+/**
+ * Log a title in one go: a movie gets one watch, a series every aired
+ * non-Specials episode. Returns what it wrote. Throws when a series has nothing
+ * aired yet.
+ */
+export async function logTitleWatch(tmdbId: number, mediaType: MediaType): Promise<LoggedRows> {
+  const { title, seasons } = await getTitle(tmdbId, mediaType);
+  if (mediaType === 'tv') {
+    const seasonNumbers = seasons
+      .map((s) => s.season_number)
+      .filter((n) => n >= 1) // exclude Specials (season 0)
+      .sort((a, b) => a - b);
+    const episodes = airedOnly(await fetchAllEpisodes(tmdbId, seasonNumbers));
+    if (episodes.length === 0) throw new Error('no aired episodes');
+    const priorStatus = await getLibraryStatus(title.id);
+    const ids = await logManyEpisodeWatches(
+      episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
+    );
+    await setLibraryStatus(title.id, 'completed');
+    return { kind: 'tv', titleId: title.id, watchIds: ids, priorStatus };
+  }
+  const priorStatus = await getLibraryStatus(title.id);
+  const watchId = await logMovieWatch(title.id);
+  return { kind: 'movie', titleId: title.id, watchIds: [watchId], priorStatus };
+}
 
 /** Identity of a search result in the session-log map, and as a list key. */
 export const itemKey = (r: SearchResult) => `${r.media_type}-${r.tmdb_id}`;
@@ -66,29 +97,10 @@ export function useSearchLog() {
     (item: SearchResult) =>
       log(itemKey(item), async () => {
         // Same read-through the row already prefetches onPressIn → usually warm.
-        const { title, seasons } = await getTitle(item.tmdb_id, item.media_type);
-        if (item.media_type === 'tv') {
-          const seasonNumbers = seasons
-            .map((s) => s.season_number)
-            .filter((n) => n >= 1) // exclude Specials (season 0)
-            .sort((a, b) => a - b);
-          const episodes = airedOnly(
-            await fetchAllEpisodes(item.tmdb_id, seasonNumbers),
-          );
-          // Nothing aired yet → nothing to log; throwing rolls the ✓ back.
-          if (episodes.length === 0) throw new Error('no aired episodes');
-          const priorStatus = await getLibraryStatus(title.id);
-          const ids = await logManyEpisodeWatches(
-            episodes.map((e) => ({ id: e.id, title_id: e.title_id })),
-          );
-          await setLibraryStatus(title.id, 'completed');
-          invalidateWatchData(title.id);
-          return { kind: 'tv', titleId: title.id, watchIds: ids, priorStatus };
-        }
-        const priorStatus = await getLibraryStatus(title.id);
-        const watchId = await logMovieWatch(title.id);
-        invalidateWatchData(title.id);
-        return { kind: 'movie', titleId: title.id, watchIds: [watchId], priorStatus };
+        // Nothing aired yet → it throws, which rolls the ✓ back.
+        const rows = await logTitleWatch(item.tmdb_id, item.media_type);
+        invalidateWatchData(rows.titleId);
+        return rows;
       }),
     [log, invalidateWatchData],
   );

@@ -10,6 +10,7 @@ import { Pressable } from '@/components/pressable';
 import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { openTitleMenu } from '@/components/title-menu';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { openTitle } from '@/lib/navigation';
 import { imageUrl, titleQueryOptions, type SearchResult } from '@/lib/tmdb';
@@ -81,7 +82,15 @@ const ResultRow = memo(function ResultRow({
           mediaType: item.media_type,
           name: item.title,
         })
-      }>
+      }
+      // Log goes through the screen's own log, so the row gets its ✓ and undo.
+      onLongPress={() =>
+        openTitleMenu(
+          { tmdbId: item.tmdb_id, mediaType: item.media_type, name: item.title },
+          { onLog: () => onLog(item) },
+        )
+      }
+      accessibilityHint="Hold for more actions">
       <Image
         style={styles.poster}
         source={{ uri: imageUrl(item.poster_path, 'w185') ?? undefined }}

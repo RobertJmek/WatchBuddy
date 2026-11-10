@@ -16,6 +16,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AvatarCropperHost } from '@/components/avatar-cropper';
 import { KeyboardDismissButton } from '@/components/keyboard-dismiss-button';
+import { TitleMenuHost } from '@/components/title-menu';
 import { SwipeNav } from '@/components/swipe-nav';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -187,6 +188,8 @@ function RootNavigator() {
     <KeyboardDismissButton />
     {/* The round avatar crop that pickAvatarImage() opens. */}
     <AvatarCropperHost />
+    {/* The hold menu of a poster or title row (openTitleMenu). */}
+    <TitleMenuHost />
     </>
   );
 }

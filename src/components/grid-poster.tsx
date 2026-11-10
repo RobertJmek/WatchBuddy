@@ -7,6 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import { PressScale } from '@/components/press-scale';
 import { ThemedText } from '@/components/themed-text';
 import { Hero, PlaceholderBg } from '@/constants/theme';
+import { openTitleMenu } from '@/components/title-menu';
 import { openTitle } from '@/lib/navigation';
 import { imageUrl, type MediaType } from '@/lib/tmdb';
 
@@ -43,6 +44,8 @@ export const GridPoster = memo(function GridPoster({
     <PressScale
       style={{ width }}
       onPress={() => openTitle(router, { tmdbId, mediaType, name })}
+      onLongPress={() => openTitleMenu({ tmdbId, mediaType, name })}
+      accessibilityHint="Hold for more actions"
       accessibilityRole="button"
       accessibilityLabel={score != null ? `${name}, rated ${score}` : name}>
       <Image
