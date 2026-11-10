@@ -3,7 +3,7 @@ import { requireOptionalNativeModule } from 'expo';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -12,6 +12,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol, type IconName } from '@/components/icon-symbol';
@@ -27,23 +28,41 @@ import {
   hapticToggle,
 } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
-import { getFavorite, setFavorite } from '@/lib/library';
-import type { TitleRef } from '@/lib/navigation';
+import {
+  getFavorite,
+  getLibraryStatus,
+  LIBRARY_STATUSES,
+  removeFromLibrary,
+  setFavorite,
+  setLibraryStatus,
+  type LibraryStatus,
+} from '@/lib/library';
+import { openTitle, type TitleRef } from '@/lib/navigation';
 import { imageUrl, titleQueryOptions } from '@/lib/tmdb';
 import { logTitleWatch } from '@/lib/use-search-log';
+import { ensureWatched } from '@/lib/watches';
 
 /** How long a finger rests on a title before it lifts. */
 const HOLD_MS = 350;
 /** The lifted poster. */
-const POSTER_W = 180;
-const POSTER_H = 270;
-const MENU_W = 264;
+const POSTER_W = 128;
+const POSTER_H = 192;
+const MENU_W = 296;
 const ROW_H = 52;
 /** The menu's own padding: rows sit inset, so the lit one reads as a pill. */
 const MENU_PAD = 6;
-/** Rows the menu has from the moment it opens: `useActions` always returns these. */
-const ROWS = 2;
 const GAP = 12;
+/** Rows the menu has from the moment it opens: `useActions` always returns these. */
+const ROWS = 5;
+/** The second block: every Library status but Watchlist (that one is a row), side by side. */
+const STATUSES = LIBRARY_STATUSES.filter((x) => x.value !== 'watchlist');
+const STATUS_H = 44;
+const BLOCK_GAP = 8;
+const MENU_H = ROW_H * ROWS + MENU_PAD * 2;
+const STATUS_TOP = MENU_H + BLOCK_GAP;
+const CELL_W = (MENU_W - MENU_PAD * 2) / STATUSES.length;
+/** Poster, menu and status row, stacked. */
+const STACK_H = POSTER_H + GAP + STATUS_TOP + STATUS_H + MENU_PAD * 2;
 /**
  * A binary built before expo-blur was added has no blur view, and rendering
  * one there is a red screen. Those builds get a plain dim instead.
@@ -52,6 +71,11 @@ const CAN_BLUR = requireOptionalNativeModule('ExpoBlur') != null;
 const EDGE = Spacing.three;
 /** How far outside the menu's sides the finger still counts as on a row. */
 const SIDE_SLOP = 24;
+/**
+ * The finger has to travel this far before any row can light. The menu may open
+ * under the finger, and letting go without moving must never choose anything.
+ */
+const ARM_DISTANCE = 24;
 /** The chosen row stays lit this long before everything settles back. */
 const CONFIRM_MS = 140;
 const CLOSE_MS = 180;
@@ -67,10 +91,18 @@ type Options = {
 };
 
 /**
- * One row of the hold menu. To add an option, add an entry in `useActions`
- * (and count it in `ROWS`): the menu sizes itself and hit-tests from the list.
+ * One choice in the hold menu. To add a row, add an entry in `useActions`
+ * before the statuses (and count it in `ROWS`): the menu sizes itself and
+ * hit-tests from the list. The status cells come last and carry no icon.
  */
-type Action = { key: string; icon: IconName; label: string; run: () => void };
+type Action = {
+  key: string;
+  icon?: IconName;
+  label: string;
+  /** A status cell: this is the title's status right now. */
+  current?: boolean;
+  run: () => void;
+};
 
 type Host = {
   open: (title: HeldTitle, options: Options, source: Rect) => void;
@@ -158,9 +190,49 @@ function useActions(open: Open | null): Action[] {
     queryFn: () => getFavorite(titleId!),
     enabled: !!titleId,
   });
+  const statusQ = useQuery({
+    queryKey: keys.libraryStatus(titleId ?? ''),
+    queryFn: () => getLibraryStatus(titleId!),
+    enabled: !!titleId,
+  });
+  const router = useRouter();
   if (!open) return [];
 
-  const { tmdbId, mediaType } = open.title;
+  const { tmdbId, mediaType, name } = open.title;
+  /**
+   * Puts the title in `next` (null takes it out of the Library), optimistically.
+   * Completed means watched (ADR 0024), as on the title page.
+   */
+  const setStatus = (pick: (was: LibraryStatus | null) => LibraryStatus | null) => {
+    (async () => {
+      const { title } = await queryClient.fetchQuery(
+        titleQueryOptions(tmdbId, mediaType),
+      );
+      const key = keys.libraryStatus(title.id);
+      const was = await queryClient.fetchQuery({
+        queryKey: key,
+        queryFn: () => getLibraryStatus(title.id),
+      });
+      const next = pick(was);
+      if (next === was) return;
+      hapticToggle(next !== null);
+      queryClient.setQueryData(key, next); // optimistic
+      try {
+        if (next === null) await removeFromLibrary(title.id);
+        else await setLibraryStatus(title.id, next);
+        if (next === 'completed')
+          await ensureWatched(
+            { id: title.id, tmdbId, mediaType },
+            { onlyIfUntouched: false },
+          );
+        refresh(title.id);
+        queryClient.invalidateQueries({ queryKey: keys.favorite(title.id) });
+      } catch (e) {
+        queryClient.setQueryData(key, was);
+        throw e;
+      }
+    })().catch(hapticFailure);
+  };
   const refresh = (id: string) => {
     for (const queryKey of [
       keys.diary(),
@@ -219,6 +291,35 @@ function useActions(open: Open | null): Action[] {
         })().catch(hapticFailure);
       },
     },
+    {
+      key: 'watchlist',
+      icon: 'bookmark',
+      label: statusQ.data === 'watchlist' ? 'Remove from Watchlist' : 'Add to Watchlist',
+      // Only a title that is on the Watchlist leaves it; any other status moves.
+      run: () => setStatus((was) => (was === 'watchlist' ? null : 'watchlist')),
+    },
+    {
+      key: 'rate',
+      icon: 'star',
+      label: 'Rate',
+      run: () => openTitle(router, { tmdbId, mediaType, name }),
+    },
+    {
+      key: 'share',
+      icon: 'square.and.arrow.up',
+      label: 'Share',
+      run: () => {
+        Share.share({
+          message: `${name}\nhttps://www.themoviedb.org/${mediaType}/${tmdbId}`,
+        }).catch(() => {});
+      },
+    },
+    ...STATUSES.map(({ value, label }): Action => ({
+      key: value,
+      label,
+      current: statusQ.data === value,
+      run: () => setStatus(() => value),
+    })),
   ];
 }
 
@@ -246,6 +347,9 @@ export function TitleMenuHost() {
 
   useEffect(() => {
     let closing: ReturnType<typeof setTimeout> | undefined;
+    // Where this hold's finger was first seen, and whether it has moved since.
+    let start: { x: number; y: number } | null = null;
+    let armed = false;
 
     host = {
       open(title, options, source) {
@@ -269,7 +373,7 @@ export function TitleMenuHost() {
         const top = clamp(
           from.y + from.height / 2 - POSTER_H / 2,
           i.top + EDGE,
-          h - i.bottom - EDGE - ROW_H * ROWS - MENU_PAD * 2 - GAP - POSTER_H,
+          h - i.bottom - EDGE - STACK_H,
         );
         // Under the poster, sharing its edge on the side it sits on.
         const menuLeft = left + POSTER_W / 2 < w / 2 ? left : left + POSTER_W - MENU_W;
@@ -284,6 +388,8 @@ export function TitleMenuHost() {
           },
         };
         hapticHold();
+        start = null;
+        armed = false;
         live.current.open = next; // moves can arrive before React re-renders
         live.current.active = -1;
         setActive(-1);
@@ -294,10 +400,25 @@ export function TitleMenuHost() {
       move(x, y) {
         const { open: o, active: was } = live.current;
         if (!o) return;
+        start ??= { x, y };
+        armed ||= Math.hypot(x - start.x, y - start.y) >= ARM_DISTANCE;
+        if (!armed) return;
         const inside =
           x >= o.menu.left - SIDE_SLOP && x <= o.menu.left + MENU_W + SIDE_SLOP;
-        const row = Math.floor((y - o.menu.top - MENU_PAD) / ROW_H);
-        const next = inside && row >= 0 && row < ROWS ? row : -1;
+        const dy = y - o.menu.top;
+        const row = Math.floor((dy - MENU_PAD) / ROW_H);
+        const cell = Math.floor((x - o.menu.left - MENU_PAD) / CELL_W);
+        // The status row keeps answering a little below itself: it is the last
+        // thing on the way down, and the finger hides it.
+        const onStatus =
+          dy >= STATUS_TOP && dy < STATUS_TOP + STATUS_H + MENU_PAD * 2 + SIDE_SLOP;
+        const next = !inside
+          ? -1
+          : row >= 0 && row < ROWS
+            ? row
+            : onStatus
+              ? ROWS + clamp(cell, 0, STATUSES.length - 1)
+              : -1;
         if (next === was) return;
         if (next >= 0) hapticTick();
         live.current.active = next;
@@ -391,7 +512,7 @@ export function TitleMenuHost() {
             }
           />
         )}
-        {actions.map((action, i) => {
+        {actions.slice(0, ROWS).map((action, i) => {
           const on = i === active;
           // The lit row is a teal fill: a finger covers most of it, so the
           // edge that shows has to be unmistakable.
@@ -400,8 +521,49 @@ export function TitleMenuHost() {
             <View
               key={action.key}
               style={[styles.row, on && { backgroundColor: Accent }]}>
-              <IconSymbol name={action.icon} size={20} tintColor={ink} />
+              {action.icon && <IconSymbol name={action.icon} size={20} tintColor={ink} />}
               <ThemedText type="label" style={{ color: ink }} numberOfLines={1}>
+                {action.label}
+              </ThemedText>
+            </View>
+          );
+        })}
+      </Animated.View>
+
+      {/* The Library statuses, as one row of their own under the menu. */}
+      <Animated.View
+        style={[
+          styles.menu,
+          styles.statuses,
+          { left: open.menu.left, top: open.menu.top + STATUS_TOP },
+          !CAN_BLUR && { backgroundColor: c.backgroundElement },
+          menuStyle,
+        ]}>
+        {CAN_BLUR && (
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            intensity={90}
+            tint={
+              scheme === 'dark' ? 'systemThickMaterialDark' : 'systemThickMaterialLight'
+            }
+          />
+        )}
+        {actions.slice(ROWS).map((action, i) => {
+          const on = ROWS + i === active;
+          return (
+            <View
+              key={action.key}
+              style={[
+                styles.cell,
+                action.current && { backgroundColor: c.backgroundSelected },
+                on && { backgroundColor: Accent },
+              ]}>
+              <ThemedText
+                type="smallBold"
+                style={{ color: on ? AccentText : c.text, fontSize: 13 }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}>
                 {action.label}
               </ThemedText>
             </View>
@@ -433,6 +595,14 @@ const styles = StyleSheet.create({
     padding: MENU_PAD,
     borderRadius: 20,
     overflow: 'hidden',
+  },
+  statuses: { flexDirection: 'row' },
+  cell: {
+    width: CELL_W,
+    height: STATUS_H,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
   },
   row: {
     height: ROW_H,
