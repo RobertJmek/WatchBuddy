@@ -602,12 +602,17 @@ export function TitleMenuHost() {
               key={action.key}
               style={[
                 styles.cell,
-                action.current && { backgroundColor: c.backgroundSelected },
+                // The status the title has now: the page's ink as a fill, the
+                // strongest mark there is short of the teal under a finger.
+                action.current && { backgroundColor: c.text },
                 on && { backgroundColor: Accent },
               ]}>
               <ThemedText
                 type="smallBold"
-                style={{ color: on ? AccentText : c.text, fontSize: 13 }}
+                style={{
+                  color: on ? AccentText : action.current ? c.background : c.text,
+                  fontSize: 13,
+                }}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.8}>
