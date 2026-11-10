@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   still: {
     width: 96,
     height: 54,
-    borderRadius: Spacing.one,
+    borderRadius: Spacing.two,
     backgroundColor: PlaceholderBg,
   },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },

@@ -168,36 +168,6 @@ export default function DiaryScreen() {
           ),
         }}
       />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chips}
-        style={styles.chipBar}>
-        {DIARY_PERIODS.map((p) => {
-          const active = p.value === period;
-          return (
-            <Pressable
-              key={p.value}
-              onPress={() => setPeriod(p.value)}
-              // The bar's own 8pt padding is the room this grows into.
-              hitSlop={{ top: 8, bottom: 8 }}
-              style={[
-                styles.chip,
-                { borderColor: c.border },
-                active && styles.chipActive,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}>
-              <ThemedText
-                type="small"
-                style={active ? styles.chipTextActive : undefined}>
-                {p.label}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
       {searching && (
         <View style={styles.searchRow}>
           <TextInput
@@ -223,6 +193,36 @@ export default function DiaryScreen() {
           )}
         </View>
       )}
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chips}
+        style={styles.chipBar}>
+        {DIARY_PERIODS.map((p) => {
+          const active = p.value === period;
+          return (
+            <Pressable
+              key={p.value}
+              onPress={() => setPeriod(p.value)}
+              // The bar's own 8pt padding is the room this grows into.
+              hitSlop={{ top: 8, bottom: 8 }}
+              style={[
+                styles.chip,
+                { backgroundColor: c.backgroundSelected, borderColor: c.backgroundSelected },
+                active && styles.chipActive,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}>
+              <ThemedText
+                type="small"
+                style={active ? styles.chipTextActive : undefined}>
+                {p.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       {period === 'custom' && (
         <View style={styles.customRow}>
@@ -422,11 +422,13 @@ export default function DiaryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  chipBar: { flexGrow: 0 },
+  // Never shrinks: a horizontal ScrollView gives up height first when the
+  // keyboard squeezes the screen, which cut the chips in half.
+  chipBar: { flexGrow: 0, flexShrink: 0 },
   searchRow: {
     justifyContent: 'center',
     marginHorizontal: Spacing.three,
-    marginBottom: Spacing.two,
+    marginTop: Spacing.three,
   },
   searchInput: {
     borderRadius: Spacing.three,

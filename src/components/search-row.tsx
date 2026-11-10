@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   poster: {
     width: 52,
     height: 78,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: PlaceholderBg,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.35)',

@@ -554,7 +554,7 @@ function SwipeTry({
 
 /**
  * A miniature of the title page around the real control: the same letterboxed
- * backdrop, poster, Bodoni title and meta line, so the user recognises where
+ * backdrop, poster, display title and meta line, so the user recognises where
  * rating and statuses live in the app.
  */
 function TitleControl({ title, control }: { title: SearchResult; control: 'rating' | 'status' }) {
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   pressed: { opacity: 0.6 },
-  pickPoster: { width: 36, height: 54, borderRadius: 4, backgroundColor: PlaceholderBg },
+  pickPoster: { width: 36, height: 54, borderRadius: 8, backgroundColor: PlaceholderBg },
   pickText: { flex: 1, gap: 2 },
   radio: {
     width: 22,
@@ -885,7 +885,7 @@ const styles = StyleSheet.create({
   pagePoster: {
     width: 64,
     height: 96,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: Hero.scrim,
     borderWidth: 1,
     borderColor: Hero.hairline,
@@ -898,7 +898,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: Glow,
   },
-  pageTitle: { fontFamily: Type.display, color: Hero.text, fontSize: 22, lineHeight: 30 },
+  pageTitle: { fontFamily: Type.display, color: Hero.text, fontSize: 22, lineHeight: 28 },
   pageMeta: {
     fontFamily: Type.semibold,
     fontSize: 11,

@@ -2,9 +2,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
-// The heart sits on the title hero, which is always dark (see `Hero`).
+// The heart floats over the title hero and, once scrolled, over the page, so it
+// carries its own dark disc: white (or teal) on it reads on either.
 import { Pressable } from '@/components/pressable';
-import { Colors } from '@/constants/theme';
+import { Colors, Hero } from '@/constants/theme';
 import { hapticFailure, hapticToggle } from '@/lib/haptics';
 import { getFavorite, setFavorite } from '@/lib/library';
 import { keys } from '@/lib/keys';
@@ -58,6 +59,13 @@ export function FavoriteButton({ titleId }: { titleId: string }) {
 }
 
 const styles = StyleSheet.create({
-  btn: { paddingHorizontal: 4 },
-  heart: { fontSize: 26, fontWeight: '600' },
+  btn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Hero.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heart: { fontSize: 22, lineHeight: 26, fontWeight: '600' },
 });

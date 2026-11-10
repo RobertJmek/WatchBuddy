@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   cardPoster: {
     width: 110,
     height: 165,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: PlaceholderBg,
     // a thin dark frame reads as a film plate on both themes
     borderWidth: 1,

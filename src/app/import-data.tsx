@@ -43,13 +43,13 @@ export default function ImportDataScreen() {
         {SOURCES.map((s) => (
           <Pressable
             key={s.route}
-            style={[styles.card, { borderColor: c.border }]}
+            style={[styles.card, { backgroundColor: c.backgroundElement }]}
             onPress={() => router.push(s.route)}
             accessibilityRole="button"
             accessibilityLabel={s.title}
             accessibilityHint={s.description}>
             <View style={styles.cardHeader}>
-              <ThemedText type="subtitle">{s.title}</ThemedText>
+              <ThemedText type="label">{s.title}</ThemedText>
               <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
             </View>
             <ThemedText type="small" style={{ color: c.textSecondary }}>
@@ -66,8 +66,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three },
   card: {
-    borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.two,
   },

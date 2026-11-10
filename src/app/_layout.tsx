@@ -3,11 +3,8 @@ import {
   Archivo_500Medium,
   Archivo_600SemiBold,
   Archivo_700Bold,
+  Archivo_800ExtraBold,
 } from '@expo-google-fonts/archivo';
-import {
-  BodoniModa_600SemiBold,
-  BodoniModa_700Bold,
-} from '@expo-google-fonts/bodoni-moda';
 import { focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
@@ -30,7 +27,7 @@ import {
 } from '@/lib/theme-preference';
 
 // React Navigation paints native headers with `colors.card`, which is pure
-// white in its DefaultTheme — a white bar above every cream screen that shows
+// white in its DefaultTheme — a white bar above every screen that shows
 // a header. Derive the navigation theme from the app's own palette instead.
 function navTheme(base: typeof DefaultTheme, c: (typeof Colors)['light' | 'dark']) {
   return {
@@ -90,8 +87,7 @@ function RootNavigator() {
   const { loaded: themeLoaded } = useThemePreference();
   const welcomeSeen = useWelcomeSeen();
   const [fontsLoaded] = useFonts({
-    BodoniModa_700Bold,
-    BodoniModa_600SemiBold,
+    Archivo_800ExtraBold,
     Archivo_400Regular,
     Archivo_500Medium,
     Archivo_600SemiBold,
@@ -111,7 +107,7 @@ function RootNavigator() {
 
   // Wait for the initial session check (avoid flashing sign-in), the saved theme
   // preference (avoid flashing the wrong scheme), and the typefaces (avoid a
-  // flash of system font before Bodoni/Archivo load).
+  // flash of system font before the fonts load).
   // Anyone already signed in on this install is past the welcome screen; this
   // keeps it from appearing after an existing user's later sign-out.
   useEffect(() => {
