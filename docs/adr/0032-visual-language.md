@@ -36,5 +36,5 @@ titles and metadata. Robert kept everything else and rejected that typeface.
 - The store screenshots and the App Preview show the old look until they are
   captured again.
 - Client only. No backend change, so installed builds are unaffected.
-- The title hero's gradient ends in the letterbox black on both themes, not
-  the page colour, so its light text never sits on a fade to white.
+- The title hero stays dark behind its text and dissolves into the page in a
+  56pt strip below it, so its light text never sits on a fade to white.
