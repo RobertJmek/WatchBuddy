@@ -87,7 +87,7 @@ export default function SignInScreen() {
           style={[
             styles.logo,
             { borderColor: c.border },
-            // Light: a physical drop shadow lifts the tile off warm paper. Dark:
+            // Light: a physical drop shadow lifts the tile off the white page. Dark:
             // the near-black tile vanishes into the near-black theater, so we lift
             // it with a warm amber "projector glow" halo instead — on-brand, and
             // it's what actually defines the icon on this background.

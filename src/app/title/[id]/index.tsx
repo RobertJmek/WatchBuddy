@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   poster: {
     width: POSTER_W,
     height: POSTER_W * 1.5,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: Hero.scrim,
     borderWidth: 1,
     borderColor: Hero.hairline,

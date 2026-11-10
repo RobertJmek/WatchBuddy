@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   poster: {
     width: 44,
     height: 66,
-    borderRadius: Spacing.one,
+    borderRadius: Spacing.two,
     backgroundColor: PlaceholderBg,
   },
   posterLarge: { width: 52, height: 78 },

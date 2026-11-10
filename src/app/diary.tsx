@@ -209,7 +209,7 @@ export default function DiaryScreen() {
               hitSlop={{ top: 8, bottom: 8 }}
               style={[
                 styles.chip,
-                { borderColor: c.border },
+                { backgroundColor: c.backgroundSelected, borderColor: c.backgroundSelected },
                 active && styles.chipActive,
               ]}
               accessibilityRole="button"

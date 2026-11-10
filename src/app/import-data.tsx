@@ -43,7 +43,7 @@ export default function ImportDataScreen() {
         {SOURCES.map((s) => (
           <Pressable
             key={s.route}
-            style={[styles.card, { borderColor: c.border }]}
+            style={[styles.card, { backgroundColor: c.backgroundElement }]}
             onPress={() => router.push(s.route)}
             accessibilityRole="button"
             accessibilityLabel={s.title}
@@ -66,8 +66,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: Spacing.three, gap: Spacing.three },
   card: {
-    borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.two,
   },

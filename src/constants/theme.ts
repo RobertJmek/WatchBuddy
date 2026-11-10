@@ -79,7 +79,7 @@ export const Hero = {
   border: 'rgba(244,245,247,0.28)',
   /**
    * Fill of the metadata pills. The hero fades into the page background, which
-   * is cream in light mode, so the pills carry their own dark ground.
+   * is white in light mode, so the pills carry their own dark ground.
    */
   pill: 'rgba(0,0,0,0.55)',
   /** Text shadow for hero text that sits where the fade turns light. */

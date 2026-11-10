@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   poster: {
     width: 52,
     height: 78,
-    borderRadius: Spacing.one,
+    borderRadius: Spacing.two,
     backgroundColor: PlaceholderBg,
   },
   body: { flex: 1, gap: Spacing.half },

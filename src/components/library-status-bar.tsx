@@ -6,6 +6,7 @@ import { ImpliedWatchNote, useImpliedWatch } from '@/components/implied-watch-no
 import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticTick, hapticUndo } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import {
@@ -28,6 +29,7 @@ export function LibraryStatusBar({
   mediaType: 'movie' | 'tv';
 }) {
   const queryClient = useQueryClient();
+  const c = useTheme();
   const [saving, setSaving] = useState(false);
   const implied = useImpliedWatch({ id: titleId, tmdbId, mediaType });
 
@@ -76,7 +78,11 @@ export function LibraryStatusBar({
             <Pressable
               key={value}
               onPress={() => choose(value)}
-              style={[styles.chip, selected && styles.chipActive]}
+              style={[
+                styles.chip,
+                { backgroundColor: c.backgroundSelected },
+                selected && styles.chipActive,
+              ]}
               accessibilityRole="button"
               accessibilityState={{ selected }}>
               <ThemedText
@@ -100,8 +106,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: ACTIVE,
   },
   chipActive: { backgroundColor: ACTIVE },
   chipTextActive: { color: AccentText },

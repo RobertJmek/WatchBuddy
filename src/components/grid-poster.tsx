@@ -49,7 +49,7 @@ export const GridPoster = memo(function GridPoster({
         style={{
           width,
           height: width * 1.5,
-          borderRadius: 4,
+          borderRadius: 8,
           backgroundColor: PlaceholderBg,
           borderWidth: 1,
           borderColor: 'rgba(0,0,0,0.35)',

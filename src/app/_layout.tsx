@@ -27,7 +27,7 @@ import {
 } from '@/lib/theme-preference';
 
 // React Navigation paints native headers with `colors.card`, which is pure
-// white in its DefaultTheme — a white bar above every cream screen that shows
+// white in its DefaultTheme — a white bar above every screen that shows
 // a header. Derive the navigation theme from the app's own palette instead.
 function navTheme(base: typeof DefaultTheme, c: (typeof Colors)['light' | 'dark']) {
   return {

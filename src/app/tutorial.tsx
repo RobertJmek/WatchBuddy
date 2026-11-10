@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   pressed: { opacity: 0.6 },
-  pickPoster: { width: 36, height: 54, borderRadius: 4, backgroundColor: PlaceholderBg },
+  pickPoster: { width: 36, height: 54, borderRadius: 8, backgroundColor: PlaceholderBg },
   pickText: { flex: 1, gap: 2 },
   radio: {
     width: 22,
@@ -885,7 +885,7 @@ const styles = StyleSheet.create({
   pagePoster: {
     width: 64,
     height: 96,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: Hero.scrim,
     borderWidth: 1,
     borderColor: Hero.hairline,
