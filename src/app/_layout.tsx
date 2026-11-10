@@ -3,8 +3,8 @@ import {
   Archivo_500Medium,
   Archivo_600SemiBold,
   Archivo_700Bold,
+  Archivo_800ExtraBold,
 } from '@expo-google-fonts/archivo';
-import { LeagueGothic_400Regular } from '@expo-google-fonts/league-gothic';
 import { focusManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
@@ -87,7 +87,7 @@ function RootNavigator() {
   const { loaded: themeLoaded } = useThemePreference();
   const welcomeSeen = useWelcomeSeen();
   const [fontsLoaded] = useFonts({
-    LeagueGothic_400Regular,
+    Archivo_800ExtraBold,
     Archivo_400Regular,
     Archivo_500Medium,
     Archivo_600SemiBold,

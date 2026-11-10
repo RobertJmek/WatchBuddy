@@ -65,25 +65,26 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 24,
   },
-  // --- display: League Gothic ---
-  // The billing block: the "2024 · 166 MIN · SCI-FI" metadata, in the display
-  // face's capitals. Condensed, so it is set larger than body small text.
+  // The "2024 · 166 MIN · SCI-FI" metadata line.
   meta: {
-    fontFamily: Type.display,
-    fontSize: 16,
-    lineHeight: 20,
-    letterSpacing: 0.6,
+    fontFamily: Type.semibold,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
+  // --- display: Archivo ExtraBold, set tight ---
   title: {
     fontFamily: Type.display,
-    fontSize: 56,
-    lineHeight: 60,
+    fontSize: 40,
+    lineHeight: 46,
+    letterSpacing: -1,
   },
   subtitle: {
     fontFamily: Type.display,
-    fontSize: 32,
-    lineHeight: 36,
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.4,
   },
   link: {
     fontFamily: Type.medium,

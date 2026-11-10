@@ -168,6 +168,32 @@ export default function DiaryScreen() {
           ),
         }}
       />
+      {searching && (
+        <View style={styles.searchRow}>
+          <TextInput
+            style={[styles.searchInput, { color: c.text, backgroundColor: c.backgroundElement }]}
+            placeholder="Search your diary"
+            placeholderTextColor={c.textSecondary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoFocus
+            returnKeyType="search"
+            value={query}
+            onChangeText={setQuery}
+          />
+          {(
+            <Pressable
+              style={styles.searchClear}
+              hitSlop={8}
+              onPress={toggleSearch}
+              accessibilityRole="button"
+              accessibilityLabel="Close search">
+              <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
+            </Pressable>
+          )}
+        </View>
+      )}
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -197,32 +223,6 @@ export default function DiaryScreen() {
           );
         })}
       </ScrollView>
-
-      {searching && (
-        <View style={styles.searchRow}>
-          <TextInput
-            style={[styles.searchInput, { color: c.text, backgroundColor: c.backgroundElement }]}
-            placeholder="Search your diary"
-            placeholderTextColor={c.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoFocus
-            returnKeyType="search"
-            value={query}
-            onChangeText={setQuery}
-          />
-          {(
-            <Pressable
-              style={styles.searchClear}
-              hitSlop={8}
-              onPress={toggleSearch}
-              accessibilityRole="button"
-              accessibilityLabel="Close search">
-              <IconSymbol name="xmark" size={18} tintColor={c.textSecondary} />
-            </Pressable>
-          )}
-        </View>
-      )}
 
       {period === 'custom' && (
         <View style={styles.customRow}>
@@ -422,11 +422,13 @@ export default function DiaryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  chipBar: { flexGrow: 0 },
+  // Never shrinks: a horizontal ScrollView gives up height first when the
+  // keyboard squeezes the screen, which cut the chips in half.
+  chipBar: { flexGrow: 0, flexShrink: 0 },
   searchRow: {
     justifyContent: 'center',
     marginHorizontal: Spacing.three,
-    marginBottom: Spacing.two,
+    marginTop: Spacing.three,
   },
   searchInput: {
     borderRadius: Spacing.three,

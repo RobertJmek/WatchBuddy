@@ -91,14 +91,13 @@ export const Hero = {
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 /**
- * Type voice. Display = League Gothic (the condensed gothic of film posters and
- * their billing blocks; one weight, and narrow enough that a long title fits
- * large); body & UI = Archivo. Family names are the per-weight keys loaded by
+ * Type voice: one family, Archivo. Display is its ExtraBold, set tight; body &
+ * UI are the lighter weights. Family names are the per-weight keys loaded by
  * `useFonts` in the root layout — RN bakes the weight into the family, so set
  * `fontFamily` (not `fontWeight`) when using these.
  */
 export const Type = {
-  display: 'LeagueGothic_400Regular',
+  display: 'Archivo_800ExtraBold',
   body: 'Archivo_400Regular',
   medium: 'Archivo_500Medium',
   semibold: 'Archivo_600SemiBold',

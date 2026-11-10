@@ -898,7 +898,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: Glow,
   },
-  pageTitle: { fontFamily: Type.display, color: Hero.text, fontSize: 28, lineHeight: 30 },
+  pageTitle: { fontFamily: Type.display, color: Hero.text, fontSize: 22, lineHeight: 28 },
   pageMeta: {
     fontFamily: Type.semibold,
     fontSize: 11,
