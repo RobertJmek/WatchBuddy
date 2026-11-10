@@ -583,7 +583,7 @@ function TitleControl({ title, control }: { title: SearchResult; control: 'ratin
           transition={200}
         />
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.5)', c.background]}
+          colors={['transparent', 'rgba(0,0,0,0.5)', Hero.letterbox]}
           locations={[0, 0.55, 1]}
           style={StyleSheet.absoluteFill}
         />

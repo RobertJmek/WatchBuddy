@@ -178,13 +178,10 @@ export default function TitleDetailScreen() {
                 transition={200}
               />
               <LinearGradient
-                colors={
-                  ['transparent', 'rgba(0,0,0,0.5)', c.background] as [
-                    string,
-                    string,
-                    string,
-                  ]
-                }
+                // Ends in the letterbox black on both themes, never the page
+                // colour: the hero's light text stays on a dark ground, and in
+                // light mode the frame closes with a clean edge.
+                colors={['transparent', 'rgba(0,0,0,0.5)', Hero.letterbox]}
                 locations={[0, 0.55, 1]}
                 style={StyleSheet.absoluteFill}
               />
