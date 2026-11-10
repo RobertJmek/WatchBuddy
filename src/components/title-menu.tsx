@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconSymbol, type IconName } from '@/components/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
+import { seriesPassesOptions, type Passes } from '@/components/tv-watch-bar';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -36,11 +37,12 @@ import {
   setFavorite,
   setLibraryStatus,
   type LibraryStatus,
+  type MyLibraryEntry,
 } from '@/lib/library';
 import { openTitle, type TitleRef } from '@/lib/navigation';
 import { imageUrl, titleQueryOptions } from '@/lib/tmdb';
 import { logTitleWatch } from '@/lib/use-search-log';
-import { ensureWatched, getMovieWatches } from '@/lib/watches';
+import { ensureWatched, getMovieWatches, type MovieWatch } from '@/lib/watches';
 
 /** How long a finger rests on a title before it lifts. */
 const HOLD_MS = 350;
@@ -209,14 +211,17 @@ function useActions(open: Open | null): Action[] {
     queryFn: () => getMovieWatches(titleId!),
     enabled: !!titleId && isMovie,
   });
+  const passesQ = useQuery({
+    ...seriesPassesOptions(
+      titleId ?? '',
+      open?.title.tmdbId ?? 0,
+      titleQ.data?.seasons ?? [],
+    ),
+    enabled: !!titleId && !isMovie && (titleQ.data?.seasons.length ?? 0) > 0,
+  });
   const router = useRouter();
   if (!open) return [];
-  // ponytail: a series' count is read from the title page's cache only; counting
-  // it here means fetching every season. Query it when that proves worth it.
-  const passes = titleId
-    ? queryClient.getQueryData<{ passes: number }>(keys.seriesPasses(titleId))?.passes
-    : undefined;
-  const watched = isMovie ? watchesQ.data?.length : passes;
+  const watched = isMovie ? watchesQ.data?.length : passesQ.data?.passes;
 
   const { tmdbId, mediaType, name } = open.title;
   /**
@@ -274,10 +279,37 @@ function useActions(open: Open | null): Action[] {
       detail: watched ? `×${watched}` : undefined,
       run: () => {
         hapticSuccess();
+        // A whole series takes seconds to write. Everything on screen that
+        // the log changes moves now; `refresh` then replaces it with the truth,
+        // which on a failure is the state before.
+        if (titleId) {
+          const at = new Date().toISOString();
+          queryClient.setQueryData(keys.libraryStatus(titleId), 'completed');
+          queryClient.setQueryData<MyLibraryEntry[]>(keys.library(), (list) =>
+            list?.map((e) =>
+              e.title?.id === titleId ? { ...e, status: 'completed' } : e,
+            ),
+          );
+          // Not through Search's own log: it never refreshes this key, and the
+          // placeholder row would outlive the write.
+          if (isMovie && !open.options.onLog)
+            queryClient.setQueryData<MovieWatch[]>(keys.movieWatches(titleId), (w) => [
+              { id: `pending-${at}`, watched_at: at },
+              ...(w ?? []),
+            ]);
+          else if (!isMovie)
+            queryClient.setQueryData<Passes>(
+              keys.seriesPasses(titleId),
+              (p) => p && { ...p, passes: p.passes + 1, lastAt: at },
+            );
+        }
         if (open.options.onLog) return open.options.onLog();
         logTitleWatch(tmdbId, mediaType).then(
           (rows) => refresh(rows.titleId),
-          hapticFailure,
+          () => {
+            hapticFailure();
+            if (titleId) refresh(titleId);
+          },
         );
       },
     },

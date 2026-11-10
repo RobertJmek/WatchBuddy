@@ -35,7 +35,36 @@ import {
  * Both are optimistic: a whole series takes seconds to write, so N changes on
  * the tap and a failed write puts it back.
  */
-type Passes = { airedIds: string[]; passes: number; lastAt: string | null };
+export type Passes = { airedIds: string[]; passes: number; lastAt: string | null };
+
+/** A full-series watch excludes "Specials" (season 0). */
+const mainSeasons = (seasons: SeasonRow[]) =>
+  seasons
+    .map((s) => s.season_number)
+    .filter((n) => n >= 1)
+    .sort((a, b) => a - b);
+
+/**
+ * How many complete passes the viewer has through a series. One query for
+ * every place that shows the count (this bar, the hold menu), so a log from
+ * either shows in both.
+ */
+export function seriesPassesOptions(titleId: string, tmdbId: number, seasons: SeasonRow[]) {
+  const seasonNumbers = mainSeasons(seasons);
+  return {
+    queryKey: keys.seriesPasses(titleId),
+    queryFn: async (): Promise<Passes> => {
+      const [all, counts, lastAt] = await Promise.all([
+        fetchAllEpisodes(tmdbId, seasonNumbers),
+        getEpisodeWatchCounts(titleId),
+        getLastEpisodeWatchAt(titleId),
+      ]);
+      const airedIds = airedOnly(all).map((e) => e.id);
+      return { airedIds, passes: seriesPasses(airedIds, counts), lastAt };
+    },
+    enabled: seasonNumbers.length > 0,
+  };
+}
 
 export function TvWatchBar({
   titleId,
@@ -50,26 +79,9 @@ export function TvWatchBar({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // A full-series watch excludes "Specials" (season 0).
-  const seasonNumbers = seasons
-    .map((s) => s.season_number)
-    .filter((n) => n >= 1)
-    .sort((a, b) => a - b);
-
+  const seasonNumbers = mainSeasons(seasons);
   const key = keys.seriesPasses(titleId);
-  const passesQ = useQuery({
-    queryKey: key,
-    queryFn: async (): Promise<Passes> => {
-      const [all, counts, lastAt] = await Promise.all([
-        fetchAllEpisodes(tmdbId, seasonNumbers),
-        getEpisodeWatchCounts(titleId),
-        getLastEpisodeWatchAt(titleId),
-      ]);
-      const airedIds = airedOnly(all).map((e) => e.id);
-      return { airedIds, passes: seriesPasses(airedIds, counts), lastAt };
-    },
-    enabled: seasonNumbers.length > 0,
-  });
+  const passesQ = useQuery(seriesPassesOptions(titleId, tmdbId, seasons));
 
   // The season screen's +/− don't know this key; catch up on coming back.
   const { refetch } = passesQ;
