@@ -25,6 +25,7 @@ const GLYPHS = {
   'person.crop.circle': 'user',
   'arrow.down': 'arrow-down',
   camera: 'camera',
+  plus: 'plus',
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

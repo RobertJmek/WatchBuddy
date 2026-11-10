@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { openTitleMenu } from '@/components/title-menu';
+import { TitleHold } from '@/components/title-menu';
 import { openTitle } from '@/lib/navigation';
 import { imageUrl } from '@/lib/tmdb';
 import type { DiaryEntry } from '@/lib/diary-page';
@@ -38,49 +38,53 @@ export function DiaryRow({
   const c = useTheme();
   const router = useRouter();
   return (
-    <PressScale
-      style={[styles.row, { backgroundColor: c.backgroundElement }]}
-      onPress={() =>
-        openTitle(router, {
-          tmdbId: item.tmdbId,
-          mediaType: item.mediaType,
-          name: item.titleName,
-        })
-      }
-      onLongPress={() =>
-        openTitleMenu({ tmdbId: item.tmdbId, mediaType: item.mediaType, name: item.titleName })
-      }
-      accessibilityHint="Hold for more actions">
-      <Image
-        style={[styles.poster, large && styles.posterLarge]}
-        source={{ uri: imageUrl(item.posterPath, 'w185') ?? undefined }}
-        contentFit="cover"
-        transition={150}
-      />
-      <ThemedView style={styles.rowText}>
-        <ThemedText type="smallBold" numberOfLines={1}>
-          {item.titleName}
-        </ThemedText>
-        {item.subtitle ? (
-          <ThemedText type="small" numberOfLines={1}>
-            {item.subtitle}
+    <TitleHold
+      title={{
+        tmdbId: item.tmdbId,
+        mediaType: item.mediaType,
+        name: item.titleName,
+      }}>
+      <PressScale
+        style={[styles.row, { backgroundColor: c.backgroundElement }]}
+        onPress={() =>
+          openTitle(router, {
+            tmdbId: item.tmdbId,
+            mediaType: item.mediaType,
+            name: item.titleName,
+          })
+        }
+        accessibilityHint="Hold for more actions">
+        <Image
+          style={[styles.poster, large && styles.posterLarge]}
+          source={{ uri: imageUrl(item.posterPath, 'w185') ?? undefined }}
+          contentFit="cover"
+          transition={150}
+        />
+        <ThemedView style={styles.rowText}>
+          <ThemedText type="smallBold" numberOfLines={1}>
+            {item.titleName}
           </ThemedText>
-        ) : null}
-        <ThemedText type="small" style={styles.date}>
-          {formatDate(item.watched_at)}
-        </ThemedText>
-      </ThemedView>
-      {onEdit && (
-        <Pressable
-          hitSlop={8}
-          style={styles.editBtn}
-          onPress={() => onEdit(item)}
-          accessibilityRole="button"
-          accessibilityLabel="Change the date this was watched">
-          <IconSymbol name="calendar" size={18} tintColor={c.textSecondary} />
-        </Pressable>
-      )}
-    </PressScale>
+          {item.subtitle ? (
+            <ThemedText type="small" numberOfLines={1}>
+              {item.subtitle}
+            </ThemedText>
+          ) : null}
+          <ThemedText type="small" style={styles.date}>
+            {formatDate(item.watched_at)}
+          </ThemedText>
+        </ThemedView>
+        {onEdit && (
+          <Pressable
+            hitSlop={8}
+            style={styles.editBtn}
+            onPress={() => onEdit(item)}
+            accessibilityRole="button"
+            accessibilityLabel="Change the date this was watched">
+            <IconSymbol name="calendar" size={18} tintColor={c.textSecondary} />
+          </Pressable>
+        )}
+      </PressScale>
+    </TitleHold>
   );
 }
 
