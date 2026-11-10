@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
- * The title block of a card screen (ADR 0028, 0030): a Bodoni title that stays
+ * The title block of a card screen (ADR 0028, 0030): a display title that stays
  * on one line on every phone (the type shrinks before it wraps), then one or two
  * sentences of 17/26 secondary text. On a pushed screen it replaces the header
  * title, so the two never repeat each other.

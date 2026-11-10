@@ -10,6 +10,7 @@ import { Pressable } from '@/components/pressable';
 import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TitleHold } from '@/components/title-menu';
 import { Accent, AccentText, PlaceholderBg, Spacing } from '@/constants/theme';
 import { openTitle } from '@/lib/navigation';
 import { imageUrl, titleQueryOptions, type SearchResult } from '@/lib/tmdb';
@@ -52,65 +53,76 @@ const ResultRow = memo(function ResultRow({
 }) {
   const queryClient = useQueryClient();
   return (
-    <PressScale
-      style={[styles.row, { backgroundColor: bg }]}
-      // The swipe's two directions, as custom actions. They live on this
-      // element and not on `SwipeToLogRow`'s child wrapper because a screen
-      // reader only exposes the actions of the element it has *focused*, and
-      // this `PressScale` is the row's focusable node. Logging is the one that
-      // matters: unlike undo (the ✓) it has no tap equivalent here at all.
-      accessibilityActions={
-        logged
-          ? [
-              { name: 'log', label: logLabel(item) },
-              { name: 'undo', label: 'Undo' },
-            ]
-          : [{ name: 'log', label: logLabel(item) }]
-      }
-      onAccessibilityAction={({ nativeEvent }) => {
-        if (nativeEvent.actionName === 'log') onLog(item);
-        else if (nativeEvent.actionName === 'undo') onUndoTap(item);
+    // Log goes through the screen's own log, so the row gets its ✓ and undo.
+    <TitleHold
+      title={{
+        tmdbId: item.tmdb_id,
+        mediaType: item.media_type,
+        name: item.title,
+        posterPath: item.poster_path,
       }}
-      // Warm the detail cache while the finger is still down.
-      onPressIn={() =>
-        queryClient.prefetchQuery(titleQueryOptions(item.tmdb_id, item.media_type))
-      }
-      onPress={() =>
-        openTitle(router, {
-          tmdbId: item.tmdb_id,
-          mediaType: item.media_type,
-          name: item.title,
-        })
-      }>
-      <Image
-        style={styles.poster}
-        source={{ uri: imageUrl(item.poster_path, 'w185') ?? undefined }}
-        contentFit="cover"
-        transition={150}
-      />
-      <ThemedView style={styles.rowText}>
-        <ThemedText type="smallBold" numberOfLines={2}>
-          {item.title}
-        </ThemedText>
-        <ThemedText type="small">
-          {item.media_type === 'tv' ? 'TV' : 'Movie'} · {year(item)}
-        </ThemedText>
-      </ThemedView>
-      {logged ? (
-        // Its own Pressable captures the touch, so tapping the check undoes
-        // instead of opening the title (RN doesn't bubble to the parent).
-        // Shown instantly on swipe (optimistic); dimmed until the write lands.
-        <Pressable
-          style={[styles.check, pending && styles.checkPending]}
-          hitSlop={8}
-          onPress={() => onUndoTap(item)}
-          accessibilityRole="button"
-          accessibilityLabel="Undo this watch"
-          accessibilityState={{ busy: pending }}>
-          <IconSymbol name="checkmark" size={18} tintColor={AccentText} />
-        </Pressable>
-      ) : null}
-    </PressScale>
+      onLog={() => onLog(item)}>
+      <PressScale
+        style={[styles.row, { backgroundColor: bg }]}
+        // The swipe's two directions, as custom actions. They live on this
+        // element and not on `SwipeToLogRow`'s child wrapper because a screen
+        // reader only exposes the actions of the element it has *focused*, and
+        // this `PressScale` is the row's focusable node. Logging is the one that
+        // matters: unlike undo (the ✓) it has no tap equivalent here at all.
+        accessibilityActions={
+          logged
+            ? [
+                { name: 'log', label: logLabel(item) },
+                { name: 'undo', label: 'Undo' },
+              ]
+            : [{ name: 'log', label: logLabel(item) }]
+        }
+        onAccessibilityAction={({ nativeEvent }) => {
+          if (nativeEvent.actionName === 'log') onLog(item);
+          else if (nativeEvent.actionName === 'undo') onUndoTap(item);
+        }}
+        // Warm the detail cache while the finger is still down.
+        onPressIn={() =>
+          queryClient.prefetchQuery(titleQueryOptions(item.tmdb_id, item.media_type))
+        }
+        onPress={() =>
+          openTitle(router, {
+            tmdbId: item.tmdb_id,
+            mediaType: item.media_type,
+            name: item.title,
+          })
+        }
+        accessibilityHint="Hold for more actions">
+        <Image
+          style={styles.poster}
+          source={{ uri: imageUrl(item.poster_path, 'w185') ?? undefined }}
+          contentFit="cover"
+          transition={150}
+        />
+        <ThemedView style={styles.rowText}>
+          <ThemedText type="smallBold" numberOfLines={2}>
+            {item.title}
+          </ThemedText>
+          <ThemedText type="small">
+            {item.media_type === 'tv' ? 'TV' : 'Movie'} · {year(item)}
+          </ThemedText>
+        </ThemedView>
+        {logged ? (
+          // Its own Pressable captures the touch, so tapping the check undoes
+          // instead of opening the title (RN doesn't bubble to the parent).
+          // Shown instantly on swipe (optimistic); dimmed until the write lands.
+          <Pressable
+            style={[styles.check, pending && styles.checkPending]}
+            hitSlop={8}
+            onPress={() => onUndoTap(item)}
+            accessibilityRole="button"
+            accessibilityLabel="Undo this watch"
+            accessibilityState={{ busy: pending }}>
+            <IconSymbol name="checkmark" size={18} tintColor={AccentText} />
+          </Pressable>
+        ) : null}
+      </PressScale>
+    </TitleHold>
   );
 });
 
@@ -166,7 +178,7 @@ const styles = StyleSheet.create({
   poster: {
     width: 52,
     height: 78,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: PlaceholderBg,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.35)',

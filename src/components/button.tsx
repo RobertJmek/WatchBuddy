@@ -7,7 +7,11 @@ import { useTheme } from '@/hooks/use-theme';
 
 type Variant = 'primary' | 'outline' | 'danger';
 
-/** Pill button in the three shapes the app uses: filled accent, quiet outline, danger outline. */
+/**
+ * The app's full-width button: a filled accent, or a quiet neutral fill whose
+ * text carries the meaning (`outline` in teal, `danger` in red). Corners match
+ * the fields and cards it lines up with.
+ */
 export function Button({
   title,
   onPress,
@@ -27,8 +31,8 @@ export function Button({
   const inactive = disabled || loading;
   const byVariant: Record<Variant, { box: ViewStyle; text: string }> = {
     primary: { box: { backgroundColor: Accent }, text: AccentText },
-    outline: { box: { borderWidth: 1, borderColor: c.border }, text: c.tint },
-    danger: { box: { borderWidth: 1, borderColor: c.danger }, text: c.danger },
+    outline: { box: { backgroundColor: c.backgroundElement }, text: c.tint },
+    danger: { box: { backgroundColor: c.backgroundElement }, text: c.danger },
   };
   const v = byVariant[variant];
   return (
@@ -44,7 +48,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={v.text} />
       ) : (
-        <ThemedText type="smallBold" style={{ color: v.text }}>
+        <ThemedText type="label" style={{ color: v.text }}>
           {title}
         </ThemedText>
       )}
@@ -54,7 +58,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 999,
+    borderRadius: Spacing.three,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     justifyContent: 'center',

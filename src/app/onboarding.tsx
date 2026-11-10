@@ -11,6 +11,7 @@ import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { Pressable } from '@/components/pressable';
 import { Step } from '@/components/step';
+import { photoChip } from '@/components/profile-fields';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Accent, AccentText, Spacing, Type } from '@/constants/theme';
@@ -176,9 +177,13 @@ export default function OnboardingScreen() {
                   <IconSymbol name="camera" size={24} tintColor={c.textSecondary} />
                 </View>
               )}
-              <ThemedText type="smallBold" style={{ color: c.tint }}>
-                {avatarUri ? 'Change photo' : 'Choose a photo'}
-              </ThemedText>
+              {/* A filled chip, like the app's other quiet buttons: bare teal text
+                  did not read as something to press. */}
+              <View style={[photoChip, { backgroundColor: c.backgroundElement }]}>
+                <ThemedText type="smallBold" themeColor="tint">
+                  {avatarUri ? 'Change photo' : 'Choose a photo'}
+                </ThemedText>
+              </View>
             </Pressable>
           </Step>
 

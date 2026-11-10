@@ -22,21 +22,32 @@ import { useTheme } from '@/hooks/use-theme';
 export function BottomBar({
   children,
   entering,
+  divided,
 }: {
   children: ReactNode;
+  /** A hairline on top, for a bar that content scrolls under. */
+  divided?: boolean;
   entering?: AnimatedProps<ViewProps>['entering'];
 }) {
   const bottomGap = useBottomGap();
+  const c = useTheme();
   return (
-    <Animated.View entering={entering} style={[styles.bar, { paddingBottom: bottomGap }]}>
+    <Animated.View
+      entering={entering}
+      style={[
+        styles.bar,
+        { paddingBottom: bottomGap },
+        divided && [styles.divided, { borderTopColor: c.border }],
+      ]}>
       {children}
     </Animated.View>
   );
 }
 
 /**
- * The card screens' full-width button: a teal fill for the primary action, or
- * an outline for a secondary one beside it (the tutorial's Back). `busy` keeps
+ * The card screens' full-width button, in the same shape and type as `Button`
+ * (ADR 0032): a teal fill for the primary action, or a quiet neutral fill for a
+ * secondary one beside it (the cropper's Cancel). `busy` keeps
  * it pressable-looking but inert and says so to a screen reader.
  */
 export function BarButton({
@@ -63,7 +74,7 @@ export function BarButton({
     <PressScale
       style={[
         styles.button,
-        secondary ? [styles.secondary, { borderColor: c.text }] : styles.primary,
+        secondary ? { backgroundColor: c.backgroundElement } : styles.primary,
         inactive && styles.inactive,
         style,
       ]}
@@ -74,7 +85,9 @@ export function BarButton({
       accessibilityState={{ disabled: inactive, busy }}>
       <View style={styles.inner}>
         {busy && <ActivityIndicator size="small" color={textColor} />}
-        <ThemedText style={[styles.text, { color: textColor }]}>{title}</ThemedText>
+        <ThemedText type="label" style={{ color: textColor }}>
+          {title}
+        </ThemedText>
       </View>
     </PressScale>
   );
@@ -82,10 +95,9 @@ export function BarButton({
 
 const styles = StyleSheet.create({
   bar: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, gap: Spacing.three },
+  divided: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.three },
   button: { borderRadius: Spacing.three, paddingVertical: Spacing.three, alignItems: 'center' },
   primary: { backgroundColor: Accent },
-  secondary: { borderWidth: 1.5 },
   inactive: { opacity: 0.6 },
   inner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  text: { fontWeight: '700', fontSize: 16 },
 });

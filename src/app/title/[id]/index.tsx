@@ -178,14 +178,11 @@ export default function TitleDetailScreen() {
                 transition={200}
               />
               <LinearGradient
-                colors={
-                  ['transparent', 'rgba(0,0,0,0.5)', c.background] as [
-                    string,
-                    string,
-                    string,
-                  ]
-                }
-                locations={[0, 0.55, 1]}
+                // Dark behind the text, then the still dissolves into the page
+                // in the strip below it (HERO_FADE), so the hero's light text
+                // never sits on the fade to white in light mode.
+                colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.6)', c.background]}
+                locations={[0, 0.45, 1 - HERO_FADE / BACKDROP_HEIGHT, 1]}
                 style={StyleSheet.absoluteFill}
               />
               {/* true-black letterbox bar — the film-frame cue */}
@@ -393,7 +390,9 @@ export default function TitleDetailScreen() {
 }
 
 const POSTER_W = 110;
-const BACKDROP_HEIGHT = 320;
+/** The strip under the hero text where the still fades into the page. */
+const HERO_FADE = 56;
+const BACKDROP_HEIGHT = 320 + HERO_FADE;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -416,12 +415,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.three,
     padding: Spacing.three,
+    paddingBottom: Spacing.three + HERO_FADE,
     alignItems: 'flex-end',
   },
   poster: {
     width: POSTER_W,
     height: POSTER_W * 1.5,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: Hero.scrim,
     borderWidth: 1,
     borderColor: Hero.hairline,
@@ -429,8 +429,8 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: Spacing.one, paddingBottom: Spacing.one },
   eyebrow: {
     fontFamily: Type.semibold,
-    fontSize: 11,
-    letterSpacing: 2,
+    fontSize: 12,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: Glow,
   },
@@ -438,12 +438,13 @@ const styles = StyleSheet.create({
     fontFamily: Type.display,
     color: Hero.text,
     fontSize: 30,
-    lineHeight: 40,
+    lineHeight: 34,
+    letterSpacing: -0.6,
   },
   metaText: {
     fontFamily: Type.semibold,
     fontSize: 12,
-    letterSpacing: 1.5,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: Hero.textMuted,
     textShadowColor: Hero.shadow,

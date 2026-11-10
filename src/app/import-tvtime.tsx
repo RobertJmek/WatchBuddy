@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   resultPoster: {
     width: 40,
     height: 60,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: PlaceholderBg,
   },
   resultText: { flex: 1, gap: 2 },

@@ -9,6 +9,7 @@ import { IconSymbol } from '@/components/icon-symbol';
 import { PressScale } from '@/components/press-scale';
 import { Pressable } from '@/components/pressable';
 import { ThemedText } from '@/components/themed-text';
+import { TitleHold } from '@/components/title-menu';
 import { PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { imageUrl, titleQueryOptions } from '@/lib/tmdb';
@@ -42,6 +43,7 @@ function PosterCard({
       style={styles.card}
       onPress={onPress}
       onPressIn={onPressIn}
+      accessibilityHint="Hold for more actions"
       accessibilityRole="button"
       accessibilityLabel={label}>
       <Image
@@ -92,18 +94,24 @@ export const PosterShelf = memo(function PosterShelf({
   const queryClient = useQueryClient();
   const renderItem = useCallback(
     ({ item }: { item: PosterItem }) => (
-      <PosterCard
-        posterPath={item.poster_path}
-        label={item.score != null ? `${item.title}, rated ${item.score}` : item.title}
-        score={item.score}
-        onPress={() => onPressItem(item)}
-        // Warm the detail cache while the finger is still down.
-        onPressIn={() =>
-          queryClient.prefetchQuery(
-            titleQueryOptions(item.tmdb_id, item.media_type),
-          )
-        }
-      />
+      <TitleHold
+        title={{
+          tmdbId: item.tmdb_id,
+          mediaType: item.media_type,
+          name: item.title,
+          posterPath: item.poster_path,
+        }}>
+        <PosterCard
+          posterPath={item.poster_path}
+          label={item.score != null ? `${item.title}, rated ${item.score}` : item.title}
+          score={item.score}
+          onPress={() => onPressItem(item)}
+          // Warm the detail cache while the finger is still down.
+          onPressIn={() =>
+            queryClient.prefetchQuery(titleQueryOptions(item.tmdb_id, item.media_type))
+          }
+        />
+      </TitleHold>
     ),
     [onPressItem, queryClient],
   );
@@ -159,7 +167,7 @@ const styles = StyleSheet.create({
   cardPoster: {
     width: 110,
     height: 165,
-    borderRadius: 4,
+    borderRadius: 8,
     backgroundColor: PlaceholderBg,
     // a thin dark frame reads as a film plate on both themes
     borderWidth: 1,

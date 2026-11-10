@@ -42,6 +42,15 @@ export function hapticTick() {
   );
 }
 
+/** A hold was recognised and something is opening: firmer than a tick. */
+export function hapticHold() {
+  fire(() =>
+    Platform.OS === 'android'
+      ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Long_Press)
+      : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium),
+  );
+}
+
 /** A switch flipping: favorite, follow, like. */
 export function hapticToggle(on: boolean) {
   fire(() =>

@@ -86,7 +86,7 @@ function deviceTimeZone(): string {
 }
 
 /** A YYYY-MM-DD calendar date as local midnight of that day. */
-function calendarDate(ymd: string): Date {
+export function calendarDate(ymd: string): Date {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(y, m - 1, d);
 }

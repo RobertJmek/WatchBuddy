@@ -46,7 +46,11 @@ function Chip({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.chip, { borderColor: c.border }, active && styles.chipActive]}
+      style={[
+        styles.chip,
+        { backgroundColor: c.backgroundSelected, borderColor: c.backgroundSelected },
+        active && styles.chipActive,
+      ]}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}>
       <ThemedText type="small" style={active ? styles.chipTextActive : undefined}>

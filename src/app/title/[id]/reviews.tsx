@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { padding: Spacing.three, gap: Spacing.two },
   summary: { alignItems: 'center', gap: Spacing.half, marginBottom: Spacing.two },
-  average: { fontFamily: Type.display, fontSize: 48, lineHeight: 64 },
+  average: { fontFamily: Type.display, fontSize: 46, lineHeight: 52, letterSpacing: -1 },
   sortRow: { flexDirection: 'row', gap: Spacing.one, marginTop: Spacing.two },
   sortChip: {
     borderRadius: 999,

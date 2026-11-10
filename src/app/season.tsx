@@ -1,21 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  FlatList,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Image } from 'expo-image';
+import { FlatList, StyleSheet, View } from 'react-native';
 
 import { Pressable } from '@/components/pressable';
 import { RowSkeletonList } from '@/components/skeleton';
 import { SwipeToLogRow } from '@/components/swipe-to-log-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Accent, AccentText, NeutralBorder, Spacing } from '@/constants/theme';
+import { Accent, AccentText, NeutralBorder, PlaceholderBg, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticFailure, hapticSuccess, hapticTick, hapticUndo } from '@/lib/haptics';
-import { fetchSeason, type EpisodeRow } from '@/lib/tmdb';
+import { calendarDate } from '@/lib/stats';
+import { fetchSeason, imageUrl, type EpisodeRow } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
 import { useBottomGap } from '@/hooks/use-bottom-gap';
 import {
@@ -27,6 +25,21 @@ import {
 } from '@/lib/watches';
 
 const ACTIVE = Accent;
+
+/** "Jan 20, 2008 · 59 min", from whichever of the two the catalog has. */
+function episodeMeta(ep: EpisodeRow) {
+  return [
+    ep.air_date &&
+      calendarDate(ep.air_date).toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+    ep.runtime && `${ep.runtime} min`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
 
 export default function SeasonScreen() {
   const bottomGap = useBottomGap();
@@ -183,6 +196,7 @@ export default function SeasonScreen() {
                   <Pressable
                     style={[styles.check, n > 0 && styles.checkOn]}
                     onPress={() => addWatch(item)}
+                    hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel={
                       n === 0 ? 'Log this episode' : `Watched ${n} times, log again`
@@ -210,13 +224,18 @@ export default function SeasonScreen() {
                       {n === 0 ? '' : n === 1 ? '✓' : `×${n}`}
                     </ThemedText>
                   </Pressable>
+                  <Image
+                    style={styles.still}
+                    source={{ uri: imageUrl(item.still_path, 'w185') ?? undefined }}
+                    contentFit="cover"
+                    transition={150}
+                  />
                   <ThemedView style={styles.rowText}>
                     <ThemedText type="smallBold" numberOfLines={2}>
                       {item.episode_number}. {item.name ?? 'Episode'}
                     </ThemedText>
-                    <ThemedText type="small">
-                      {item.air_date ?? ''}
-                      {item.runtime ? ` · ${item.runtime} min` : ''}
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {episodeMeta(item)}
                     </ThemedText>
                   </ThemedView>
                   {n > 0 && (
@@ -266,6 +285,12 @@ const styles = StyleSheet.create({
   checkOn: { backgroundColor: ACTIVE },
   badgeOn: { color: AccentText, fontWeight: '700', fontSize: 13 },
   badgeOff: { color: 'transparent' },
+  still: {
+    width: 96,
+    height: 54,
+    borderRadius: Spacing.two,
+    backgroundColor: PlaceholderBg,
+  },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   minus: {
     width: 30,
