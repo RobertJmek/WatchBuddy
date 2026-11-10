@@ -60,3 +60,7 @@ __pycache__/
 unresolved_shows.csv
 *.fileloc
 gdpr-data/
+
+# Local store assets (346 MB). EAS Build packs everything .gitignore does not
+# name, and .git/info/exclude does not count: this cut a 32-minute upload.
+app-store-screenshots/
