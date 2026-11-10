@@ -255,7 +255,7 @@ export default function EditProfileScreen() {
           {/* Pinned Save (ADR 0030): a Save in the scroll or the header is the
               button people miss. It sits at the bottom gap, the lowest any
               button goes. */}
-          <BottomBar>
+          <BottomBar divided>
             <BarButton title={saving ? 'Saving…' : 'Save'} onPress={handleSave} busy={saving} />
           </BottomBar>
         </>

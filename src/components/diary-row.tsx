@@ -96,5 +96,5 @@ const styles = StyleSheet.create({
   posterLarge: { width: 52, height: 78 },
   rowText: { flex: 1, gap: Spacing.half, backgroundColor: 'transparent' },
   date: { opacity: 0.6 },
-  editBtn: { alignSelf: 'center', paddingHorizontal: Spacing.two },
+  editBtn: { alignSelf: 'center', padding: Spacing.two },
 });
