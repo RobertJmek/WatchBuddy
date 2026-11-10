@@ -59,6 +59,7 @@ const ResultRow = memo(function ResultRow({
         tmdbId: item.tmdb_id,
         mediaType: item.media_type,
         name: item.title,
+        posterPath: item.poster_path,
       }}
       onLog={() => onLog(item)}>
       <PressScale

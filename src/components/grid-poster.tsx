@@ -41,7 +41,7 @@ export const GridPoster = memo(function GridPoster({
 }) {
   const router = useRouter();
   return (
-    <TitleHold title={{ tmdbId, mediaType, name }}>
+    <TitleHold title={{ tmdbId, mediaType, name, posterPath }}>
       <PressScale
         style={{ width }}
         onPress={() => openTitle(router, { tmdbId, mediaType, name })}

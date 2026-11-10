@@ -43,6 +43,7 @@ export function DiaryRow({
         tmdbId: item.tmdbId,
         mediaType: item.mediaType,
         name: item.titleName,
+        posterPath: item.posterPath,
       }}>
       <PressScale
         style={[styles.row, { backgroundColor: c.backgroundElement }]}

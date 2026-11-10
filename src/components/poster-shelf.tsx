@@ -99,6 +99,7 @@ export const PosterShelf = memo(function PosterShelf({
           tmdbId: item.tmdb_id,
           mediaType: item.media_type,
           name: item.title,
+          posterPath: item.poster_path,
         }}>
         <PosterCard
           posterPath={item.poster_path}
