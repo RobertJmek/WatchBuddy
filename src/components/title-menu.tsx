@@ -40,7 +40,7 @@ import {
 import { openTitle, type TitleRef } from '@/lib/navigation';
 import { imageUrl, titleQueryOptions } from '@/lib/tmdb';
 import { logTitleWatch } from '@/lib/use-search-log';
-import { ensureWatched } from '@/lib/watches';
+import { ensureWatched, getMovieWatches } from '@/lib/watches';
 
 /** How long a finger rests on a title before it lifts. */
 const HOLD_MS = 350;
@@ -60,6 +60,7 @@ const STATUS_H = 44;
 const BLOCK_GAP = 8;
 const MENU_H = ROW_H * ROWS + MENU_PAD * 2;
 const STATUS_TOP = MENU_H + BLOCK_GAP;
+const STATUS_BLOCK_H = STATUS_H + MENU_PAD * 2;
 const CELL_W = (MENU_W - MENU_PAD * 2) / STATUSES.length;
 /** Poster, menu and status row, stacked. */
 const STACK_H = POSTER_H + GAP + STATUS_TOP + STATUS_H + MENU_PAD * 2;
@@ -99,6 +100,8 @@ type Action = {
   key: string;
   icon?: IconName;
   label: string;
+  /** Small text at the row's far end (how often the title was watched). */
+  detail?: string;
   /** A status cell: this is the title's status right now. */
   current?: boolean;
   run: () => void;
@@ -172,7 +175,11 @@ type Open = {
   /** Where the lift starts from: the poster the finger is on. */
   from: Rect;
   poster: { left: number; top: number };
-  menu: { left: number; top: number };
+  /**
+   * `above`: the menu sits over the poster and reads bottom-up, so its first
+   * row is still the one nearest the poster and the finger.
+   */
+  menu: { left: number; top: number; above: boolean };
 };
 
 /** The menu's rows for a title. Add an option here. */
@@ -195,8 +202,21 @@ function useActions(open: Open | null): Action[] {
     queryFn: () => getLibraryStatus(titleId!),
     enabled: !!titleId,
   });
+  const isMovie = open?.title.mediaType === 'movie';
+  // The movie watch bar's own query, so a log from either shows in both.
+  const watchesQ = useQuery({
+    queryKey: keys.movieWatches(titleId ?? ''),
+    queryFn: () => getMovieWatches(titleId!),
+    enabled: !!titleId && isMovie,
+  });
   const router = useRouter();
   if (!open) return [];
+  // ponytail: a series' count is read from the title page's cache only; counting
+  // it here means fetching every season. Query it when that proves worth it.
+  const passes = titleId
+    ? queryClient.getQueryData<{ passes: number }>(keys.seriesPasses(titleId))?.passes
+    : undefined;
+  const watched = isMovie ? watchesQ.data?.length : passes;
 
   const { tmdbId, mediaType, name } = open.title;
   /**
@@ -251,6 +271,7 @@ function useActions(open: Open | null): Action[] {
       key: 'log',
       icon: 'plus',
       label: mediaType === 'tv' ? 'Log whole series' : 'Log watch',
+      detail: watched ? `×${watched}` : undefined,
       run: () => {
         hapticSuccess();
         if (open.options.onLog) return open.options.onLog();
@@ -390,6 +411,7 @@ export function TitleMenuHost() {
           menu: {
             left: clamp(menuLeft, EDGE, w - EDGE - MENU_W),
             top: below ? top + POSTER_H + GAP : top - STACK_H + POSTER_H,
+            above: !below,
           },
         };
         hapticHold();
@@ -411,13 +433,15 @@ export function TitleMenuHost() {
         if (!armed) return;
         const inside =
           x >= o.menu.left - SIDE_SLOP && x <= o.menu.left + MENU_W + SIDE_SLOP;
-        const dy = y - o.menu.top;
+        // Measured away from the poster, so one test serves both directions.
+        const dy = o.menu.above
+          ? o.menu.top + STATUS_TOP + STATUS_BLOCK_H - y
+          : y - o.menu.top;
         const row = Math.floor((dy - MENU_PAD) / ROW_H);
         const cell = Math.floor((x - o.menu.left - MENU_PAD) / CELL_W);
-        // The status row keeps answering a little below itself: it is the last
-        // thing on the way down, and the finger hides it.
-        const onStatus =
-          dy >= STATUS_TOP && dy < STATUS_TOP + STATUS_H + MENU_PAD * 2 + SIDE_SLOP;
+        // The status row keeps answering a little past itself: it is the last
+        // thing on the way, and the finger hides it.
+        const onStatus = dy >= STATUS_TOP && dy < STATUS_TOP + STATUS_BLOCK_H + SIDE_SLOP;
         const next = !inside
           ? -1
           : row >= 0 && row < ROWS
@@ -504,7 +528,11 @@ export function TitleMenuHost() {
       <Animated.View
         style={[
           styles.menu,
-          { left: open.menu.left, top: open.menu.top },
+          {
+            left: open.menu.left,
+            top: open.menu.top + (open.menu.above ? STATUS_BLOCK_H + BLOCK_GAP : 0),
+            flexDirection: open.menu.above ? 'column-reverse' : 'column',
+          },
           !CAN_BLUR && { backgroundColor: c.backgroundElement },
           menuStyle,
         ]}>
@@ -528,9 +556,19 @@ export function TitleMenuHost() {
               key={action.key}
               style={[styles.row, on && { backgroundColor: Accent }]}>
               {action.icon && <IconSymbol name={action.icon} size={20} tintColor={ink} />}
-              <ThemedText type="label" style={{ color: ink }} numberOfLines={1}>
+              <ThemedText
+                type="label"
+                style={[styles.rowLabel, { color: ink }]}
+                numberOfLines={1}>
                 {action.label}
               </ThemedText>
+              {action.detail && (
+                <ThemedText
+                  type="smallBold"
+                  style={{ color: on ? AccentText : c.textSecondary }}>
+                  {action.detail}
+                </ThemedText>
+              )}
             </View>
           );
         })}
@@ -541,7 +579,10 @@ export function TitleMenuHost() {
         style={[
           styles.menu,
           styles.statuses,
-          { left: open.menu.left, top: open.menu.top + STATUS_TOP },
+          {
+            left: open.menu.left,
+            top: open.menu.top + (open.menu.above ? 0 : STATUS_TOP),
+          },
           !CAN_BLUR && { backgroundColor: c.backgroundElement },
           menuStyle,
         ]}>
@@ -610,6 +651,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 14,
   },
+  rowLabel: { flex: 1 },
   row: {
     height: ROW_H,
     flexDirection: 'row',
