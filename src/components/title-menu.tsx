@@ -235,7 +235,7 @@ function useActions(open: Open | null): Action[] {
       e.title?.tmdb_id === open.title.tmdbId &&
       e.title.media_type === open.title.mediaType,
   );
-  // No list on the device yet: unknown, as before, until the queries answer.
+  // No list on the device yet: unknown until the queries answer.
   const local = libraryQ.data
     ? { favorite: mine?.is_favorite ?? false, status: mine?.status ?? null }
     : undefined;
@@ -366,12 +366,9 @@ function useActions(open: Open | null): Action[] {
     {
       key: 'favorite',
       icon: 'heart',
-      label:
-        favorite === undefined
-          ? 'Favorite'
-          : favorite
-            ? 'Remove from favorites'
-            : 'Add to favorites',
+      // Never a third, neutral label that turns into one of these: unknown
+      // reads as not favorited, which is what almost every held title is.
+      label: favorite ? 'Remove from favorites' : 'Add to favorites',
       run: () => {
         (async () => {
           const { title } = await queryClient.fetchQuery(
