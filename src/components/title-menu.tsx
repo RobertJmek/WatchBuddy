@@ -31,6 +31,7 @@ import {
 import { keys } from '@/lib/keys';
 import {
   getFavorite,
+  getLibrary,
   getLibraryStatus,
   LIBRARY_STATUSES,
   removeFromLibrary,
@@ -187,8 +188,16 @@ type Open = {
 /** The menu's rows for a title. Add an option here. */
 function useActions(open: Open | null): Action[] {
   const queryClient = useQueryClient();
-  // Both are usually warm by the time the hold fires: posters prefetch the
-  // title on touch-down. Until then the heart row has a neutral label.
+  // The Library list is already on the device (the Library tab keeps it, and
+  // it is persisted), and it says what each title's status and heart are. The
+  // rows read it first, so they are right from the frame the menu opens and
+  // never change under the finger; the per-title queries below only confirm.
+  // Read-only here: a hold never downloads the whole Library.
+  const libraryQ = useQuery({
+    queryKey: keys.library(),
+    queryFn: getLibrary,
+    enabled: false,
+  });
   const titleQ = useQuery({
     ...titleQueryOptions(open?.title.tmdbId ?? 0, open?.title.mediaType ?? 'movie'),
     enabled: !!open,
@@ -221,6 +230,18 @@ function useActions(open: Open | null): Action[] {
   });
   const router = useRouter();
   if (!open) return [];
+  const mine = libraryQ.data?.find(
+    (e) =>
+      e.title?.tmdb_id === open.title.tmdbId &&
+      e.title.media_type === open.title.mediaType,
+  );
+  // No list on the device yet: unknown until the queries answer.
+  const local = libraryQ.data
+    ? { favorite: mine?.is_favorite ?? false, status: mine?.status ?? null }
+    : undefined;
+  const favorite = favQ.data ?? local?.favorite;
+  // null is an answer here (not in the Library), so no `??`.
+  const status = statusQ.data !== undefined ? statusQ.data : local?.status;
   const watched = isMovie ? watchesQ.data?.length : passesQ.data?.passes;
 
   const { tmdbId, mediaType, name } = open.title;
@@ -345,12 +366,9 @@ function useActions(open: Open | null): Action[] {
     {
       key: 'favorite',
       icon: 'heart',
-      label:
-        favQ.data === undefined
-          ? 'Favorite'
-          : favQ.data
-            ? 'Remove from favorites'
-            : 'Add to favorites',
+      // Never a third, neutral label that turns into one of these: unknown
+      // reads as not favorited, which is what almost every held title is.
+      label: favorite ? 'Remove from favorites' : 'Add to favorites',
       run: () => {
         (async () => {
           const { title } = await queryClient.fetchQuery(
@@ -376,7 +394,7 @@ function useActions(open: Open | null): Action[] {
     {
       key: 'watchlist',
       icon: 'bookmark',
-      label: statusQ.data === 'watchlist' ? 'Remove from Watchlist' : 'Add to Watchlist',
+      label: status === 'watchlist' ? 'Remove from Watchlist' : 'Add to Watchlist',
       // Only a title that is on the Watchlist leaves it; any other status moves.
       run: () => setStatus((was) => (was === 'watchlist' ? null : 'watchlist')),
     },
@@ -399,7 +417,7 @@ function useActions(open: Open | null): Action[] {
     ...STATUSES.map(({ value, label }): Action => ({
       key: value,
       label,
-      current: statusQ.data === value,
+      current: status === value,
       run: () => setStatus(() => value),
     })),
   ];
