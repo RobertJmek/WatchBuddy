@@ -16,7 +16,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AvatarCropperHost } from '@/components/avatar-cropper';
 import { KeyboardDismissButton } from '@/components/keyboard-dismiss-button';
-import { TitleMenuHost } from '@/components/title-menu';
+import { TitleMenuHost, TitleMenuPage } from '@/components/title-menu';
 import { SwipeNav } from '@/components/swipe-nav';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -119,6 +119,7 @@ function RootNavigator() {
 
   return (
     <>
+    <TitleMenuPage>
     <Stack
       screenLayout={(props) => <StackScreenLayout {...props} />}
       screenOptions={{
@@ -184,6 +185,7 @@ function RootNavigator() {
         <Stack.Screen name="user/[id]/ratings" />
       </Stack.Protected>
     </Stack>
+    </TitleMenuPage>
     {/* iOS hide-keyboard chevron for every screen (ADR 0028). */}
     <KeyboardDismissButton />
     {/* The round avatar crop that pickAvatarImage() opens. */}

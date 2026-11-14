@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { requireOptionalNativeModule } from 'expo';
-import { BlurView } from 'expo-blur';
+import { BlurTargetView, BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { createRef, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Platform, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -71,7 +71,20 @@ const STACK_H = POSTER_H + GAP + STATUS_TOP + STATUS_H + MENU_PAD * 2;
  * A binary built before expo-blur was added has no blur view, and rendering
  * one there is a red screen. Those builds get a plain dim instead.
  */
-const CAN_BLUR = requireOptionalNativeModule('ExpoBlur') != null;
+const CAN_BLUR =
+  requireOptionalNativeModule('ExpoBlur') != null &&
+  // Android blurs in real time only from 12 on; older ones get the plain dim too.
+  !(Platform.OS === 'android' && Platform.Version < 31);
+/**
+ * iOS blurs whatever is behind a BlurView. Android blurs one named view, and
+ * without it a BlurView is only a wash of colour: the root layout wraps the
+ * navigator in `TitleMenuPage`, and every blur here points at it.
+ */
+const page = createRef<View>();
+const BLUR =
+  Platform.OS === 'android'
+    ? ({ blurTarget: page, blurMethod: 'dimezisBlurView' } as const)
+    : {};
 const EDGE = Spacing.three;
 /** How far outside the menu's sides the finger still counts as on a row. */
 const SIDE_SLOP = 24;
@@ -168,6 +181,16 @@ export function TitleHold({
         {children}
       </View>
     </GestureDetector>
+  );
+}
+
+/** Wraps the navigator in the root layout: the page the hold menu blurs on Android. */
+export function TitleMenuPage({ children }: { children: ReactNode }) {
+  if (Platform.OS !== 'android' || !CAN_BLUR) return children;
+  return (
+    <BlurTargetView ref={page} style={{ flex: 1 }}>
+      {children}
+    </BlurTargetView>
   );
 }
 
@@ -586,7 +609,12 @@ export function TitleMenuHost() {
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
         {CAN_BLUR && (
-          <BlurView style={StyleSheet.absoluteFill} intensity={50} tint={tint} />
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            intensity={50}
+            tint={tint}
+            {...BLUR}
+          />
         )}
         <View style={[StyleSheet.absoluteFill, CAN_BLUR ? styles.dim : styles.dimOnly]} />
       </Animated.View>
@@ -620,6 +648,7 @@ export function TitleMenuHost() {
           <BlurView
             style={StyleSheet.absoluteFill}
             intensity={90}
+            {...BLUR}
             tint={
               scheme === 'dark' ? 'systemThickMaterialDark' : 'systemThickMaterialLight'
             }
@@ -669,6 +698,7 @@ export function TitleMenuHost() {
           <BlurView
             style={StyleSheet.absoluteFill}
             intensity={90}
+            {...BLUR}
             tint={
               scheme === 'dark' ? 'systemThickMaterialDark' : 'systemThickMaterialLight'
             }
@@ -713,11 +743,17 @@ const styles = StyleSheet.create({
     width: POSTER_W,
     height: POSTER_H,
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 16,
+    // Android's elevation shadow is a hard box, and it shows through the
+    // poster while it fades in; a drawn shadow fades with it.
+    ...Platform.select({
+      android: { boxShadow: '0px 12px 24px rgba(0,0,0,0.45)' },
+      default: {
+        shadowColor: '#000',
+        shadowOpacity: 0.45,
+        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 12 },
+      },
+    }),
   },
   posterImage: { flex: 1, borderRadius: 16, backgroundColor: PlaceholderBg },
   menu: {
