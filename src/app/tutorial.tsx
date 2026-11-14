@@ -34,12 +34,14 @@ import { Step } from '@/components/step';
 import { SwipeNav } from '@/components/swipe-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { TitleHold } from '@/components/title-menu';
 import { UserRow } from '@/components/user-row';
 import { Accent, AccentText, Danger, Glow, Hero, PlaceholderBg, Spacing, Type } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useTheme } from '@/hooks/use-theme';
 import { hapticSuccess, hapticTick } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
+import { useTipVisible } from '@/lib/onboarding';
 import { entityTypeFor, getRating } from '@/lib/ratings';
 import { searchUsers } from '@/lib/social';
 import {
@@ -53,7 +55,7 @@ import { itemKey, useSearchLog } from '@/lib/use-search-log';
 import { useBottomGap } from '@/hooks/use-bottom-gap';
 
 /**
- * "How WatchBuddy works": five cards, each with one real thing to do, shown
+ * "How WatchBuddy works": six cards, each with one real thing to do, shown
  * once right after onboarding's profile step and replayable from About
  * (`?replay=1`). Everything here writes for real (log, rate, status, follow)
  * through the same components the app uses. ADR 0028.
@@ -82,7 +84,7 @@ const DEFAULT_TITLE: SearchResult = {
 /** Suggested on the friends card while nothing is typed. */
 const SUGGESTED_USERNAME = 'watchbuddy';
 
-const CARD_COUNT = 5;
+const CARD_COUNT = 6;
 const MIN_CHARS = 3;
 const DEBOUNCE_MS = 500;
 
@@ -215,6 +217,16 @@ export default function TutorialScreen() {
       body="Sort titles by status. Every watch also goes into your Diary.">
       <Step label="Tap a status" note="Every title's page has these.">
         <TitleControl title={chosen} control="status" />
+      </Step>
+    </Card>,
+    <Card
+      key="hold"
+      title="Hold a title"
+      body="Every poster and title row has a quick menu.">
+      <Step
+        label="Hold the poster, slide to an option, let go"
+        note="Let go without moving to close the menu.">
+        <HoldTry title={chosen} />
       </Step>
     </Card>,
     <Card
@@ -667,6 +679,70 @@ function RateBlock({ row }: { row: TitleRow }) {
   );
 }
 
+/**
+ * The chosen title's poster with the real hold menu on it. A ring pulses where
+ * a finger goes until the menu has been opened once.
+ */
+function HoldTry({ title }: { title: SearchResult }) {
+  const c = useTheme();
+  const reduced = useReducedMotion();
+  const untried = useTipVisible('hold-menu');
+  const poster = imageUrl(title.poster_path, 'w342');
+  return (
+    <View style={styles.hold}>
+      <TitleHold
+        title={{
+          tmdbId: title.tmdb_id,
+          mediaType: title.media_type,
+          name: title.title,
+          posterPath: title.poster_path,
+        }}>
+        <View
+          accessible
+          accessibilityLabel={`${title.title} poster`}
+          accessibilityHint="Hold to open its menu">
+          <Image
+            style={styles.holdPoster}
+            source={poster ? { uri: poster } : undefined}
+            contentFit="cover"
+            transition={150}
+          />
+          {untried && !reduced && (
+            <Animated.View
+              pointerEvents="none"
+              exiting={FadeOut.duration(150)}
+              style={[
+                styles.ghostFinger,
+                styles.holdGhost,
+                {
+                  animationName: {
+                    '0%': { opacity: 0, transform: [{ scale: 1.5 }] },
+                    '25%': { opacity: 1, transform: [{ scale: 1 }] },
+                    '75%': { opacity: 1, transform: [{ scale: 1 }] },
+                    '100%': { opacity: 0, transform: [{ scale: 1 }] },
+                  },
+                  animationDuration: 2200,
+                  animationIterationCount: 'infinite',
+                  animationTimingFunction: 'ease-in-out',
+                },
+              ]}
+            />
+          )}
+        </View>
+      </TitleHold>
+      <View style={styles.holdText}>
+        <ThemedText type="label" numberOfLines={2}>
+          {title.title}
+        </ThemedText>
+        <ThemedText type="small" style={{ color: c.textSecondary }}>
+          {title.media_type === 'tv' ? 'TV' : 'Movie'}
+          {title.release_date ? ` · ${title.release_date.slice(0, 4)}` : ''}
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
 /** People search with the real Follow rows; a suggested account while it's empty. */
 function PeopleResults({ text }: { text: string }) {
   const c = useTheme();
@@ -922,6 +998,10 @@ const styles = StyleSheet.create({
     borderColor: Accent,
   },
   center: { textAlign: 'center' },
+  hold: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  holdPoster: { width: 120, height: 180, borderRadius: 8, backgroundColor: PlaceholderBg },
+  holdGhost: { top: 76, left: 46 },
+  holdText: { flex: 1, gap: Spacing.one },
   demoBox: {
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Spacing.three,

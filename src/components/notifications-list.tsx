@@ -11,9 +11,11 @@ import { DismissedNotice } from '@/components/dismissed-notice';
 import { EmptyState } from '@/components/empty-state';
 import { NotificationRow } from '@/components/notification-row';
 import { SwipeToDismissRow } from '@/components/swipe-to-dismiss-row';
+import { Tip } from '@/components/tip';
 import { Spacing } from '@/constants/theme';
 import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
+import { markTipDone } from '@/lib/onboarding';
 import {
   interleaveUndos,
   nextId,
@@ -81,6 +83,7 @@ export function NotificationsList({
       // Optimistic: the buzz and the disappearance happen on the gesture, not
       // when Supabase answers. `hapticUndo` is the taking-something-back verb.
       hapticUndo();
+      markTipDone('notification-dismiss');
       const previous =
         queryClient.getQueryData<NotificationItem[]>(keys.notifications()) ?? [];
       queryClient.setQueryData<NotificationItem[]>(keys.notifications(), (old) =>
@@ -159,6 +162,15 @@ export function NotificationsList({
         // `rows` carries the Undo strips as well, so an empty list really is
         // empty — dismissing the last notification shows the way back from it
         // rather than "no notifications" next to it.
+        ListHeaderComponent={
+          notifications.length > 0 ? (
+            <Tip
+              id="notification-dismiss"
+              text="Swipe a notification right to dismiss it."
+              style={styles.tip}
+            />
+          ) : null
+        }
         ListEmptyComponent={
           <EmptyState
             icon="bell"
@@ -175,4 +187,5 @@ const styles = StyleSheet.create({
   wrap: { flex: 1 },
   hidden: { display: 'none' },
   list: { gap: Spacing.two, paddingVertical: Spacing.two, flexGrow: 1 },
+  tip: { marginHorizontal: Spacing.four },
 });

@@ -28,6 +28,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { entityTypeFor, getTitleRatings } from '@/lib/ratings';
 import { fetchAllEpisodes, imageUrl, titleQueryOptions, type MediaType } from '@/lib/tmdb';
 import { keys } from '@/lib/keys';
+import { markTipDone } from '@/lib/onboarding';
+import { Tip } from '@/components/tip';
 import { usePullToDismiss } from '@/lib/pull-to-dismiss';
 import { useSessionLog } from '@/lib/use-session-log';
 import { airedOnly, logManyEpisodeWatches, removeEpisodeWatchesByIds } from '@/lib/watches';
@@ -277,6 +279,7 @@ export default function TitleDetailScreen() {
               {seasons.length > 0 && (
                 <View style={styles.seasons}>
                   <ThemedText type="subtitle">Seasons</ThemedText>
+                  <Tip id="season-swipe" text="Swipe a season right to log all of it." />
                   {seasons
                     .slice()
                     .sort((a, b) => a.season_number - b.season_number)
@@ -288,7 +291,10 @@ export default function TitleDetailScreen() {
                           key={s.id}
                           longLog
                           logLabel="Log season"
-                          onLog={() => logSeason(title.tmdb_id, s.season_number)}
+                          onLog={() => {
+                            markTipDone('season-swipe');
+                            logSeason(title.tmdb_id, s.season_number);
+                          }}
                           onUndo={stack ? undo : undefined}>
                           <Pressable
                             style={[
@@ -370,13 +376,14 @@ export default function TitleDetailScreen() {
                     {ratingsQ.data.reviews.slice(0, 3).map((r) => (
                       <ReviewRow key={r.userId} review={r} />
                     ))}
-                    {ratingsQ.data.reviews.length > 3 && (
-                      <Pressable onPress={openReviews} accessibilityRole="button">
-                        <ThemedText type="smallBold" themeColor="tint">
-                          See all {ratingsQ.data.reviews.length} reviews ›
-                        </ThemedText>
-                      </Pressable>
-                    )}
+                    {/* Always there: the swipe left is a shortcut, not the only way in. */}
+                    <Pressable onPress={openReviews} hitSlop={12} accessibilityRole="button">
+                      <ThemedText type="smallBold" themeColor="tint">
+                        {ratingsQ.data.reviews.length > 3
+                          ? `See all ${ratingsQ.data.reviews.length} reviews ›`
+                          : 'Open reviews ›'}
+                      </ThemedText>
+                    </Pressable>
                   </View>
                 </>
               )}
