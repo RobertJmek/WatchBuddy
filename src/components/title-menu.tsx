@@ -135,8 +135,19 @@ let host: Host | null = null;
 // The gesture's callbacks go through these and never name `host` themselves:
 // a gesture callback keeps the values it closed over when it was created, and
 // a poster in a memoized list is created before the host has mounted.
-function holdStart(box: View | null, title: HeldTitle, options: Options) {
-  box?.measureInWindow((x, y, width, height) =>
+//
+// Where the box is comes from the touch itself (finger on screen minus finger
+// in the box), the same coordinates the rows are hit-tested in. Android's
+// measureInWindow can leave the status bar out, and the poster then lifted
+// from a spot above the real one: it jumped. Only the size is measured.
+function holdStart(
+  box: View | null,
+  title: HeldTitle,
+  options: Options,
+  x: number,
+  y: number,
+) {
+  box?.measureInWindow((_x, _y, width, height) =>
     host?.open(title, options, { x, y, width, height }),
   );
 }
@@ -169,7 +180,9 @@ export function TitleHold({
   const gesture = Gesture.Pan()
     .runOnJS(true)
     .activateAfterLongPress(HOLD_MS)
-    .onStart(() => holdStart(box.current, title, { onLog }))
+    .onStart((e) =>
+      holdStart(box.current, title, { onLog }, e.absoluteX - e.x, e.absoluteY - e.y),
+    )
     .onUpdate((e) => holdMove(e.absoluteX, e.absoluteY))
     // Ended or cancelled, the finger is gone either way.
     .onFinalize(() => holdEnd());
