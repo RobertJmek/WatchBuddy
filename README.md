@@ -60,6 +60,9 @@ iOS equivalent of this file — on iPhone, use the App Store link above.
 - **Rating or completing counts as watched** — a first rating, or marking a title Completed,
   logs the watch for you (a movie once; a series' aired, unwatched episodes), with an Undo.
   Rating a series you've already started logs nothing — only Completed fills in the rest.
+- **Hold menu** — hold any poster or title row and it lifts out of a blurred page with a menu
+  under it: log a watch, favorite, Watchlist, rate, share, or move it to another status. Slide
+  to an option and let go; one touch does it all.
 - **Swipe to log** — swipe a Search result, a season on a series' page, or a season's episode
   **right** to log a watch, **left** to undo; a movie logs one watch, while a whole series or a
   whole season logs with a longer swipe.
@@ -136,7 +139,10 @@ iOS equivalent of this file — on iPhone, use the App Store link above.
   left on a title to reach its reviews; a title or a review thread opens from the bottom and
   pulling it down closes it (past the top on iOS, from the top of the page on Android).
 - **Polish** — press/entry animations and skeleton loading states across all screens.
-- **First run** — a welcome screen before sign-in, a profile step (photo, username, bio), then five hands-on tutorial cards (log, rate, file, follow, swipe), replayable from About.
+- **First run** — a welcome screen before sign-in, a profile step (photo, username, bio), then six hands-on tutorial cards (log, rate, file, hold, follow, swipe), replayable from About.
+- **Tips for hidden gestures** — one line where a gesture works and nothing on screen gives it
+  away (hold a poster in the Library, swipe a season to log it, swipe a notification to dismiss
+  it). Each shows once and leaves when you do the gesture or tap *Got it*.
 
 ---
 

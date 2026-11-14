@@ -1,6 +1,6 @@
 # ADR 0028 — First-run tutorial
 
-**Status:** accepted · targets v1.25.0
+**Status:** accepted · targets v1.25.0 · a sixth card (the hold menu) was added by ADR 0034
 
 ## Context
 
