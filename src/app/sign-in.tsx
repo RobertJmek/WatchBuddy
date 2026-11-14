@@ -2,13 +2,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
+import { Alert, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -20,6 +14,80 @@ import { Spacing, Type } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { hapticFailure } from '@/lib/haptics';
+
+const CODE_LENGTH = 6;
+/** The server sends one code a minute to an address; the button waits as long. */
+const RESEND_AFTER = 60;
+
+/**
+ * The code as six cells. One real field lies over them, invisible, so typing,
+ * paste and the keyboard's code suggestion all work as in any text field; the
+ * cells only draw what it holds.
+ */
+function CodeCells({
+  value,
+  onChange,
+  invalid,
+  editable,
+}: {
+  value: string;
+  onChange: (code: string) => void;
+  invalid: boolean;
+  editable: boolean;
+}) {
+  const c = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <View style={styles.cells}>
+      {Array.from({ length: CODE_LENGTH }, (_, i) => {
+        const active = focused && i === Math.min(value.length, CODE_LENGTH - 1);
+        return (
+          <View
+            key={i}
+            style={[
+              styles.cell,
+              {
+                backgroundColor: c.backgroundElement,
+                borderColor: invalid ? c.danger : active ? c.tint : 'transparent',
+              },
+            ]}>
+            <ThemedText style={styles.digit}>{value[i] ?? ''}</ThemedText>
+          </View>
+        );
+      })}
+      <TextInput
+        style={styles.cellsInput}
+        accessibilityLabel={`${CODE_LENGTH}-digit code`}
+        keyboardType="number-pad"
+        textContentType="oneTimeCode"
+        autoComplete="one-time-code"
+        autoFocus
+        caretHidden
+        selectionColor="transparent"
+        value={value}
+        editable={editable}
+        // Not maxLength: a pasted "123 456" has to arrive whole to be cleaned.
+        onChangeText={(t) => onChange(t.replace(/\D/g, '').slice(0, CODE_LENGTH))}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      />
+    </View>
+  );
+}
+
+/** What went wrong, right under the field; a screen reader hears it arrive. */
+function Problem({ text }: { text: string }) {
+  return (
+    <ThemedText
+      type="small"
+      themeColor="danger"
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite">
+      {text}
+    </ThemedText>
+  );
+}
 
 export default function SignInScreen() {
   const { sendCode, verifyCode, signInWithProvider, signInWithApple } = useAuth();
@@ -30,29 +98,62 @@ export default function SignInScreen() {
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** Shown under the field it is about, not in an alert over it. */
+  const [problem, setProblem] = useState<string | null>(null);
+  /** Seconds until another code can be asked for. */
+  const [wait, setWait] = useState(0);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'ios') AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
   }, []);
 
+  useEffect(() => {
+    if (wait <= 0) return;
+    const tick = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(tick);
+  }, [wait]);
+
   async function handleSend() {
     if (!email.includes('@')) {
-      Alert.alert('Enter a valid email');
+      setProblem('Enter a valid email address.');
       return;
     }
+    setProblem(null);
     setBusy(true);
     const { error } = await sendCode(email);
     setBusy(false);
-    if (error) Alert.alert('Could not send code', error);
-    else setCodeSent(true);
+    if (error) {
+      setProblem("We couldn't send the code. Try again in a minute.");
+      return;
+    }
+    setCode('');
+    setCodeSent(true);
+    setWait(RESEND_AFTER);
   }
 
-  async function handleVerify() {
+  async function handleVerify(entered: string) {
+    if (entered.length < CODE_LENGTH) {
+      setProblem(`Enter all ${CODE_LENGTH} digits.`);
+      return;
+    }
+    setProblem(null);
     setBusy(true);
-    const { error } = await verifyCode(email, code);
+    const { error } = await verifyCode(email, entered);
     setBusy(false);
-    if (error) Alert.alert('Invalid or expired code', error);
+    if (!error) return;
+    hapticFailure();
+    // The hidden field can only be edited from its end, so a wrong code is
+    // cleared rather than left to be backspaced through.
+    setCode('');
+    setProblem("That code didn't work. Check it, or get a new one.");
+  }
+
+  function handleCode(next: string) {
+    setCode(next);
+    setProblem(null);
+    // The last digit sends it; the button stays for a code that needs a retry.
+    if (next.length === CODE_LENGTH) handleVerify(next);
   }
 
   async function handleGoogle() {
@@ -69,11 +170,6 @@ export default function SignInScreen() {
     if (error) Alert.alert('Apple sign-in failed', error);
   }
 
-  const inputStyle = [
-    styles.input,
-    { color: c.text, backgroundColor: c.backgroundElement },
-  ];
-
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.container}>
@@ -83,30 +179,31 @@ export default function SignInScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           bottomOffset={Spacing.three}>
-        <Image
-          style={[
-            styles.logo,
-            { borderColor: c.border },
-            // Light: a physical drop shadow lifts the tile off the white page. Dark:
-            // the near-black tile vanishes into the near-black theater, so we lift
-            // it with a warm amber "projector glow" halo instead — on-brand, and
-            // it's what actually defines the icon on this background.
-            isDark
-              ? { shadowColor: c.glow, shadowOpacity: 0.32, shadowRadius: 28 }
-              : { shadowColor: '#1A1714', shadowOpacity: 0.18, shadowRadius: 24 },
-          ]}
-          source={require('@/assets/images/icon.png')}
-          contentFit="contain"
-        />
-        <ThemedText type="title" style={styles.brand}>
-          WatchBuddy
-        </ThemedText>
-        <ThemedText type="meta" style={[styles.tagline, { color: c.textSecondary }]}>
-          Track everything you watch
-        </ThemedText>
-
-        {!codeSent && (
+        {!codeSent ? (
           <>
+            <Image
+              style={[
+                styles.logo,
+                { borderColor: c.border },
+                // Light: a drop shadow lifts the tile off the white page. Dark:
+                // the near-black tile vanishes into the page, so a warm glow
+                // defines it instead.
+                isDark
+                  ? { shadowColor: c.glow, shadowOpacity: 0.32, shadowRadius: 28 }
+                  : { shadowColor: '#1A1714', shadowOpacity: 0.18, shadowRadius: 24 },
+              ]}
+              source={require('@/assets/images/icon.png')}
+              contentFit="contain"
+            />
+            <View style={styles.head}>
+              <ThemedText type="title" style={styles.center}>
+                WatchBuddy
+              </ThemedText>
+              <ThemedText style={[styles.body, styles.center]} themeColor="textSecondary">
+                Track everything you watch.
+              </ThemedText>
+            </View>
+
             {appleAvailable && (
               // A custom button rather than AppleAuthenticationButton: the native
               // one sets its own font and grows its label with its height, so it
@@ -120,7 +217,7 @@ export default function SignInScreen() {
                 accessibilityLabel="Continue with Apple"
                 accessibilityState={{ disabled: busy }}>
                 <SymbolView name="apple.logo" size={18} tintColor={c.text} />
-                <ThemedText type="smallBold">Continue with Apple</ThemedText>
+                <ThemedText type="label">Continue with Apple</ThemedText>
               </Pressable>
             )}
             <Pressable
@@ -135,68 +232,104 @@ export default function SignInScreen() {
                 source={require('@/assets/images/google-g.png')}
                 contentFit="contain"
               />
-              <ThemedText type="smallBold">Continue with Google</ThemedText>
+              <ThemedText type="label">Continue with Google</ThemedText>
             </Pressable>
-            <ThemedText type="meta" style={[styles.or, { color: c.textSecondary }]}>
-              or with email
-            </ThemedText>
-          </>
-        )}
 
-        {!codeSent ? (
-          <>
-            <TextInput
-              style={inputStyle}
-              placeholder="you@example.com"
-              placeholderTextColor={c.textSecondary}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              returnKeyType="send"
-              onSubmitEditing={handleSend}
-              value={email}
-              editable={!busy}
-              onChangeText={setEmail}
-            />
-            <Button title="Send code" onPress={handleSend} disabled={busy} />
+            <View style={styles.divider}>
+              <View style={[styles.rule, { backgroundColor: c.border }]} />
+              <ThemedText type="small" themeColor="textSecondary">
+                or
+              </ThemedText>
+              <View style={[styles.rule, { backgroundColor: c.border }]} />
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText type="label">Email</ThemedText>
+              <TextInput
+                style={[
+                  styles.input,
+                  { color: c.text, backgroundColor: c.backgroundElement },
+                ]}
+                accessibilityLabel="Email"
+                placeholder="you@example.com"
+                placeholderTextColor={c.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                keyboardType="email-address"
+                returnKeyType="send"
+                onSubmitEditing={handleSend}
+                value={email}
+                editable={!busy}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  setProblem(null);
+                }}
+              />
+              {problem && <Problem text={problem} />}
+            </View>
+            <Button title="Send code" onPress={handleSend} loading={busy} />
           </>
         ) : (
           <>
-            <ThemedText type="meta" style={[styles.hint, { color: c.textSecondary }]}>
-              We emailed a sign-in code to
-            </ThemedText>
-            <ThemedText style={[styles.email, { color: c.text }]}>
-              {email}
-            </ThemedText>
-            <TextInput
-              style={[styles.codeInput, { color: c.text, backgroundColor: c.backgroundElement }]}
-              placeholder="········"
-              placeholderTextColor={c.border}
-              keyboardType="number-pad"
-              textContentType="oneTimeCode"
-              autoComplete="one-time-code"
-              maxLength={8}
-              value={code}
-              editable={!busy}
-              onChangeText={setCode}
-            />
-            <Button title="Verify & sign in" onPress={handleVerify} disabled={busy} />
-            <Pressable
-              onPress={() => {
-                setCodeSent(false);
-                setCode('');
-              }}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: busy }}>
-              <ThemedText type="small" style={[styles.link, { color: c.tint }]}>
-                Use a different email
+            <View style={styles.head}>
+              <ThemedText
+                type="title"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}>
+                Enter your code
               </ThemedText>
-            </Pressable>
+              <ThemedText style={styles.body} themeColor="textSecondary">
+                We sent a {CODE_LENGTH}-digit code to{' '}
+                <ThemedText style={[styles.body, styles.address]}>{email.trim()}</ThemedText>
+              </ThemedText>
+            </View>
+
+            <View style={styles.field}>
+              <CodeCells
+                value={code}
+                onChange={handleCode}
+                invalid={!!problem}
+                editable={!busy}
+              />
+              {problem && <Problem text={problem} />}
+            </View>
+            <Button title="Verify" onPress={() => handleVerify(code)} loading={busy} />
+
+            <View style={styles.links}>
+              <Pressable
+                style={styles.linkBtn}
+                onPress={handleSend}
+                disabled={busy || wait > 0}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy || wait > 0 }}>
+                <ThemedText
+                  type="smallBold"
+                  themeColor={wait > 0 ? 'textSecondary' : 'tint'}>
+                  {wait > 0
+                    ? `Resend code in 0:${String(wait).padStart(2, '0')}`
+                    : 'Resend code'}
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.linkBtn}
+                onPress={() => {
+                  setCodeSent(false);
+                  setCode('');
+                  setProblem(null);
+                }}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy }}>
+                <ThemedText type="smallBold" themeColor="tint">
+                  Use a different email
+                </ThemedText>
+              </Pressable>
+            </View>
           </>
         )}
-
-        {busy && <ActivityIndicator style={{ marginTop: Spacing.two }} />}
         </KeyboardAwareScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -225,14 +358,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 8,
   },
-  brand: { textAlign: 'center' },
-  tagline: { textAlign: 'center', marginBottom: Spacing.three },
+  head: { gap: Spacing.two, marginBottom: Spacing.three },
+  center: { textAlign: 'center' },
+  body: { fontSize: 17, lineHeight: 26 },
+  // The address the code went to, at full contrast inside the muted line.
+  address: { fontFamily: Type.semibold },
+  field: { gap: Spacing.two },
   input: {
     fontFamily: Type.body,
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
-    fontSize: 16,
+    fontSize: 17,
   },
   secondaryBtn: {
     borderWidth: 1,
@@ -244,25 +381,23 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   googleIcon: { width: 18, height: 18 },
-  or: { textAlign: 'center' },
-  // Two-part sender line: quiet label, then the address it was sent to standing
-  // on its own at full text contrast so it can't get lost in the muted copy.
-  hint: { textAlign: 'center', marginBottom: -Spacing.two },
-  email: {
-    textAlign: 'center',
-    fontFamily: Type.semibold,
-    fontSize: 17,
+  divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  rule: { flex: 1, height: StyleSheet.hairlineWidth },
+  cells: { flexDirection: 'row', gap: Spacing.two },
+  cell: {
+    flex: 1,
+    height: 60,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  // The code reads like a ticket number: centered and larger than a plain
-  // field. No letterSpacing: iOS recycles this native view into later
+  digit: { fontFamily: Type.semibold, fontSize: 26, lineHeight: 32 },
+  // Over the cells, so a tap anywhere on them focuses it. Its own text is
+  // never seen. No letterSpacing: iOS recycles this native view into later
   // TextInputs (Search) and the kerning survives the recycle.
-  codeInput: {
-    fontFamily: Type.medium,
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 26,
-    textAlign: 'center',
-  },
-  link: { textAlign: 'center' },
+  cellsInput: { ...StyleSheet.absoluteFill, color: 'transparent', fontSize: 1 },
+  links: { alignItems: 'center' },
+  // 44pt targets for the two text actions.
+  linkBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: Spacing.three },
 });
