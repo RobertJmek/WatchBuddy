@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 /**
  * Tracks whether a user has been through the first-run onboarding screen
@@ -53,4 +53,42 @@ export function markWelcomeSeen(): void {
   if (welcomeSeen === true) return;
   setWelcome(true);
   AsyncStorage.setItem(WELCOME_KEY, '1').catch(() => {});
+}
+
+/**
+ * One-time tips for gestures nothing on screen gives away (ADR 0034). A tip
+ * shows in the place its gesture works until the user does the gesture once or
+ * taps "Got it", then never again on this install. Per device, like the
+ * welcome flag: it describes what this install has shown.
+ */
+export type TipId = 'hold-menu' | 'season-swipe' | 'notification-dismiss';
+
+const tipKey = (id: TipId) => `wb:tip-done:${id}`;
+/** Absent = storage hasn't answered yet, and the tip stays hidden. */
+const tipDone = new Map<TipId, boolean>();
+const setTip = (id: TipId, done: boolean) => {
+  tipDone.set(id, done);
+  listeners.forEach((l) => l());
+};
+
+/** True while the tip should be on screen. */
+export function useTipVisible(id: TipId): boolean {
+  const done = useSyncExternalStore(subscribe, () => tipDone.get(id));
+  useEffect(() => {
+    if (tipDone.has(id)) return;
+    // A gesture can finish before storage answers; it wins. A storage failure
+    // hides the tip rather than showing it on every launch.
+    AsyncStorage.getItem(tipKey(id)).then(
+      (v) => tipDone.has(id) || setTip(id, v !== null),
+      () => tipDone.has(id) || setTip(id, true),
+    );
+  }, [id]);
+  return done === false;
+}
+
+/** The gesture was done, or the tip dismissed. Safe to call every time. */
+export function markTipDone(id: TipId): void {
+  if (tipDone.get(id) === true) return;
+  setTip(id, true);
+  AsyncStorage.setItem(tipKey(id), '1').catch(() => {});
 }

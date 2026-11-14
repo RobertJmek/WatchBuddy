@@ -29,6 +29,7 @@ import {
   hapticToggle,
 } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
+import { markTipDone } from '@/lib/onboarding';
 import {
   getFavorite,
   getLibrary,
@@ -530,6 +531,7 @@ export function TitleMenuHost() {
           },
         };
         hapticHold();
+        markTipDone('hold-menu'); // they have found it
         start = null;
         armed = false;
         live.current.open = next; // moves can arrive before React re-renders

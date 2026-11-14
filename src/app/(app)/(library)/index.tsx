@@ -14,6 +14,7 @@ import { FilterChips } from '@/components/filter-chips';
 import { IconSymbol } from '@/components/icon-symbol';
 import { LibraryFilterSheet } from '@/components/library-filter-sheet';
 import { PosterShelf, type PosterItem } from '@/components/poster-shelf';
+import { Tip } from '@/components/tip';
 import { Pressable } from '@/components/pressable';
 import { ShelfSkeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
@@ -326,7 +327,9 @@ export default function LibraryScreen() {
                 />
               )
             ) : (
-              shelves.map((s) => (
+              <>
+              <Tip id="hold-menu" text="Hold a poster for quick actions." />
+              {shelves.map((s) => (
                 <PosterShelf
                   key={s.key}
                   title={s.label}
@@ -334,7 +337,8 @@ export default function LibraryScreen() {
                   onPressItem={openPoster}
                   onPressHeader={s.open}
                 />
-              ))
+              ))}
+              </>
             )}
           </ScrollView>
         )}
