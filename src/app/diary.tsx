@@ -285,6 +285,7 @@ export default function DiaryScreen() {
             accessibilityRole="button"
             accessibilityLabel="Close date picker">
             <Pressable
+              dim={false}
               style={[styles.sheet, { backgroundColor: c.background }]}
               onPress={(e) => e.stopPropagation()}>
               <DateTimePicker
@@ -338,6 +339,7 @@ export default function DiaryScreen() {
             accessibilityRole="button"
             accessibilityLabel="Close date picker">
             <Pressable
+              dim={false}
               style={[styles.sheet, { backgroundColor: c.background }]}
               onPress={(e) => e.stopPropagation()}>
               {editing && (

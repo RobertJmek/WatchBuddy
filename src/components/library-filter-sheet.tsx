@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Modal, StyleSheet, View } from 'react-native';
+// Gesture Handler's ScrollView, not React Native's: inside this Modal on iOS
+// the plain one never scrolls (the sheet's content stayed put under a drag).
+import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 
 import { Button } from '@/components/button';
 import { IconSymbol } from '@/components/icon-symbol';
@@ -143,7 +145,10 @@ export function LibraryFilterSheet({
           onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel="Close filters">
+          {/* Swallows taps so they don't reach the backdrop. It must not dim:
+              any touch on the sheet, a scroll included, faded all of it. */}
           <Pressable
+            dim={false}
             style={[styles.sheet, { backgroundColor: c.background }]}
             onPress={(e) => e.stopPropagation()}>
             <View style={styles.titleRow}>
