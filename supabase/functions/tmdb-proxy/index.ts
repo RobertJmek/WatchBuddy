@@ -142,6 +142,26 @@ const ANON_BUDGET: Budget = { capacity: 30, refillPerSecond: 1 };
 const OMDB_BUDGET: Budget = { capacity: 100, refillPerSecond: 700 / 86400 };
 
 /**
+ * Per-caller ceiling on what reaches the catalog: one token for every `title`
+ * or `season` that is not served from the cache, since those are the calls that
+ * write rows. USER_BUDGET alone let one account pull some three million new
+ * titles a day into Postgres. A first import of about a thousand shows fits in
+ * the burst; nobody browsing comes near it.
+ *
+ * Running dry never takes away what is already stored: a stale cached title or
+ * season is served as it is, and only something the catalog has never held is
+ * refused.
+ */
+const CATALOG_BUDGET: Budget = { capacity: 10_000, refillPerSecond: 3_000 / 86400 };
+
+/** Signed-out callers share one small bucket; the app never asks signed out. */
+const ANON_CATALOG_BUDGET: Budget = { capacity: 100, refillPerSecond: 100 / 86400 };
+
+function spendCatalog(uid: string | null) {
+  return spend('catalog', uid ?? NIL_UUID, 1, uid ? CATALOG_BUDGET : ANON_CATALOG_BUDGET);
+}
+
+/**
  * Spend `cost` tokens, or report how long until they exist.
  *
  * Fails OPEN: if the limiter itself errors, the request goes through. A broken
@@ -202,6 +222,12 @@ function wholeNumber(value: unknown, min: number, max: number): number | null {
 
 function badRequest(message: string) {
   return json({ error: message }, 400);
+}
+
+function tooManyRequests(retryAfter: number) {
+  return json({ error: `Too many requests. Try again in ${retryAfter}s.` }, 429, {
+    'Retry-After': String(retryAfter),
+  });
 }
 
 async function tmdb(path: string, params: Record<string, string> = {}) {
@@ -387,6 +413,7 @@ function readCachedTitle(tmdbId: number, mediaType: 'movie' | 'tv') {
 }
 
 async function handleTitle(
+  uid: string | null,
   tmdbId: number,
   mediaType: 'movie' | 'tv',
   cachedRead = readCachedTitle(tmdbId, mediaType),
@@ -404,10 +431,14 @@ async function handleTitle(
     const fresh =
       Date.now() - new Date(cached.cached_at).getTime() < TITLE_CACHE_TTL_MS;
     const couldBackfillImdb = needsImdbLookup(cached);
-    if (fresh && !couldBackfillImdb) {
-      const seasons = mediaType === 'tv' ? (cachedSeasons ?? []) : [];
-      return json({ title: cached, seasons });
-    }
+    const serveCached = () =>
+      json({ title: cached, seasons: mediaType === 'tv' ? (cachedSeasons ?? []) : [] });
+    if (fresh && !couldBackfillImdb) return serveCached();
+    // Over the catalog budget: the stored copy, stale or not, beats a refusal.
+    if (!(await spendCatalog(uid)).allowed) return serveCached();
+  } else {
+    const budget = await spendCatalog(uid);
+    if (!budget.allowed) return tooManyRequests(budget.retryAfter);
   }
 
   const detail = await tmdb(`/${mediaType}/${tmdbId}`, {
@@ -612,6 +643,7 @@ function readCachedSeason(tmdbId: number, seasonNumber: number) {
 }
 
 async function handleSeason(
+  uid: string | null,
   tmdbId: number,
   seasonNumber: number,
   cachedRead = readCachedSeason(tmdbId, seasonNumber),
@@ -662,6 +694,13 @@ async function handleSeason(
     }
   }
 
+  const budget = await spendCatalog(uid);
+  if (!budget.allowed) {
+    // Same rule as a title: stored episodes, stale or not, beat a refusal.
+    if (cachedEps?.length) return json({ episodes: cachedEps });
+    return tooManyRequests(budget.retryAfter);
+  }
+
   let data;
   try {
     data = await tmdb(`/tv/${tmdbId}/season/${seasonNumber}`);
@@ -696,10 +735,12 @@ async function handleSeason(
  *
  * Cost is the worst-case number of TMDB requests the action makes, so the
  * budget meters the shared resource rather than the convenience of an action.
- * (`title` is charged 1 for the TMDB detail; its OMDb half has its own bucket.)
+ * (`title` is charged 1 for the TMDB detail; its OMDb half has its own bucket,
+ * and a `title` or `season` that misses the cache also spends CATALOG_BUDGET.)
  */
 function plan(
   body: Record<string, unknown>,
+  uid: string | null,
 ): { cost: number; run: () => Promise<Response> } | Response {
   const { action } = body;
   switch (action) {
@@ -750,7 +791,7 @@ function plan(
       if (id === null) return badRequest('tmdb_id must be a positive whole number');
       // Start the cache read now, so it overlaps the rate-limit check.
       const cached = readCachedTitle(id, type);
-      return { cost: 1, run: () => handleTitle(id, type, cached) };
+      return { cost: 1, run: () => handleTitle(uid, id, type, cached) };
     }
     case 'season': {
       const id = wholeNumber(body.tmdb_id, 1, MAX_TMDB_ID);
@@ -760,7 +801,7 @@ function plan(
       if (season === null) return badRequest('season_number must be a whole number');
       // Start the cache read now, so it overlaps the rate-limit check.
       const cached = readCachedSeason(id, season);
-      return { cost: 1, run: () => handleSeason(id, season, cached) };
+      return { cost: 1, run: () => handleSeason(uid, id, season, cached) };
     }
     default:
       return json({ error: `Unknown action: ${String(action)}` }, 400);
@@ -785,25 +826,17 @@ Deno.serve(async (req) => {
     return badRequest('Request body must be a JSON object');
   }
 
-  const planned = plan(body);
+  const uid = callerId(req);
+  const planned = plan(body, uid);
   if (planned instanceof Response) return planned;
 
-  const uid = callerId(req);
   const limit = await spend(
     'tmdb-proxy',
     uid ?? NIL_UUID,
     planned.cost,
     uid ? USER_BUDGET : ANON_BUDGET,
   );
-  if (!limit.allowed) {
-    return json(
-      {
-        error: `Too many requests. Try again in ${limit.retryAfter}s.`,
-      },
-      429,
-      { 'Retry-After': String(limit.retryAfter) },
-    );
-  }
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter);
 
   try {
     return await planned.run();
