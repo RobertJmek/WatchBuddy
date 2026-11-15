@@ -82,13 +82,18 @@ bursts and several run at once.
 | `tmdb-proxy` | caller's uid | 300 | 40/s | upstream TMDB requests, per signed-in user |
 | `tmdb-proxy` | nil uuid | 30 | 1/s | callers presenting only the anon key |
 | `omdb` | nil uuid | 100 | 700/day | OMDb's global 1,000/day quota |
+| `catalog` | caller's uid | 10,000 | 3,000/day | `title` / `season` calls not served from the cache, the ones that write catalog rows |
+| `catalog` | nil uuid | 100 | 100/day | the same, for callers presenting only the anon key |
 
 Cost is the worst-case number of upstream requests an action makes: `search` 3,
 bare `trending` 2, everything else 1. The per-user ceiling is sized off the TV
 Time importer — the heaviest legitimate client — so a real import never feels it.
 
 Over budget returns **429** with `Retry-After` and a human message. Running the
-`omdb` bucket dry is not an error: the title loads without its IMDb rating and
+`catalog` bucket dry refuses only what the catalog has never held: a stale
+cached title or season is served as stored instead. A first import larger than
+the burst on an empty catalog stops there and can be resumed as the bucket
+refills. Running the `omdb` bucket dry is not an error: the title loads without its IMDb rating and
 the lookup is retried after `IMDB_RETRY_MINUTES`. A refused OMDb lookup — like a
 missing `OMDB_API_KEY`, a network error, or OMDb's own `{"Response":"False"}`
 error body — leaves any rating the row already had; **only an actual answer from
