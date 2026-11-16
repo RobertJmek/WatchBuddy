@@ -68,13 +68,18 @@ export default function AppTabs() {
   // Unread personal notifications badge the Feed tab (their home).
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const { data: unread = 0 } = useQuery({
+  const { data: unread = 0, dataUpdatedAt } = useQuery({
     queryKey: keys.notifUnread(),
     queryFn: getUnreadCount,
     enabled: !!session,
+    // Recounted on every return to the app (a cheap head count), so the icon
+    // badge a push left behind is corrected at once.
+    staleTime: 0,
   });
-  // The icon badge mirrors the Feed badge (ADR 0039).
-  useEffect(() => setAppBadge(unread), [unread]);
+  // The icon badge mirrors the Feed badge (ADR 0039). On every fetch, not only
+  // on a change: a push sets the icon's number behind the app's back, and the
+  // count refetches when the app comes to the foreground.
+  useEffect(() => setAppBadge(unread), [unread, dataUpdatedAt]);
   // Re-register this phone on every signed-in start; never prompts.
   useEffect(() => {
     if (session?.user.id) syncPush().catch(() => {});

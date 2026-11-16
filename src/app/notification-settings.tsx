@@ -73,8 +73,10 @@ export default function NotificationSettingsScreen() {
   const body =
     permission === 'denied'
       ? "Notifications are off for WatchBuddy in your phone's settings."
-      : granted
-        ? 'Choose what reaches this phone.'
+      : granted && isError
+        ? "Couldn't load your notification settings. Check your connection and try again."
+        : granted
+          ? 'Choose what reaches this phone.'
         : 'Get a notification when someone replies, likes your review or follows you.';
 
   return (
