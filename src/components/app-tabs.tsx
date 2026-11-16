@@ -34,6 +34,7 @@ import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { hapticTick } from '@/lib/haptics';
 import { getUnreadCount, subscribeToNotifications } from '@/lib/notifications';
+import { setAppBadge, syncPush } from '@/lib/push';
 import { TabPagerProvider } from '@/lib/tab-pager';
 import { emitTabReset } from '@/lib/tab-reset';
 
@@ -72,6 +73,12 @@ export default function AppTabs() {
     queryFn: getUnreadCount,
     enabled: !!session,
   });
+  // The icon badge mirrors the Feed badge (ADR 0039).
+  useEffect(() => setAppBadge(unread), [unread]);
+  // Re-register this phone on every signed-in start; never prompts.
+  useEffect(() => {
+    if (session?.user.id) syncPush().catch(() => {});
+  }, [session?.user.id]);
   useEffect(() => {
     const uid = session?.user.id;
     if (!uid) return;

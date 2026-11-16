@@ -61,7 +61,7 @@ export function markWelcomeSeen(): void {
  * taps "Got it", then never again on this install. Per device, like the
  * welcome flag: it describes what this install has shown.
  */
-export type TipId = 'hold-menu' | 'season-swipe' | 'notification-dismiss';
+export type TipId = 'hold-menu' | 'season-swipe' | 'notification-dismiss' | 'push-card';
 
 const tipKey = (id: TipId) => `wb:tip-done:${id}`;
 /** Absent = storage hasn't answered yet, and the tip stays hidden. */

@@ -123,6 +123,11 @@ render(svg({ bg: 'none', markColor: '#FFFFFF', scale: 0.8 }), 1024, 'android-ico
 render(svg({ bg: 'gradient', scale: 1.15 }).replace(mark('#FFFFFF', 1.15), ''), 1024, 'android-icon-background.png');
 render(svg({ bg: 'none', markColor: '#FFFFFF', scale: 0.8 }), 1024, 'android-icon-monochrome.png');
 
+// Android status-bar icon for push notifications (expo-notifications `icon`):
+// 96px, white on transparent — Android paints it in one colour, so anything
+// that isn't alpha is lost.
+render(svg({ bg: 'none', markColor: '#FFFFFF', scale: 1.7 }), 96, 'notification-icon.png');
+
 // Web favicon.
 render(svg({ bg: 'gradient', scale: 1.15 }), 48, 'favicon.png');
 

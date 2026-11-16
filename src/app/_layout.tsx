@@ -21,6 +21,7 @@ import { SwipeNav } from '@/components/swipe-nav';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { markWelcomeSeen, useWelcomeSeen } from '@/lib/onboarding';
+import { usePushTaps } from '@/lib/push';
 import { CACHE_MAX_AGE, asyncStoragePersister, queryClient } from '@/lib/query';
 import {
   ThemePreferenceProvider,
@@ -115,7 +116,11 @@ function RootNavigator() {
     if (session) markWelcomeSeen();
   }, [session]);
 
-  if (!initialized || !themeLoaded || !fontsLoaded || welcomeSeen === null) return null;
+  const ready = initialized && themeLoaded && fontsLoaded && welcomeSeen !== null;
+  // A tapped push opens its review or profile once the stack below is mounted.
+  usePushTaps(ready && !!session);
+
+  if (!ready) return null;
 
   return (
     <>
@@ -152,9 +157,13 @@ function RootNavigator() {
       <Stack.Screen name="auth-callback" />
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
-        {/* A new account's profile step, then the tutorial, each replacing
+        {/* A new account's profile step, notifications, then the tutorial, each replacing
             the last. A fade reads as one flow rather than pushed screens. */}
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: 'fade' }} />
+        <Stack.Screen
+          name="allow-notifications"
+          options={{ gestureEnabled: false, animation: 'fade' }}
+        />
         <Stack.Screen name="tutorial" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="title/[id]" options={modalOptions} />
         {/* Sibling of the title screen, reachable by a leftward swipe
@@ -176,6 +185,7 @@ function RootNavigator() {
         <Stack.Screen name="import-watchbuddy" />
         <Stack.Screen name="edit-profile" />
         <Stack.Screen name="blocked" />
+        <Stack.Screen name="notification-settings" />
         <Stack.Screen name="about" />
         <Stack.Screen name="library-section" />
         <Stack.Screen name="trending-section" />
