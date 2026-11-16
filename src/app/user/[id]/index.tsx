@@ -3,7 +3,9 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   FlatList,
+  Platform,
   RefreshControl,
+  Share,
   StyleSheet,
   View,
 } from 'react-native';
@@ -34,6 +36,10 @@ import { getFollowCounts, getFollowState } from '@/lib/social';
 import { getStats } from '@/lib/stats';
 import { getDiary } from '@/lib/watches';
 import { useBottomGap } from '@/hooks/use-bottom-gap';
+
+// The landing page in docs/u/ (ADR 0038). Its shape is frozen: every link
+// anyone has shared points at it.
+const PROFILE_LINK = 'https://robertjmek.github.io/WatchBuddy/u/?id=';
 
 
 function StatCard({ value, label }: { value: string; label: string }) {
@@ -188,6 +194,15 @@ export default function UserProfileScreen() {
   // the pair apart if they later unblock. Neither names them: this state shows
   // no name, so the confirmation must not either.
   const anonymous = { id, username: null, name: 'this account' };
+  // Only a profile that renders normally: never one that is hidden from you.
+  const shareable = !!profile && !statusLoading && status === 'none';
+  // The link inside the message: Android's chooser ignores a separate `url`.
+  const shareProfile = () => {
+    const line = isMe
+      ? "Follow me on WatchBuddy to see what I'm watching."
+      : `Follow ${name} on WatchBuddy to see what they're watching.`;
+    Share.share({ message: `${line}\n${PROFILE_LINK}${id}` }).catch(() => {});
+  };
   const openOptions = () =>
     openMenu(
       status === 'blocked'
@@ -369,20 +384,65 @@ export default function UserProfileScreen() {
         options={{
           headerShown: true,
           title: '',
-          // Nothing to offer on your own profile. One you cannot open still
-          // gets Report and Block (see `openOptions`).
-          headerRight:
-            isMe
-              ? undefined
-              : () => (
-                  <Pressable
-                    onPress={openOptions}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Profile options">
-                    <IconSymbol name="ellipsis" size={20} tintColor={c.textSecondary} />
-                  </Pressable>
-                ),
+          // Share on any profile you can see. No ⋯ on your own; one you cannot
+          // open still gets Report and Block (see `openOptions`). On iOS they are
+          // native bar buttons, each in its own glass circle: a custom view
+          // puts both in one shared capsule on iOS 26.
+          unstable_headerRightItems:
+            Platform.OS === 'ios'
+              ? () => [
+                  ...(shareable
+                    ? [
+                        {
+                          type: 'button' as const,
+                          label: 'Share',
+                          accessibilityLabel: 'Share profile',
+                          icon: { type: 'sfSymbol' as const, name: 'square.and.arrow.up' as const },
+                          onPress: shareProfile,
+                          sharesBackground: false,
+                        },
+                      ]
+                    : []),
+                  ...(isMe
+                    ? []
+                    : [
+                        {
+                          type: 'button' as const,
+                          label: 'Options',
+                          accessibilityLabel: 'Profile options',
+                          icon: { type: 'sfSymbol' as const, name: 'ellipsis' as const },
+                          onPress: openOptions,
+                          sharesBackground: false,
+                        },
+                      ]),
+                ]
+              : undefined,
+          headerRight: () => (
+            <View style={styles.headerActions}>
+              {shareable ? (
+                <Pressable
+                  onPress={shareProfile}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share profile">
+                  <IconSymbol
+                    name="square.and.arrow.up"
+                    size={20}
+                    tintColor={c.textSecondary}
+                  />
+                </Pressable>
+              ) : null}
+              {isMe ? null : (
+                <Pressable
+                  onPress={openOptions}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel="Profile options">
+                  <IconSymbol name="ellipsis" size={20} tintColor={c.textSecondary} />
+                </Pressable>
+              )}
+            </View>
+          ),
         }}
       />
       {profileQ.isLoading || statusLoading ? (
@@ -437,6 +497,7 @@ export default function UserProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   container: { flex: 1 },
   list: { padding: Spacing.three, gap: Spacing.two },
   header: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.three },

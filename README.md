@@ -102,7 +102,8 @@ iOS equivalent of this file — on iPhone, use the App Store link above.
   a **taste summary** (top genres + favorite directors), and **Watching now / Favorites /
   Recently completed** shelves alongside recent activity, plus everything they've **rated**
   (posters with their score) and **reviewed**, each opening a full list sortable by recent,
-  highest or lowest.
+  highest or lowest. **Share** (top right) sends a link to a small page that opens the profile
+  in the app, or offers the App Store / Android download.
 - **Community ratings per title** — an aggregate **WatchBuddy score** (mean + count) shown
   beside the TMDB/IMDb badges.
 - **Community reviews** — read everyone's written reviews on a title, with **people you follow
