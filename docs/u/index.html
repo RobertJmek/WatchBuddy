@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<title>WatchBuddy</title>
+<meta property="og:title" content="WatchBuddy">
+<meta property="og:description" content="Track the movies and TV you watch and see what your friends are watching.">
+<meta property="og:image" content="https://robertjmek.github.io/WatchBuddy/email/logo.png">
+<!--
+  A shared profile link lands here (ADR 0038):
+  https://robertjmek.github.io/WatchBuddy/u/?id=<profile uuid>
+  Every link anyone has shared points at this shape, so it never changes.
+  No network calls and no profile data: the page only builds the app link.
+-->
+<style>
+  :root {
+    --bg: #FFFFFF; --text: #111214; --muted: #555A63; --tint: #0B6B63;
+    --element: #F0F1F3; --fill: #0F766E; --on-fill: #FFFFFF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000; --text: #F4F5F7; --muted: #9DA1A9; --tint: #14B8A6;
+      --element: #141518;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font: 17px/26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  main { width: 100%; max-width: 420px; padding: 48px 24px; text-align: center; }
+  img { width: 96px; height: 96px; border-radius: 22px; }
+  h1 { font-size: 34px; line-height: 40px; font-weight: 800; margin: 24px 0 8px; }
+  p { margin: 0; color: var(--muted); }
+  .open {
+    display: block; margin-top: 32px; padding: 16px; border-radius: 16px;
+    background: var(--fill); color: var(--on-fill); font-weight: 700;
+    text-decoration: none;
+  }
+  .get { margin-top: 32px; }
+  .stores { display: flex; gap: 12px; margin-top: 12px; }
+  .stores a {
+    flex: 1; padding: 14px 8px; border-radius: 16px; background: var(--element);
+    color: var(--tint); font-weight: 700; text-decoration: none;
+  }
+  [hidden] { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <img src="../email/logo.png" alt="">
+  <h1>WatchBuddy</h1>
+  <p>Track the movies and TV you watch and see what your friends are watching.</p>
+  <a class="open" id="open" hidden>Open in WatchBuddy</a>
+  <p class="get">Don't have the app?</p>
+  <div class="stores">
+    <a href="https://apps.apple.com/app/id6791142403">App Store</a>
+    <a href="https://github.com/RobertJmek/WatchBuddy/releases/latest/download/watchbuddy-android-arm64.apk">Android</a>
+  </div>
+</main>
+<script>
+  // Only a profile id (a UUID) ever reaches the app link.
+  var id = new URLSearchParams(location.search).get('id') || '';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    var open = document.getElementById('open');
+    open.href = 'watchbuddy://user/' + id.toLowerCase();
+    open.hidden = false;
+  }
+</script>
+</body>
+</html>
