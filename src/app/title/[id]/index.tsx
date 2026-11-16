@@ -91,7 +91,7 @@ export default function TitleDetailScreen() {
   // Swipe a season row right to log it: one more watch of every aired episode
   // in it (a rewatch counts, like the season screen's "Log whole season").
   // Every swipe adds another; left undoes the latest one. Session-scoped,
-  // keyed by season number — see ADR 0011. The row's Swipeable activates
+  // keyed by season number — see ADR 0011. The row's swipe (11pt) activates
   // before this screen's SwipeNav, so a drag that starts on a season row is
   // the row's (ADR 0023).
   const queryClient = useQueryClient();

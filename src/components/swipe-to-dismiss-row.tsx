@@ -1,8 +1,7 @@
-import { useRef } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
 
 import { IconSymbol } from '@/components/icon-symbol';
+import { SwipeRow } from '@/components/swipe-row';
 import { ThemedText } from '@/components/themed-text';
 import { AccentText, Danger, Spacing } from '@/constants/theme';
 
@@ -20,17 +19,8 @@ import { AccentText, Danger, Spacing } from '@/constants/theme';
  * watches. Folding a third meaning into it would make both harder to read than
  * the ~30 lines they each cost.
  *
- * Two rules inherited from that component, both learned the hard way:
- *
- * - **`Swipeable` comes from the package's *main* entry**, never the
- *   `react-native-gesture-handler/ReanimatedSwipeable` subpath. Mixing the two
- *   pulls a second copy of the `RNGestureHandlerButton` native component into
- *   the bundle and the app dies at launch ("Tried to register two views with the
- *   same name"). Neither `tsc` nor `expo export` sees it — v1.12.0 shipped that
- *   way. The app's `GestureHandlerRootView` (`_layout.tsx`) must be mounted,
- *   which it is everywhere except inside an RN `Modal`.
- * - **No haptics in here.** The caller owns them, so wiring the same action to a
- *   button later can't double-buzz.
+ * **No haptics in here.** The caller owns them, so wiring the same action to a
+ * button later can't double-buzz. The gesture itself lives in `swipe-row.tsx`.
  *
  * The caller also owns the accessible path, for the reason spelled out in
  * `swipe-to-log-row.tsx`: custom actions are only exposed for the *focused*
@@ -46,30 +36,25 @@ export function SwipeToDismissRow({
   /** Fires once, when the rightward drag crosses the threshold. */
   onDismiss: () => void;
 }) {
-  const ref = useRef<Swipeable>(null);
   const { width } = useWindowDimensions();
 
   return (
-    <Swipeable
-      ref={ref}
-      // Same short-flick distance as a movie's swipe-to-log. Dismissing is
-      // reversible (an Undo strip takes its place), so it doesn't earn the long,
-      // deliberate drag a whole series does.
-      leftThreshold={width * 0.22}
-      onSwipeableWillOpen={() => onDismiss()}
-      // Close from Open, never from inside WillOpen: RNGH starts the open spring
-      // in the same tick, and a `close()` there can lose to it on iOS and leave
-      // the row stuck open (see `swipe-to-log-row.tsx`).
-      onSwipeableOpen={() => ref.current?.close()}
-      // Left actions are what a *right* drag reveals.
-      renderLeftActions={() => (
-        <View style={styles.action}>
-          <IconSymbol name="xmark" size={20} tintColor={AccentText} />
-          <ThemedText style={styles.actionText}>Dismiss</ThemedText>
-        </View>
-      )}>
+    <SwipeRow
+      onSwipeRight={{
+        // Same short-flick distance as a movie's swipe-to-log. Dismissing is
+        // reversible (an Undo strip takes its place), so it doesn't earn the
+        // long, deliberate drag a whole series does.
+        threshold: width * 0.22,
+        onCommit: onDismiss,
+        action: (
+          <View style={styles.action}>
+            <IconSymbol name="xmark" size={20} tintColor={AccentText} />
+            <ThemedText style={styles.actionText}>Dismiss</ThemedText>
+          </View>
+        ),
+      }}>
       {children}
-    </Swipeable>
+    </SwipeRow>
   );
 }
 

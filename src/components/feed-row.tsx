@@ -35,7 +35,19 @@ export function formatEventTime(iso: string) {
  * unreachable from every row -- most visibly on a follow, where the row press
  * goes to the *target* while the avatar shows the actor.
  */
-export const FeedRow = memo(function FeedRow({ item }: { item: FeedItem }) {
+const DISMISS_ACTIONS = [{ name: 'dismiss', label: 'Dismiss' }];
+
+export const FeedRow = memo(function FeedRow({
+  item,
+  onDismiss,
+}: {
+  item: FeedItem;
+  /**
+   * The swipe-to-dismiss, as an accessibility action on the row's focusable
+   * element: a screen reader can't perform the swipe.
+   */
+  onDismiss?: () => void;
+}) {
   const router = useRouter();
   const c = useTheme();
 
@@ -53,6 +65,7 @@ export const FeedRow = memo(function FeedRow({ item }: { item: FeedItem }) {
         review={item.review}
         titleName={item.title?.name}
         onTitlePress={item.title ? () => openTitle(router, item.title!) : undefined}
+        onDismiss={onDismiss}
       />
     );
   }
@@ -129,7 +142,11 @@ export const FeedRow = memo(function FeedRow({ item }: { item: FeedItem }) {
   return (
     <Pressable
       style={[styles.row, { backgroundColor: c.backgroundElement }]}
-      onPress={onPress}>
+      onPress={onPress}
+      accessibilityActions={onDismiss ? DISMISS_ACTIONS : undefined}
+      onAccessibilityAction={({ nativeEvent }) => {
+        if (nativeEvent.actionName === 'dismiss') onDismiss?.();
+      }}>
       <Pressable
         hitSlop={6}
         onPress={() => openUser(item.actor.id)}

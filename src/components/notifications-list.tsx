@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import {
   FlatList,
   StyleSheet,
@@ -13,22 +13,18 @@ import { NotificationRow } from '@/components/notification-row';
 import { SwipeToDismissRow } from '@/components/swipe-to-dismiss-row';
 import { Tip } from '@/components/tip';
 import { Spacing } from '@/constants/theme';
+import { usePendingUndos } from '@/hooks/use-pending-undos';
 import { hapticFailure, hapticSuccess, hapticUndo } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { markTipDone } from '@/lib/onboarding';
-import {
-  interleaveUndos,
-  nextId,
-  type PendingUndo,
-} from '@/lib/notification-undos';
+import { interleaveUndos, nextId } from '@/lib/notification-undos';
 import {
   dismissNotification,
   undismissNotification,
   type NotificationItem,
 } from '@/lib/notifications';
 
-/** How long an Undo strip stays before the dismissal is just… done. */
-const UNDO_MS = 4000;
+const notificationId = (n: NotificationItem) => n.id;
 
 /**
  * The **Notifications** segment of the Feed tab: things that happened *to you*
@@ -41,9 +37,9 @@ const UNDO_MS = 4000;
  * that belongs to it came along: the screen above now only decides which of the
  * two lists is visible.
  *
- * Stays mounted while hidden so its scroll offset survives a trip to Activity;
- * `display: none` also makes the swipe gestures inside it untouchable, so a
- * horizontal drag on an Activity row can never reach them.
+ * Stays mounted while hidden so its scroll offset survives a trip to Activity.
+ * Hidden means transparent and untouchable, so a horizontal drag on an
+ * Activity row can never reach the swipe gestures in here.
  */
 export function NotificationsList({
   notifications,
@@ -56,27 +52,7 @@ export function NotificationsList({
 }) {
   const queryClient = useQueryClient();
 
-  // Every row currently offering an Undo, in the order they were swiped. One per
-  // dismissal, not one in total: swiping three notifications away leaves three
-  // ways back, because each dismissal is its own committed act. Where each strip
-  // stands is `interleaveUndos`' job.
-  const [undos, setUndos] = useState<PendingUndo[]>([]);
-  const undoTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-
-  const forgetUndo = useCallback((id: string) => {
-    const timer = undoTimers.current.get(id);
-    if (timer) clearTimeout(timer);
-    undoTimers.current.delete(id);
-    setUndos((prev) => prev.filter((u) => u.item.id !== id));
-  }, []);
-
-  useEffect(() => {
-    const timers = undoTimers.current;
-    return () => {
-      timers.forEach(clearTimeout);
-      timers.clear();
-    };
-  }, []);
+  const { undos, offer, forget: forgetUndo } = usePendingUndos(notificationId);
 
   const onDismiss = useCallback(
     async (item: NotificationItem, beforeId: string | null) => {
@@ -89,11 +65,7 @@ export function NotificationsList({
       queryClient.setQueryData<NotificationItem[]>(keys.notifications(), (old) =>
         (old ?? []).filter((n) => n.id !== item.id),
       );
-      setUndos((prev) => [...prev, { item, beforeId }]);
-      undoTimers.current.set(
-        item.id,
-        setTimeout(() => forgetUndo(item.id), UNDO_MS),
-      );
+      offer(item, beforeId);
 
       try {
         await dismissNotification(item.id);
@@ -101,17 +73,17 @@ export function NotificationsList({
         queryClient.invalidateQueries({ queryKey: keys.notifUnread() });
       } catch {
         queryClient.setQueryData(keys.notifications(), previous);
-        forgetUndo(item.id);
+        forgetUndo(item);
         hapticFailure();
       }
     },
-    [queryClient, forgetUndo],
+    [queryClient, offer, forgetUndo],
   );
 
   const onUndo = useCallback(
     async (item: NotificationItem) => {
       hapticSuccess();
-      forgetUndo(item.id);
+      forgetUndo(item);
       // Put the row back **before** the write, the mirror image of the dismissal.
       // It used to wait for a refetch to bring it back, which is why undoing
       // looked like it did nothing until you pulled to refresh. Re-sorted the way
@@ -136,10 +108,13 @@ export function NotificationsList({
     [forgetUndo, queryClient],
   );
 
-  const rows = interleaveUndos(notifications, undos);
+  const rows = interleaveUndos(notifications, undos, notificationId);
 
   return (
-    <View style={[styles.wrap, !visible && styles.hidden]}>
+    <View
+      style={[styles.wrap, !visible && styles.hidden]}
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}>
       <FlatList
         data={rows}
         keyExtractor={(row) => row.key}
@@ -148,10 +123,14 @@ export function NotificationsList({
             <DismissedNotice onUndo={() => onUndo(row.item)} />
           ) : (
             <SwipeToDismissRow
-              onDismiss={() => onDismiss(row.item, nextId(notifications, row.item))}>
+              onDismiss={() =>
+                onDismiss(row.item, nextId(notifications, row.item, notificationId))
+              }>
               <NotificationRow
                 item={row.item}
-                onDismiss={() => onDismiss(row.item, nextId(notifications, row.item))}
+                onDismiss={() =>
+                  onDismiss(row.item, nextId(notifications, row.item, notificationId))
+                }
               />
             </SwipeToDismissRow>
           )
@@ -185,7 +164,10 @@ export function NotificationsList({
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  hidden: { display: 'none' },
+  // Not `display: none`: on iOS that keeps the rows out of the native view tree,
+  // and a gesture handler (a row's swipe, a poster's hold) that can't find its
+  // view within 2.5 s of mounting never attaches (#148).
+  hidden: { ...StyleSheet.absoluteFill, opacity: 0, pointerEvents: 'none' },
   list: { gap: Spacing.two, paddingVertical: Spacing.two, flexGrow: 1 },
   tip: { marginHorizontal: Spacing.four },
 });

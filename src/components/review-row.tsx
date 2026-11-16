@@ -32,6 +32,7 @@ export const ReviewRow = memo(function ReviewRow({
   showThreadAction = true,
   titleName,
   onTitlePress,
+  onDismiss,
 }: {
   review: ReviewItem;
   showThreadAction?: boolean;
@@ -39,6 +40,8 @@ export const ReviewRow = memo(function ReviewRow({
   titleName?: string;
   /** Makes the title tappable (navigates to the title) in feed context. */
   onTitlePress?: () => void;
+  /** Feed context: the swipe-to-dismiss, as an accessibility action. */
+  onDismiss?: () => void;
 }) {
   const router = useRouter();
   const c = useTheme();
@@ -101,12 +104,15 @@ export const ReviewRow = memo(function ReviewRow({
   // The same two as accessibility actions, on the row's own focusable Pressable
   // (ADR 0018): the ⋯ below is a separate control a screen reader also reaches,
   // but a custom action is the path that does not need a precise swipe to it.
-  const moderationActions = review.isMine
-    ? undefined
-    : [
-        { name: 'report', label: 'Report review' },
-        { name: 'block', label: `Block ${handleOf(author)}` },
-      ];
+  const moderationActions = [
+    ...(review.isMine
+      ? []
+      : [
+          { name: 'report', label: 'Report review' },
+          { name: 'block', label: `Block ${handleOf(author)}` },
+        ]),
+    ...(onDismiss ? [{ name: 'dismiss', label: 'Dismiss' }] : []),
+  ];
 
   return (
     <>
@@ -115,10 +121,11 @@ export const ReviewRow = memo(function ReviewRow({
       onPress={() =>
         router.push({ pathname: '/user/[id]', params: { id: review.userId } })
       }
-      accessibilityActions={moderationActions}
+      accessibilityActions={moderationActions.length ? moderationActions : undefined}
       onAccessibilityAction={(e) => {
         if (e.nativeEvent.actionName === 'report') report('review', review.ratingId);
         else if (e.nativeEvent.actionName === 'block') block(author);
+        else if (e.nativeEvent.actionName === 'dismiss') onDismiss?.();
       }}>
       <View style={styles.top}>
         <Avatar uri={review.avatar_url} name={name} />

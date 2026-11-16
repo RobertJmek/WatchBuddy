@@ -1,8 +1,7 @@
-import { useRef } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
 
 import { IconSymbol } from '@/components/icon-symbol';
+import { SwipeRow } from '@/components/swipe-row';
 import { ThemedText } from '@/components/themed-text';
 import { Accent, AccentText, Danger, Spacing } from '@/constants/theme';
 
@@ -38,68 +37,43 @@ type Props = {
  * `accessibilityActions` + `onAccessibilityAction` onto its own row — see
  * `ResultRow` in `explore.tsx` for the worked example.
  *
- * Uses `Swipeable` from the package's *main* entry (the same module react-navigation
- * already loads) rather than the `react-native-gesture-handler/ReanimatedSwipeable`
- * subpath — mixing the subpath with the main entry pulls a second copy of the
- * `RNGestureHandlerButton` native component into the bundle and crashes at startup
- * ("Tried to register two views with the same name"). The app's
- * `GestureHandlerRootView` (in `_layout.tsx`) must be mounted for it to work.
+ * The gesture itself lives in `swipe-row.tsx`. Haptics live in `onLog` /
+ * `onUndo`, not here: every caller wires the same handlers to a tap-button too,
+ * so buzzing here would double up on a swipe.
  */
-export function SwipeToLogRow({
-  children,
-  onLog,
-  logLabel,
-  onUndo,
-  longLog,
-}: Props) {
-  const ref = useRef<Swipeable>(null);
+export function SwipeToLogRow({ children, onLog, logLabel, onUndo, longLog }: Props) {
   const { width } = useWindowDimensions();
   // Thresholds are drag distances in points. A series takes a clearly longer,
-  // deliberate swipe than a movie/episode's short flick — but still reachable
-  // (overshoot is on below, so the drag isn't capped at the action width).
+  // deliberate swipe than a movie/episode's short flick.
   const logThreshold = width * (longLog ? 0.45 : 0.22);
   const undoThreshold = width * 0.22;
 
-  function handleWillOpen(direction: 'left' | 'right') {
-    // Left actions open when swiping *right* → log. Right actions → undo.
-    // Haptics deliberately live in `onLog`/`onUndo`, not here: every caller wires
-    // the same handlers to a tap-button too, so buzzing here would double up on
-    // a swipe (and the handler knows whether it's a tick or a full commit).
-    if (direction === 'left') onLog();
-    else onUndo?.();
-  }
-
   return (
-    <Swipeable
-      ref={ref}
-      leftThreshold={logThreshold}
-      rightThreshold={undoThreshold}
-      onSwipeableWillOpen={handleWillOpen}
-      // Close once the open spring has finished, never from inside WillOpen.
-      // RNGH calls WillOpen in the same tick it starts the open spring, before
-      // its `rowState` update has flushed. A `close()` there reads the stale
-      // state and starts a second native spring on the same node in the same
-      // frame. On iOS the open one can win, and the row stays open until some
-      // unrelated re-render (a season log settling) puts it back.
-      onSwipeableOpen={() => ref.current?.close()}
-      renderLeftActions={() => (
-        <View style={[styles.action, styles.logAction]}>
-          <IconSymbol name="checkmark" size={22} tintColor={AccentText} />
-          <ThemedText style={styles.actionText}>{logLabel}</ThemedText>
-        </View>
-      )}
-      renderRightActions={
-        onUndo
-          ? () => (
-              <View style={[styles.action, styles.undoAction]}>
-                <ThemedText style={styles.actionText}>Undo</ThemedText>
-                <IconSymbol name="arrow.uturn" size={20} tintColor={AccentText} />
-              </View>
-            )
-          : undefined
+    <SwipeRow
+      onSwipeRight={{
+        threshold: logThreshold,
+        onCommit: onLog,
+        action: (
+          <View style={[styles.action, styles.logAction]}>
+            <IconSymbol name="checkmark" size={22} tintColor={AccentText} />
+            <ThemedText style={styles.actionText}>{logLabel}</ThemedText>
+          </View>
+        ),
+      }}
+      onSwipeLeft={
+        onUndo && {
+          threshold: undoThreshold,
+          onCommit: onUndo,
+          action: (
+            <View style={[styles.action, styles.undoAction]}>
+              <ThemedText style={styles.actionText}>Undo</ThemedText>
+              <IconSymbol name="arrow.uturn" size={20} tintColor={AccentText} />
+            </View>
+          ),
+        }
       }>
       {children}
-    </Swipeable>
+    </SwipeRow>
   );
 }
 
