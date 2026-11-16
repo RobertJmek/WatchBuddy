@@ -53,10 +53,18 @@ async function ensureChannels() {
   ]);
 }
 
+/**
+ * 'denied' only when the system won't show its prompt again. Android 13+
+ * reports a permission it has never asked for as denied, with `canAskAgain`.
+ */
+function toPermission(p: Notifications.NotificationPermissionsStatus): PushPermission {
+  if (p.status === 'granted') return 'granted';
+  return p.canAskAgain ? 'undetermined' : 'denied';
+}
+
 export async function getPushPermission(): Promise<PushPermission> {
   if (!pushSupported) return 'unsupported';
-  const { status } = await Notifications.getPermissionsAsync();
-  return status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'undetermined';
+  return toPermission(await Notifications.getPermissionsAsync());
 }
 
 /** The permission, re-read whenever the app comes back (the user may have changed it in Settings). */
@@ -94,10 +102,9 @@ async function register() {
 export async function enablePush(): Promise<PushPermission> {
   if (!pushSupported) return 'unsupported';
   await ensureChannels();
-  const { status } = await Notifications.requestPermissionsAsync();
-  if (status !== 'granted') return status === 'denied' ? 'denied' : 'undetermined';
-  await register();
-  return 'granted';
+  const permission = toPermission(await Notifications.requestPermissionsAsync());
+  if (permission === 'granted') await register();
+  return permission;
 }
 
 /**
