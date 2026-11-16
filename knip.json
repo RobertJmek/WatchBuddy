@@ -1,7 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
-    "scripts/generate-logo.mjs"
+    "scripts/generate-logo.mjs",
+    "scripts/generate-notification-icon.mjs"
   ],
   "ignore": [
     "supabase/functions/**"
