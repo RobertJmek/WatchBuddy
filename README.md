@@ -97,6 +97,10 @@ iOS equivalent of this file — on iPhone, use the App Store link above.
   open that segment, not merely when you land on the tab. **Swipe one right to dismiss it**
   (with a few seconds to undo); new activity on a dismissed notification brings it back.
   Activity rows swipe away the same way; that choice is kept on the phone only.
+- **Push notifications** (iOS + Android, if you allow them) — every in-app notification also
+  reaches your phone, in the same words; tapping one opens the review or profile. Likes and
+  follows are grouped and sent at most once an hour per review. Switch replies, likes and new
+  followers on or off in **Profile → Notifications**.
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
 - **Public profiles** (`/user/[id]`) — avatar, bio, follower counts, a compact stats summary,
   a **taste summary** (top genres + favorite directors), and **Watching now / Favorites /
@@ -161,7 +165,7 @@ iOS equivalent of this file — on iPhone, use the App Store link above.
 **Data model (Postgres):** a shared catalog cache (`titles`, `seasons`, `episodes`, `genres`,
 `people`, `credits`, `networks`) plus per-user, RLS-isolated data (`profiles`, `follows`,
 `library_items`, `episode_watches`, `movie_watches`, `ratings`, `review_likes`, `review_replies`,
-`notifications`, `blocks`, `reports`) and a server-only `rate_limits` table. Watch data is
+`notifications`, `push_tokens`, `blocks`, `reports`) and a server-only `rate_limits` table. Watch data is
 readable by any signed-in user (public-diary model) except across a block; writes stay
 owner-only.
 
@@ -203,7 +207,11 @@ supabase/
                            0017 backend hardening, 0018 rate limits,
                            0019 rate-limit execute grant,
                            0020 blocks + reports, 0021 text limits + review fixes,
-                           0022 random default display name)
+                           0022 random default display name,
+                           0023 watched titles have a status, 0024 index drift,
+                           0025 advisor fixes, 0026 avatar hardening,
+                           0027 write budgets, 0028 avatar size limit,
+                           0029 push notifications)
   functions/               Edge Functions (tmdb-proxy, delete-account)
 ```
 
@@ -241,7 +249,9 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
   `0015_like_count_compat` → `0016_notification_dismiss` →
   `0017_backend_hardening` → `0018_rate_limits` →
   `0019_rate_limit_execute_grant` → `0020_blocks_reports` → `0021_review_findings` →
-  `0022_random_display_name`.
+  `0022_random_display_name` → `0023_watched_titles_have_status` → `0024_index_drift` →
+  `0025_advisor_security` → `0026_avatar_hardening` → `0027_write_budgets` →
+  `0028_avatar_size_limit` → `0029_push_notifications`.
 - Set the Edge Function secret and deploy:
   ```bash
   supabase secrets set TMDB_API_KEY='<your-tmdb-token>' --project-ref <ref>

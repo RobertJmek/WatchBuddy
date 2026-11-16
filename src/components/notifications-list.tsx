@@ -10,6 +10,7 @@ import {
 import { DismissedNotice } from '@/components/dismissed-notice';
 import { EmptyState } from '@/components/empty-state';
 import { NotificationRow } from '@/components/notification-row';
+import { PushCard, usePushCardOpen } from '@/components/push-card';
 import { SwipeToDismissRow } from '@/components/swipe-to-dismiss-row';
 import { Tip } from '@/components/tip';
 import { Spacing } from '@/constants/theme';
@@ -109,6 +110,7 @@ export function NotificationsList({
   );
 
   const rows = interleaveUndos(notifications, undos, notificationId);
+  const pushCardOpen = usePushCardOpen();
 
   return (
     <View
@@ -141,14 +143,18 @@ export function NotificationsList({
         // `rows` carries the Undo strips as well, so an empty list really is
         // empty — dismissing the last notification shows the way back from it
         // rather than "no notifications" next to it.
+        // One ask at a time: the push card first (ADR 0039), the gesture tip after.
         ListHeaderComponent={
-          notifications.length > 0 ? (
-            <Tip
-              id="notification-dismiss"
-              text="Swipe a notification right to dismiss it."
-              style={styles.tip}
-            />
-          ) : null
+          <>
+            <PushCard style={styles.tip} />
+            {notifications.length > 0 && !pushCardOpen && (
+              <Tip
+                id="notification-dismiss"
+                text="Swipe a notification right to dismiss it."
+                style={styles.tip}
+              />
+            )}
+          </>
         }
         ListEmptyComponent={
           <EmptyState

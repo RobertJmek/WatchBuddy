@@ -45,6 +45,8 @@ export const keys = {
   feed: () => ['feed'] as const,
   notifications: () => ['notifications'] as const,
   notifUnread: () => ['notifUnread'] as const,
+  /** This phone's push switches (ADR 0039). */
+  pushSettings: () => ['pushSettings'] as const,
 
   // --- reviews -----------------------------------------------------------
   /** Community reviews of a title. Bare invalidates every title's. */

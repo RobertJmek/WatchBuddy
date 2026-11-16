@@ -15,6 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { getMyProfile } from '@/lib/profile';
+import { pushSupported } from '@/lib/push';
 import { getFollowCounts } from '@/lib/social';
 import { useThemePreference } from '@/lib/theme-preference';
 
@@ -155,6 +156,15 @@ export default function ProfileScreen() {
             <ThemedText type="label">Diary</ThemedText>
             <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
           </Pressable>
+          {pushSupported && (
+            <Pressable
+              style={[styles.link, { borderBottomColor: c.border }]}
+              onPress={() => router.push('/notification-settings')}
+              accessibilityRole="button">
+              <ThemedText type="label">Notifications</ThemedText>
+              <IconSymbol name="chevron.right" size={18} tintColor={c.textSecondary} />
+            </Pressable>
+          )}
           <Pressable
             style={[styles.link, { borderBottomColor: c.border }]}
             onPress={cycle}

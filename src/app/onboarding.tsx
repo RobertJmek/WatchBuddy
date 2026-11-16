@@ -20,6 +20,7 @@ import { hapticFailure, hapticSuccess } from '@/lib/haptics';
 import { keys } from '@/lib/keys';
 import { useAuth } from '@/lib/auth-context';
 import { markOnboardingSeen } from '@/lib/onboarding';
+import { pushSupported } from '@/lib/push';
 import { useBottomGap } from '@/hooks/use-bottom-gap';
 import {
   getMyProfile,
@@ -81,8 +82,9 @@ export default function OnboardingScreen() {
         // ignore — navigate regardless
       }
     }
-    // A new account's next stop is the tutorial (ADR 0028); it goes on to '/'.
-    router.replace('/tutorial');
+    // A new account's next stops: notifications (ADR 0039), then the tutorial
+    // (ADR 0028), which goes on to '/'.
+    router.replace(pushSupported ? '/allow-notifications' : '/tutorial');
   }
 
   async function pickAvatar() {

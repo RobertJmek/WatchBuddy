@@ -10,6 +10,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 
+import { unregisterPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -146,6 +147,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   async function signOut() {
+    // While still signed in: the row can only be deleted by its owner.
+    await unregisterPush();
     await supabase.auth.signOut();
   }
 

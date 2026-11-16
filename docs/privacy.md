@@ -1,6 +1,6 @@
 # WatchBuddy — Privacy Policy
 
-_Last updated: 8 November 2026_
+_Last updated: 16 November 2026_
 
 WatchBuddy is a personal movie & TV tracking app. This page explains what data
 the app handles and how.
@@ -24,6 +24,13 @@ the app handles and how.
   they may work out that you blocked them) and the reports you file about a
   review, reply or profile — the reason you picked, visible only to us. Reports
   are kept so we can act on them.
+- **Push notifications**: only if you allow them. Your phone's push token
+  (an address for notifications, not tied to your contacts or location), the
+  platform (iOS or Android) and which kinds you switched on (replies, likes, new
+  followers). It is deleted when you sign out on that phone or delete your
+  account. To deliver a notification, its text and the token pass through
+  [Expo](https://expo.dev)'s push service and then Apple (APNs) or Google
+  (Firebase Cloud Messaging).
 - **Usage limits**: a request counter tied to your account id (a number and a
   timestamp), so one account can't exhaust the movie database for everyone. It
   is deleted with your account.
