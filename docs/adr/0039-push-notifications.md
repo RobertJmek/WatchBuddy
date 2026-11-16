@@ -61,10 +61,11 @@ notification-permission guide, push-vendor guidance) agreed on:
   said no.
 - **Enhanced push security:** if Vault holds `expo_access_token`, the trigger
   sends it as `Authorization: Bearer`, and Expo then refuses sends without it.
-- **One EAS project for tokens:** the app asks for tokens for the `robertjmek`
-  project (`5751393f-…`, fixed in `push.ts`), because iOS builds run under
-  another account with a repointed `app.json`. That project holds the APNs key
-  and the FCM V1 service-account key.
+- **One EAS project for tokens:** the app asks for tokens for the `robertjmk`
+  project (`cc64939c-…`, fixed in `push.ts`), which holds the APNs key and the
+  FCM V1 service-account key. It is the account the EAS CLI is logged into and
+  the iOS builds run under; `app.json` still names the `robertjmek` project,
+  whose build quota is spent and whose credentials the CLI can't reach.
 
 ## Consequences
 

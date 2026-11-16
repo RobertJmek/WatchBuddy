@@ -14,11 +14,12 @@ import { deleteMine, selectMine, updateMine } from '@/lib/viewer';
  */
 
 /**
- * The `robertjmek` EAS project (app.json). A token belongs to the project that
- * holds the APNs/FCM credentials, and iOS builds run under another account with
- * a repointed app.json, so the id is fixed here rather than read from config.
+ * The `robertjmk` EAS project, the account the EAS CLI and the iOS builds use.
+ * A token belongs to the project that holds the APNs/FCM credentials, and
+ * app.json names the other account's project (`robertjmek`, whose build quota is
+ * spent), so the id is fixed here rather than read from config.
  */
-const PROJECT_ID = '5751393f-b11d-41c0-921e-2f48afe154e7';
+const PROJECT_ID = 'cc64939c-eda6-46be-96fc-cd78843362f1';
 
 export const pushSupported = Platform.OS === 'ios' || Platform.OS === 'android';
 
