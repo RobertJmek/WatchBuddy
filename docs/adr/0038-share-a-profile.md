@@ -45,5 +45,6 @@ capability on the signing account (Hagi's) and a new build.
   and add the associated domain and intent filter in a new build.
 - Seen on the iPhone 17 Pro simulator (dark) and the Pixel 11 emulator: the
   buttons, the share sheet / chooser with the full text and link, and the page
-  (served locally) opening the right profile in the app on both. Not seen: the
-  live Pages URL, a physical device, light mode on iOS.
+  (served locally) opening the right profile in the app on both. After the
+  merge the live URL returned 200, and opening it in the simulator's Safari
+  led to the right profile. Not seen: a physical device, light mode on iOS.
