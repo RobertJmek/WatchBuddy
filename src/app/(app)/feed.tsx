@@ -36,8 +36,8 @@ type SegmentKey = 'activity' | 'notifications';
  * you look exactly like a row that is only news — and made the tab badge
  * ambiguous, since it cleared on mere tab focus. See ADR 0021, amending 0006.
  *
- * Both lists stay **mounted** behind the segmented control, hidden with
- * `display: none` rather than unmounted, so each keeps its own scroll offset and
+ * Both lists stay **mounted** behind the segmented control, hidden (transparent
+ * and untouchable) rather than unmounted, so each keeps its own scroll offset and
  * its loaded pages. A swipe switches them too, but through the same `setSegment`
  * — not a pager. A nested pager would take every touch-down away from the
  * swipe-to-dismiss rows on Android, and this way a notification row (which

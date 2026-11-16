@@ -14,7 +14,14 @@ import { useTheme } from '@/hooks/use-theme';
  * the project a global snackbar it doesn't otherwise need. Same height and
  * radius as a notification row, so the list doesn't jump.
  */
-export function DismissedNotice({ onUndo }: { onUndo: () => void }) {
+export function DismissedNotice({
+  onUndo,
+  what = 'notification',
+}: {
+  onUndo: () => void;
+  /** Names the row for VoiceOver: "Undo dismissing this …". */
+  what?: string;
+}) {
   const c = useTheme();
   return (
     <View style={[styles.row, { backgroundColor: c.backgroundElement }]}>
@@ -25,7 +32,7 @@ export function DismissedNotice({ onUndo }: { onUndo: () => void }) {
         onPress={onUndo}
         hitSlop={10}
         accessibilityRole="button"
-        accessibilityLabel="Undo dismissing this notification">
+        accessibilityLabel={`Undo dismissing this ${what}`}>
         <ThemedText type="smallBold" style={{ color: c.tint }}>
           Undo
         </ThemedText>

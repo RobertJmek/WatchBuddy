@@ -96,6 +96,7 @@ iOS equivalent of this file — on iPhone, use the App Store link above.
   count on both the tab badge and the segment label — and the badge clears when you actually
   open that segment, not merely when you land on the tab. **Swipe one right to dismiss it**
   (with a few seconds to undo); new activity on a dismissed notification brings it back.
+  Activity rows swipe away the same way; that choice is kept on the phone only.
 - **Asymmetric follow** — follow anyone instantly; see follower / following counts and lists.
 - **Public profiles** (`/user/[id]`) — avatar, bio, follower counts, a compact stats summary,
   a **taste summary** (top genres + favorite directors), and **Watching now / Favorites /

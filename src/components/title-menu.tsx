@@ -141,6 +141,14 @@ let host: Host | null = null;
 // in the box), the same coordinates the rows are hit-tested in. Android's
 // measureInWindow can leave the status bar out, and the poster then lifted
 // from a spot above the real one: it jumped. Only the size is measured.
+// Set while a swipe row (`swipe-row.tsx`) is being dragged. On iOS the hold's
+// timer can still fire once the row has taken the touch, and the menu would
+// open in the middle of a swipe with no release to close it (#148).
+let rowDragging = false;
+export function setRowDragging(value: boolean) {
+  rowDragging = value;
+}
+
 function holdStart(
   box: View | null,
   title: HeldTitle,
@@ -148,6 +156,7 @@ function holdStart(
   x: number,
   y: number,
 ) {
+  if (rowDragging) return;
   box?.measureInWindow((_x, _y, width, height) =>
     host?.open(title, options, { x, y, width, height }),
   );
@@ -181,6 +190,11 @@ export function TitleHold({
   const gesture = Gesture.Pan()
     .runOnJS(true)
     .activateAfterLongPress(HOLD_MS)
+    // Only the hold may activate this pan. Without a distance criterion, iOS
+    // lets the underlying UIPanGestureRecognizer begin on its own after ~10pt,
+    // which took the drag from a swipe row around the poster and could open the
+    // menu at the end of a slow drag (#148).
+    .minDistance(Number.MAX_SAFE_INTEGER)
     .onStart((e) =>
       holdStart(box.current, title, { onLog }, e.absoluteX - e.x, e.absoluteY - e.y),
     )
